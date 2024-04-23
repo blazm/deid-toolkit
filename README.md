@@ -65,35 +65,37 @@ An attempt to develop a toolkit for running and evaluating privacy preserving te
 ## ToolKit Command Examples
 
 ### general commands
-root - see currently set root directory
-set root - set root directory
-serve - run webserver to see the generated results
-set serve root - set results directory for serving results
+- root - see currently set root directory
+- set root - set root directory
+- serve - run webserver to see the generated results
+- set serve - set results directory for serving results
 
-load config "filename.ini"
-save config "filename.ini"
+- load config "filename.ini"
+- save config "filename.ini"
+- help "command"
+- ? (list of all commands)
 
 ### listing commands for displaying implemented methods, * is a wildcard to run all
-list datasets
-list techniques
-list evaluation
-list visuals
-list *
+- list datasets
+- list techniques
+- list evaluation
+- list visuals
+- list *
 
 ### preprocessing commands (once the datasets were selected)
-preprocess images
-preprocess labels
-preprocess *  
+- preprocess images
+- preprocess labels
+- preprocess *  
 
 ### dataset|technique|evaluation selection
-select datasets
-select techniques
-select evaluation
-select *
-current selection
+- select datasets
+- select techniques
+- select evaluation
+- select *
+- current selection
 
 ### running the processing (with feedback on the progress)
-run preprocess
-run techniques
-run evaluation
-run *
+- run preprocess
+- run techniques
+- run evaluation
+- run *
