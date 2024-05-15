@@ -1,0 +1,28 @@
+# This file may be used to create an environment using:
+# mamba env create -f environment.yml --force
+name: toolkit
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - bzip2
+  - colorama
+  - dlib
+  - jupyter 
+  - opencv
+  - pytorch
+  - pillow=8.2
+  - torchvision 
+  - numpy
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - scipy
+  - pip
+  - pip:
+    - geoopt
+    - safetensors
+    - isort
+    - ruff
+    - rootutils
