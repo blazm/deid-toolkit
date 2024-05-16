@@ -3,8 +3,8 @@ import os
 import itertools
 import random
 
-LABELS_FOLDER = "root_dir\datasets\labels"
-PAIRS_FOLDER = "root_dir\datasets\pairs"
+LABELS_FOLDER = "root_dir/datasets/labels"
+PAIRS_FOLDER = "root_dir/datasets/pairs"
 
 
 def count_lines(file_path):
@@ -109,5 +109,5 @@ def main(selected_datasets_names: list):
             print(f"Impostor pairs generated for {dataset_name} dataset.")
 
 
-if __name__ == "__main__":
-    main(["fri"])
+# if __name__ == "__main__":
+#     main(["fri"])

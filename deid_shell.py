@@ -12,7 +12,7 @@ FOLDER_DATASETS = "datasets/original"
 FOLDER_TECHNIQUES = "techniques"
 FOLDER_EVALUATION = "evaluation"
 FOLDER_VISUALIZATION = "visualization"
-FOLDER_DATASET_ALIGNED_SAVE = "root_dir\datasets\\aligned"
+FOLDER_DATASET_ALIGNED_SAVE = "root_dir/datasets/aligned"
 
 
 class DeidShell(cmd.Cmd):

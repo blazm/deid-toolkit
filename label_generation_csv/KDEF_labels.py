@@ -10,7 +10,7 @@ directory = "root_dir/datasets/original/kdef/img"
 
 labels_kdef = []
 
-pose_angle_dict = {'S': '0', 'FL': '90', 'HL': '67.5', 'FR': '-90', 'HR': '-67.5'}
+pose_angle_dict = {'S': '0', 'FL': '90', 'HL': '67,5', 'FR': '-90', 'HR': '-67,5'}
 emotion_dict = {'Neutral': 0, 'Anger': 1, 'Scream': 2, 'Contempt': 3, 'Disgust': 4,
                 'Fear': 5, 'Happy': 6, 'Sadness': 7, 'Surprise': 8}
 
