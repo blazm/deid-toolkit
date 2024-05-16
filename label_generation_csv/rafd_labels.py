@@ -9,7 +9,7 @@ headers=['Name','Path','Identity','Gender_code','Gender','Age','Race_code','Race
 directory = "root_dir/datasets/original/rafd/img"
 labels_rafd = []
 
-pose_dict = {'000': -90, '045': -45, '090': 0, '135': 45, '180': 90}
+pose_dict = {'000': 90, '045': 45, '090': 0, '135': -45, '180': -90}
 emotion_dict = {'Neutral': 0, 'Anger': 1, 'Scream': 2, 'Contempt': 3, 'Disgust': 4,
                 'Fear': 5, 'Happy': 6, 'Sadness': 7, 'Surprise': 8}
 
