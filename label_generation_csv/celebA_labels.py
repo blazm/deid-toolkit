@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# ## .CSV
-
-# In[5]:
-
-
 # import csv
 
 # input_txt_path = r"root_dir/datasets/original/celeba/CelebAMask-HQ-attribute-anno.txt"
@@ -14,8 +6,6 @@
 # with open(input_txt_path, "r") as txt_file:
 #     lines = txt_file.readlines()
 
-# # Ignore the first line
-# lines = lines[1:]
 
 # with open(output_csv_path, "w", newline='') as csv_file:
 #     csv_writer = csv.writer(csv_file)
@@ -25,10 +15,8 @@
 #         fields = line.strip().split()
 #         csv_writer.writerow(fields)
 
-# print(f"Converted {input_txt_path} to {output_csv_path}, ignoring the first line.")
+# print(f"Converted {input_txt_path} to {output_csv_path}")
 
-
-# In[6]:
 
 
 import os
@@ -146,10 +134,3 @@ with open(output_path, "r", newline='') as csv_file:
         c += 1
         if c % 500 == 0:
             print(line)
-
-
-# In[ ]:
-
-
-
-

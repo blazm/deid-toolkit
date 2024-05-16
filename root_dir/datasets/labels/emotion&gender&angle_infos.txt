@@ -1,0 +1,19 @@
+Gender_code:
+1: Male
+-1: Female
+
+Emotion_code:
+0: Neutral
+1: Anger
+2: Scream
+3: Contempt
+4: Disgust
+5: Fear
+6: Happy
+7: Sadness
+8: Surprise
+
+Angle:
+frontal -> angle = 0 
+head turned to the left -> angle > 0 
+head turned to the right -> angle < 0
