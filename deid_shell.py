@@ -191,9 +191,9 @@ class DeidShell(cmd.Cmd):
                     dataset_save_path = os.path.join(
                         FOLDER_DATASET_ALIGNED_SAVE, dataset_name
                     )
-                    if os.path.exists(dataset_save_path):
-                        print(f"{dataset_name} already aligned")
-                        continue
+                    # if os.path.exists(dataset_save_path):
+                    #     print(f"{dataset_name} already aligned")
+                    #     continue
                     if not os.path.exists(dataset_save_path):
                         os.makedirs(dataset_save_path)
                     dataset_paths.append(dataset_path)
