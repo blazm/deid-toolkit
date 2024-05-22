@@ -199,6 +199,8 @@ class DeidShell(cmd.Cmd):
                     dataset_paths.append(dataset_path)
                     dataset_save_paths.append(dataset_save_path)
                     # print("Dataset path at index", index, ":", dataset_path,"|save_path:",dataset_save_path)
+                    if os.path.exists('root_dir/datasets/mirrored/'+dataset_name):
+                        dataset_path = 'root_dir/datasets/mirrored/'+dataset_name
                     align_face.main(
                         dataset_path=dataset_path, dataset_save_path=dataset_save_path
                     )

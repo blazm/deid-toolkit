@@ -197,13 +197,14 @@ def ensure_dir(file_path):
 
 def main(img_paths=None, save_paths=None, dataset_path=None, dataset_save_path=None):
     dataset_filetype = "jpg"
+    dataset_filetype_1 =  "JPG"
     dataset_filetype_2 = "png"
     dataset_newtype = "jpg"
     if dataset_path is not None:
         img_names = [
             i
             for i in os.listdir(dataset_path)
-            if (dataset_filetype in i or dataset_filetype_2 in i)
+            if (dataset_filetype in i or dataset_filetype_1 in i or dataset_filetype_2 in i)
         ]  # change into jpg
         img_paths = [os.path.join(dataset_path, i) for i in img_names]
         save_paths = [
