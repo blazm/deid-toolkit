@@ -175,7 +175,7 @@ class DeidShell(cmd.Cmd):
     def run_preprocess_alignment(self, arg):
         "Run alignment:  RUN_PREPROCESS_ALIGNMENT"
         print("Running alignment")
-        import align_face
+        import align_face2
 
         if self.config.has_section("selection"):
             selected_datasets = self.config.get("selection", "datasets").split()
@@ -201,7 +201,7 @@ class DeidShell(cmd.Cmd):
                     # print("Dataset path at index", index, ":", dataset_path,"|save_path:",dataset_save_path)
                     if os.path.exists('root_dir/datasets/mirrored/'+dataset_name):
                         dataset_path = 'root_dir/datasets/mirrored/'+dataset_name
-                    align_face.main(
+                    align_face2.main(
                         dataset_path=dataset_path, dataset_save_path=dataset_save_path
                     )
                 except ValueError:

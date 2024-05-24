@@ -201,6 +201,7 @@ def main(img_paths=None, save_paths=None, dataset_path=None, dataset_save_path=N
     dataset_filetype_2 = "png"
     dataset_newtype = "jpg"
     if dataset_path is not None:
+        print(f"\n\n nb img to aligned: {len(os.listdir(dataset_path))} \n\n" )
         img_names = [
             i
             for i in os.listdir(dataset_path)
