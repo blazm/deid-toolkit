@@ -6,7 +6,7 @@ headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race_cod
            'Emotion_code', 'Neutral', 'Anger', 'Scream', 'Contempt', 'Disgust', 'Fear', 'Happy', 'Sadness', 
            'Surprise', 'Sun glasses', 'Scarf', 'Eyeglasses', 'Beard', 'Hat', 'Angle']
 
-directory = "root_dir/datasets/original/fdf/img"
+directory = "root_dir/datasets/aligned/fdf"
 labels_fdf = []
 
 c = 0
