@@ -8,7 +8,7 @@ headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race', '
            'Neutral', 'Anger', 'Scream', 'Contempt', 'Disgust', 'Fear', 'Happy', 'Sadness', 'Surprise', 
            'Sun glasses', 'Scarf', 'Eyeglasses', 'Beard', 'Hat', 'Angle']
 
-directory = "root_dir/datasets/original/fri/img"
+directory = "root_dir/datasets/aligned/fri"
 labels_fri = []
 
 nb_img = len(os.listdir(directory))

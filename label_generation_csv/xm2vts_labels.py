@@ -6,7 +6,7 @@ headers=['Name','Path','Identity','Gender_code','Gender','Age','Race_code','Race
          'Neutral','Anger','Scream','Contempt','Disgust','Fear','Happy','Sadness','Surprise',
          'Sun glasses','Scarf','Eyeglasses','Beard','Hat','Angle']
 
-directory = "root_dir/datasets/original/xm2vts/img"
+directory = "root_dir/datasets/aligned/xm2vts"
 labels_xm2vts= []
 
 c=0

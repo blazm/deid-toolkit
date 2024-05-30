@@ -6,7 +6,7 @@ headers=['Name','Path','Identity','Gender_code','Gender','Age','Race_code','Race
          'Neutral','Anger','Scream','Contempt','Disgust','Fear','Happy','Sadness','Surprise',
          'Sun glasses','Scarf','Eyeglasses','Beard','Hat','Angle']
 
-directory = "root_dir/datasets/original/rafd/img"
+directory = "root_dir/datasets/aligned/rafd"
 labels_rafd = []
 
 pose_dict = {'000': 90, '045': 45, '090': 0, '135': -45, '180': -90}

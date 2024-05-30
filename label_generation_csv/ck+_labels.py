@@ -6,8 +6,8 @@ headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race_cod
            'Neutral', 'Anger', 'Scream', 'Contempt', 'Disgust', 'Fear', 'Happy', 'Sadness', 'Surprise', 'Sun glasses',
            'Scarf', 'Eyeglasses', 'Beard', 'Hat', 'Angle']
 
-directory = r"root_dir/datasets/original/ck+/img"
-emotion_directory = r"root_dir/datasets/original/ck+/Emotion_labels"
+directory = r"root_dir/datasets/aligned/ck+"
+emotion_directory = r"root_dir/datasets/labels/doc/ck+/Emotion_labels"
 
 labels_ck = []
 
