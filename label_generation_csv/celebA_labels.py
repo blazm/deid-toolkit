@@ -27,14 +27,14 @@ headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race_cod
            'Neutral', 'Anger', 'Scream', 'Contempt', 'Disgust', 'Fear', 'Happy', 'Sadness', 'Surprise',
            'Sun glasses', 'Scarf', 'Eyeglasses', 'Beard', 'Hat', 'Angle']
 
-directory = r"root_dir/datasets/original/celeba/img"
+directory = r"root_dir/datasets/aligned/celeba"
 labels_celeba = []
 emotion_dict = {'Neutral': 0, 'Anger': 1, 'Scream': 2, 'Contempt': 3, 'Disgust': 4,
                 'Fear': 5, 'Happy': 6, 'Sadness': 7, 'Surprise': 8}
 
-mapping_path = r"root_dir/datasets/original/celeba/CelebA-HQ-to-CelebA-mapping.txt"
-identity_path = r"root_dir/datasets/original/celeba/identity_CelebA.txt"
-attribute_csv_file = r"root_dir/datasets/original/celeba/CelebAMask-HQ-attribute-anno.csv"
+mapping_path = r"root_dir/datasets/labels/doc/celebA/CelebA-HQ-to-CelebA-mapping.txt"
+identity_path = r"root_dir/datasets/labels/doc/celebA/identity_CelebA.txt"
+attribute_csv_file = r"root_dir/datasets/labels/doc/celebA/CelebAMask-HQ-attribute-anno.csv"
 
 # Function to load data from a text file into a dictionary
 def load_data(file_path):
@@ -70,7 +70,7 @@ def find_attribute_value(image_name, attribute_column, csv_file):
         attribute_index = headers.index(attribute_column)
         for row in reader:
             # Check if the first column (image name) matches the given image
-            if row[0] == image_name:
+            if row[0].split('.')[0] == image_name.split('.')[0]:
                 return row[attribute_index]
     # If the image is not found in the CSV file
     print(f"The image '{image_name}' was not found in the CSV file.")

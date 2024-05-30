@@ -29,9 +29,9 @@ headers = [
     "Angle",
 ]
 
-directory = "root_dir/datasets/original/morph/img"
+directory = "root_dir/datasets/aligned/morph"
 csv_file_out = "root_dir/datasets/labels/morph_labels.csv"
-all_data = "root_dir/datasets/original/morph/excel/all_data.csv"
+all_data = "root_dir/datasets/labels/doc/morph/all_data.csv"
 
 # max_iteration = 500
 # threshold = -1
