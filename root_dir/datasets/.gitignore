@@ -1,3 +1,4 @@
-aligned.zip
-mirrored
-
+*
+!.gitignore
+!pixelized
+!blurred
