@@ -9,10 +9,12 @@ def parse(arg):
 
 
 FOLDER_DATASETS = "datasets/original"
-FOLDER_TECHNIQUES = "techniques"
+FOLDER_TECHNIQUES = "root_dir/techniques"
 FOLDER_EVALUATION = "evaluation"
 FOLDER_VISUALIZATION = "visualization"
 FOLDER_DATASET_ALIGNED_SAVE = "root_dir/datasets/aligned"
+FOLDER_BLUR = "root_dir/datasets/blurred"
+FOLDER_PIXEL = "root_dir/datasets/pixelized"
 
 
 class DeidShell(cmd.Cmd):
@@ -182,8 +184,6 @@ class DeidShell(cmd.Cmd):
             datasets_path = os.path.join(self.root_dir, FOLDER_DATASETS)
             if os.path.exists(datasets_path):
                 datasets = os.listdir(datasets_path)
-            dataset_paths = []
-            dataset_save_paths = []
             for index in selected_datasets:
                 try:
                     dataset_name = datasets[int(index)]
@@ -196,8 +196,6 @@ class DeidShell(cmd.Cmd):
                     #     continue
                     if not os.path.exists(dataset_save_path):
                         os.makedirs(dataset_save_path)
-                    dataset_paths.append(dataset_path)
-                    dataset_save_paths.append(dataset_save_path)
                     # print("Dataset path at index", index, ":", dataset_path,"|save_path:",dataset_save_path)
                     if os.path.exists('root_dir/datasets/mirrored/'+dataset_name):
                         dataset_path = 'root_dir/datasets/mirrored/'+dataset_name
@@ -216,8 +214,70 @@ class DeidShell(cmd.Cmd):
     #    print('Running normalization')
 
     def run_techniques(self, arg):
-        "Run techniques:  RUN_TECHNIQUES"
+        "Run selected techniques on selected datasets:  RUN_TECHNIQUES"
         print("Running techniques")
+        
+        if self.config.has_section("selection"):
+            if self.config.has_option("selection", "techniques") and self.config.has_option("selection", "datasets"):
+                selected_datasets = self.config.get("selection", "datasets").split()
+                selected_techniques = self.config.get("selection", "techniques").split()  # Assuming it's a space-separated string
+                
+                if os.path.exists(FOLDER_DATASET_ALIGNED_SAVE):
+                    datasets = os.listdir(FOLDER_DATASET_ALIGNED_SAVE)
+                
+                if os.path.exists(FOLDER_TECHNIQUES):
+                    techniques_available = os.listdir(FOLDER_TECHNIQUES)
+                
+                for technique in selected_techniques:
+                    technique_name = techniques_available[int(technique)]
+                    if technique_name == 'pixel.py':
+                        from root_dir.techniques import pixel
+                        print("pixel.py imported")
+                        for index in selected_datasets:
+                            try:
+                                dataset_name = datasets[int(index)]
+                                dataset_path = os.path.join(FOLDER_DATASET_ALIGNED_SAVE, dataset_name)
+                                dataset_save_path = os.path.join(FOLDER_PIXEL, dataset_name)
+                                if not os.path.exists(dataset_save_path):
+                                    os.makedirs(dataset_save_path)
+                                print("Dataset name: ", dataset_name, "| dataset path: ", dataset_path, "| save_path: ", dataset_save_path)
+                                images = os.listdir(dataset_path)
+                                for img in images:
+                                    input_path = os.path.join(dataset_path, img)
+                                    output_path = os.path.join(dataset_save_path, img)
+                                    pixel.pixelize(img_path=input_path, output_path=output_path)
+                            except ValueError:
+                                print("Invalid dataset index:", index)
+                            except IndexError:
+                                print("Dataset index out of range:", index)
+                    
+                    elif technique_name == 'blur.py':
+                        from root_dir.techniques import blur
+                        print("blur.py imported")
+                        for index in selected_datasets:
+                            try:
+                                dataset_name = datasets[int(index)]
+                                dataset_path = os.path.join(FOLDER_DATASET_ALIGNED_SAVE, dataset_name)
+                                dataset_save_path = os.path.join(FOLDER_BLUR, dataset_name)
+                                if not os.path.exists(dataset_save_path):
+                                    os.makedirs(dataset_save_path)
+                                print("Dataset name", dataset_name, "| dataset path", dataset_path, "| save_path:", dataset_save_path)
+                                images = os.listdir(dataset_path)
+                                for img in images:
+                                    input_path = os.path.join(dataset_path, img)
+                                    output_path = os.path.join(dataset_save_path, img)
+                                    blur.blur(img_path=input_path, output_path=output_path)
+                            except ValueError:
+                                print("Invalid dataset index:", index)
+                            except IndexError:
+                                print("Dataset index out of range:", index)
+            else:
+                print("No datasets or techniques selected.")
+        else:
+            print("No selection section in configuration.")
+                 
+
+        
         # TODO: every technique must have a python script that can be run and deidentify either a single file or a directory
         # the script should be able to take input and output directories as arguments
 
@@ -312,7 +372,7 @@ class DeidShell(cmd.Cmd):
             print(Fore.RED + "Root directory not set, set it with SET_ROOT", Fore.RESET)
         else:
             print(Fore.CYAN + "[Techniques]", Fore.RESET)
-            techniques_path = os.path.join(self.root_dir, FOLDER_TECHNIQUES)
+            techniques_path = os.path.join(FOLDER_TECHNIQUES)
             if os.path.exists(techniques_path):
                 techniques = os.listdir(techniques_path)
                 for i, technique in enumerate(techniques):
@@ -413,7 +473,7 @@ class DeidShell(cmd.Cmd):
             print(Fore.RED + "Root directory not set, set it with SET_ROOT", Fore.RESET)
         else:
             print(Fore.CYAN + "[Techniques]", Fore.RESET)
-            techniques_path = os.path.join(self.root_dir, FOLDER_TECHNIQUES)
+            techniques_path = os.path.join(FOLDER_TECHNIQUES)
             if os.path.exists(techniques_path):
                 techniques_list = os.listdir(techniques_path)
                 for i, technique in enumerate(techniques_list):
