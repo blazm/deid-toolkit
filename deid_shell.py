@@ -1,6 +1,7 @@
 import os  # os module provides a way of using operating system dependent functionality
 import cmd  # cmd is a module to create line-oriented command interpreters
 from colorama import Fore  # color text
+from tqdm import tqdm
 
 
 def parse(arg):
@@ -178,103 +179,80 @@ class DeidShell(cmd.Cmd):
         "Run alignment:  RUN_PREPROCESS_ALIGNMENT"
         print("Running alignment")
         import align_face_mtcnn
-
-        if self.config.has_section("selection"):
-            selected_datasets = self.config.get("selection", "datasets").split()
-            datasets_path = os.path.join(self.root_dir, FOLDER_DATASETS)
-            if os.path.exists(datasets_path):
-                datasets = os.listdir(datasets_path)
-            for index in selected_datasets:
-                try:
-                    dataset_name = datasets[int(index)]
-                    dataset_path = os.path.join(datasets_path, dataset_name, "img")
-                    dataset_save_path = os.path.join(
-                        FOLDER_DATASET_ALIGNED_SAVE, dataset_name
-                    )
-                    # if os.path.exists(dataset_save_path):
-                    #     print(f"{dataset_name} already aligned")
-                    #     continue
-                    if not os.path.exists(dataset_save_path):
-                        os.makedirs(dataset_save_path)
-                    # print("Dataset path at index", index, ":", dataset_path,"|save_path:",dataset_save_path)
-                    if os.path.exists('root_dir/datasets/mirrored/'+dataset_name):
-                        dataset_path = 'root_dir/datasets/mirrored/'+dataset_name
-                    align_face_mtcnn.main(
-                        dataset_path=dataset_path, dataset_save_path=dataset_save_path
-                    )
-                except ValueError:
-                    print("Invalid dataset index:", index)
-                except IndexError:
-                    print("Dataset index out of range:", index)
-        else:
+        
+        if not self.config.has_section("selection"):
             print("No datasets selected.")
+            return
+
+        selected_datasets = self.config.get("selection", "datasets").split()
+        datasets_path = os.path.join(self.root_dir, FOLDER_DATASETS)
+
+        if not os.path.exists(datasets_path):
+            print(f"Datasets directory not found: {datasets_path}")
+            return
+
+        datasets = os.listdir(datasets_path)
+
+        for index in selected_datasets:
+            try:
+                dataset_name = datasets[int(index)]
+            except (ValueError, IndexError):
+                print(f"Invalid dataset index: {index}")
+                continue
+
+            dataset_path = os.path.join(datasets_path, dataset_name, "img")
+            dataset_save_path = os.path.join(FOLDER_DATASET_ALIGNED_SAVE, dataset_name)
+
+            if not os.path.exists(dataset_save_path):
+                os.makedirs(dataset_save_path)
+
+            if os.path.exists(os.path.join('root_dir/datasets/mirrored', dataset_name)):
+                dataset_path = os.path.join('root_dir/datasets/mirrored', dataset_name)
+
+            print(f"Aligning dataset: {dataset_name}")
+            print(f"Source path: {dataset_path}")
+            print(f"Save path: {dataset_save_path}")
+
+            try:
+                align_face_mtcnn.main(dataset_path=dataset_path, dataset_save_path=dataset_save_path,dataset_name=dataset_name)
+                print(f"Successfully aligned dataset: {dataset_name}")
+            except Exception as e:
+                print(f"Error aligning dataset {dataset_name}: {e}")
 
     # def run_preprocess_normalization(self, arg):
     #    'Run normalization:  RUN_PREPROCESS_NORMALIZATION'
     #    print('Running normalization')
 
     def run_techniques(self, arg):
-        "Run selected techniques on selected datasets:  RUN_TECHNIQUES"
+        "Run selected techniques on selected datasets: RUN_TECHNIQUES"
         print("Running techniques")
-        
-        if self.config.has_section("selection"):
-            if self.config.has_option("selection", "techniques") and self.config.has_option("selection", "datasets"):
-                selected_datasets = self.config.get("selection", "datasets").split()
-                selected_techniques = self.config.get("selection", "techniques").split()  # Assuming it's a space-separated string
-                
-                if os.path.exists(FOLDER_DATASET_ALIGNED_SAVE):
-                    datasets = os.listdir(FOLDER_DATASET_ALIGNED_SAVE)
-                
-                if os.path.exists(FOLDER_TECHNIQUES):
-                    techniques_available = os.listdir(FOLDER_TECHNIQUES)
-                
-                for technique in selected_techniques:
-                    technique_name = techniques_available[int(technique)]
-                    if technique_name == 'pixel.py':
-                        from root_dir.techniques import pixel
-                        print("pixel.py imported")
-                        for index in selected_datasets:
-                            try:
-                                dataset_name = datasets[int(index)]
-                                dataset_path = os.path.join(FOLDER_DATASET_ALIGNED_SAVE, dataset_name)
-                                dataset_save_path = os.path.join(FOLDER_PIXEL, dataset_name)
-                                if not os.path.exists(dataset_save_path):
-                                    os.makedirs(dataset_save_path)
-                                print("Dataset name: ", dataset_name, "| dataset path: ", dataset_path, "| save_path: ", dataset_save_path)
-                                images = os.listdir(dataset_path)
-                                for img in images:
-                                    input_path = os.path.join(dataset_path, img)
-                                    output_path = os.path.join(dataset_save_path, img)
-                                    pixel.pixelize(img_path=input_path, output_path=output_path)
-                            except ValueError:
-                                print("Invalid dataset index:", index)
-                            except IndexError:
-                                print("Dataset index out of range:", index)
-                    
-                    elif technique_name == 'blur.py':
-                        from root_dir.techniques import blur
-                        print("blur.py imported")
-                        for index in selected_datasets:
-                            try:
-                                dataset_name = datasets[int(index)]
-                                dataset_path = os.path.join(FOLDER_DATASET_ALIGNED_SAVE, dataset_name)
-                                dataset_save_path = os.path.join(FOLDER_BLUR, dataset_name)
-                                if not os.path.exists(dataset_save_path):
-                                    os.makedirs(dataset_save_path)
-                                print("Dataset name", dataset_name, "| dataset path", dataset_path, "| save_path:", dataset_save_path)
-                                images = os.listdir(dataset_path)
-                                for img in images:
-                                    input_path = os.path.join(dataset_path, img)
-                                    output_path = os.path.join(dataset_save_path, img)
-                                    blur.blur(img_path=input_path, output_path=output_path)
-                            except ValueError:
-                                print("Invalid dataset index:", index)
-                            except IndexError:
-                                print("Dataset index out of range:", index)
-            else:
-                print("No datasets or techniques selected.")
-        else:
+
+        if not self.config.has_section("selection"):
             print("No selection section in configuration.")
+            return
+
+        if not self.config.has_option("selection", "techniques") or not self.config.has_option("selection", "datasets"):
+            print("No datasets or techniques selected.")
+            return
+
+        selected_datasets = self.config.get("selection", "datasets").split()
+        selected_techniques = self.config.get("selection", "techniques").split()
+
+        datasets_available = self._list_available_datasets()
+        techniques_available = self._list_available_techniques()
+
+        for technique_index in selected_techniques:
+            try:
+                technique_name = techniques_available[int(technique_index)]
+                technique_module = self._import_technique(technique_name)
+                for dataset_index in selected_datasets:
+                    try:
+                        dataset_name = datasets_available[int(dataset_index)]
+                        self._process_dataset_with_technique(technique_name, technique_module, dataset_name)
+                    except (ValueError, IndexError) as e:
+                        print(f"Invalid dataset index: {dataset_index}. Error: {e}")
+            except (ValueError, IndexError) as e:
+                print(f"Invalid technique index: {technique_index}. Error: {e}")
                  
 
         
@@ -509,6 +487,59 @@ class DeidShell(cmd.Cmd):
                     ),
                     Fore.RESET,
                 )
+
+    def _list_available_datasets(self):
+        if os.path.exists(FOLDER_DATASET_ALIGNED_SAVE):
+            return os.listdir(FOLDER_DATASET_ALIGNED_SAVE)
+        else:
+            print(f"Dataset directory not found: {FOLDER_DATASET_ALIGNED_SAVE}")
+            return []
+
+    def _list_available_techniques(self):
+        if os.path.exists(FOLDER_TECHNIQUES):
+            return os.listdir(FOLDER_TECHNIQUES)
+        else:
+            print(f"Techniques directory not found: {FOLDER_TECHNIQUES}")
+            return []
+
+    def _import_technique(self, technique_name):
+        try:
+            module_name = technique_name.replace('.py', '')
+            module = __import__(f"root_dir.techniques.{module_name}", fromlist=[''])
+            print(f"{technique_name} imported")
+            return module
+        except ImportError as e:
+            print(f"Error importing {technique_name}: {e}")
+            return None
+
+    def _process_dataset_with_technique(self, technique_name, technique_module, dataset_name):
+        if technique_module is None:
+            print(f"Technique module is None for {technique_name}")
+            return
+
+        dataset_path = os.path.join(FOLDER_DATASET_ALIGNED_SAVE, dataset_name)
+        if technique_name == 'pixel.py':
+            dataset_save_path = os.path.join(FOLDER_PIXEL, dataset_name)
+        elif technique_name == 'blur.py':
+            dataset_save_path = os.path.join(FOLDER_BLUR, dataset_name)
+        else:
+            print(f"Unknown technique: {technique_name}")
+            return
+
+        if not os.path.exists(dataset_save_path):
+            os.makedirs(dataset_save_path)
+
+        print(f"Processing dataset: {dataset_name} | Source path: {dataset_path} | Save path: {dataset_save_path}")
+        
+        images = os.listdir(dataset_path)
+        for img in tqdm(images, desc=f"Processing {dataset_name}"):
+            input_path = os.path.join(dataset_path, img)
+            output_path = os.path.join(dataset_save_path, img)
+            try:
+                technique_module.main(img_path=input_path, output_path=output_path)
+                #print(f"Processed {img} with {technique_name}")
+            except Exception as e:
+                print(f"Error processing image {img} with {technique_name}: {e}")                
 
     # arbitrary method to parse all other commands
     def default(self, line):

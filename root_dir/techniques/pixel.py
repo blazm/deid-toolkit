@@ -5,7 +5,7 @@ import imageio
 import os
 
 # weak pixelization size 8 or 16
-def pixelize(img_path, output_path, subs_size=32): # subs_size is fixed, does not change with k (plot straight line!)
+def main(img_path, output_path, subs_size=32): # subs_size is fixed, does not change with k (plot straight line!)
 
     try:
         # Check if the directory of the output path exists and create it if it doesn't
@@ -42,7 +42,7 @@ def pixelize(img_path, output_path, subs_size=32): # subs_size is fixed, does no
 # if __name__ == "__main__":
 #     img_path = '/home/matthieup/deid-toolkit/root_dir/datasets/aligned/fri/AjdaLampe.jpg'
 #     output_path = os.path.join('/home/matthieup/deid-toolkit/root_dir/datasets/pixelelized/fri',"AjdaLampe.jpg")  # Change this to the desired output path
-#     pixel_img = pixelize(img_path, output_path)
+#     pixel_img = main(img_path, output_path)
 #     if pixel_img is not None:
 #         print(type(pixel_img))
 #         plt.imshow(pixel_img)
