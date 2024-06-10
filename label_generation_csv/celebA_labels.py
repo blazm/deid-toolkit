@@ -1,27 +1,6 @@
-# import csv
-
-# input_txt_path = r"root_dir/datasets/original/celeba/CelebAMask-HQ-attribute-anno.txt"
-# output_csv_path = r"root_dir/datasets/original/celeba/CelebAMask-HQ-attribute-anno.csv"
-
-# with open(input_txt_path, "r") as txt_file:
-#     lines = txt_file.readlines()
-
-
-# with open(output_csv_path, "w", newline='') as csv_file:
-#     csv_writer = csv.writer(csv_file)
-
-#     for line in lines:
-#         # Split the line into fields based on spaces or other delimiters as needed
-#         fields = line.strip().split()
-#         csv_writer.writerow(fields)
-
-# print(f"Converted {input_txt_path} to {output_csv_path}")
-
-
-
 import os
 import csv
-import numpy as np
+from tqdm import tqdm
 
 headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race_code', 'Race', 'date of birth', 'Emotion_code',
            'Neutral', 'Anger', 'Scream', 'Contempt', 'Disgust', 'Fear', 'Happy', 'Sadness', 'Surprise',
@@ -29,6 +8,7 @@ headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race_cod
 
 directory = r"root_dir/datasets/aligned/celeba"
 labels_celeba = []
+
 emotion_dict = {'Neutral': 0, 'Anger': 1, 'Scream': 2, 'Contempt': 3, 'Disgust': 4,
                 'Fear': 5, 'Happy': 6, 'Sadness': 7, 'Surprise': 8}
 
@@ -59,22 +39,15 @@ def find_id_from_idx(idx, mapping_data, identity_data):
                 return "Unknown"
     return "Unknown"
 
-def find_attribute_value(image_name, attribute_column, csv_file):
-    with open(csv_file, "r", newline="") as csvfile:
+def load_attributes(attribute_csv_file):
+    attributes = {}
+    with open(attribute_csv_file, "r", newline="") as csvfile:
         reader = csv.reader(csvfile)
         headers = next(reader)
-        # Check if the specified attribute column exists in the headers
-        if attribute_column not in headers:
-            print(f"The column '{attribute_column}' does not exist in the CSV file.")
-            return None
-        attribute_index = headers.index(attribute_column)
         for row in reader:
-            # Check if the first column (image name) matches the given image
-            if row[0].split('.')[0] == image_name.split('.')[0]:
-                return row[attribute_index]
-    # If the image is not found in the CSV file
-    print(f"The image '{image_name}' was not found in the CSV file.")
-    return None
+            img_name = row[0].split('.')[0]
+            attributes[img_name] = {headers[i]: row[i] for i in range(1, len(headers))}
+    return attributes
 
 # Load data from the first file (orig_file -> (idx, idx_orig))
 mapping_data = load_data(mapping_path)
@@ -82,29 +55,29 @@ mapping_data = load_data(mapping_path)
 # Load data from the second file (orig_file -> id)
 identity_data = load_data(identity_path)
 
-c = 0
-nb_img = len(os.listdir(directory))
-for img_name in os.listdir(directory):
-    c += 1
-    progression = np.round(100 * c / nb_img, 3)
-    print(f"\n Progression: {progression}% \n")
+# Load attributes once to avoid multiple file reads
+attributes = load_attributes(attribute_csv_file)
 
-    if img_name.lower().endswith(('.png', '.jpg', '.jpeg')):
-        idx = img_name.split('.')[0]
-        img_id = find_id_from_idx(idx, mapping_data=mapping_data, identity_data=identity_data)
-        img_path = os.path.join(directory, img_name)
+img_list = [img_name for img_name in os.listdir(directory) if img_name.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
-        label = {
-            'Name': img_name, 'Path': img_path, 'Identity': img_id, 'Gender_code': '', 'Gender': '', 'Age': '', 'Race_code': '', 'Race': '', 'date of birth': '',
-            'Emotion_code': '', 'Neutral': '', 'Anger': '', 'Scream': '', 'Contempt': '', 'Disgust': '',
-            'Fear': '', 'Happy': '', 'Sadness': '', 'Surprise': '', 'Sun glasses': '',
-            'Scarf': '', 'Eyeglasses': '', 'Beard': '', 'Hat': '', 'Angle': ''
-        }
-        
-        desired_attributes = ['Eyeglasses', 'Male', 'No_Beard', 'Wearing_Hat']
+for img_name in tqdm(img_list, desc="Processing images"):
+    idx = img_name.split('.')[0]
+    img_id = find_id_from_idx(idx, mapping_data=mapping_data, identity_data=identity_data)
+    img_path = os.path.join(directory, img_name)
 
+    label = {
+        'Name': img_name, 'Path': img_path, 'Identity': img_id, 'Gender_code': '', 'Gender': '', 'Age': '', 'Race_code': '', 'Race': '', 'date of birth': '',
+        'Emotion_code': '', 'Neutral': '', 'Anger': '', 'Scream': '', 'Contempt': '', 'Disgust': '',
+        'Fear': '', 'Happy': '', 'Sadness': '', 'Surprise': '', 'Sun glasses': '',
+        'Scarf': '', 'Eyeglasses': '', 'Beard': '', 'Hat': '', 'Angle': ''
+    }
+
+    desired_attributes = ['Eyeglasses', 'Male', 'No_Beard', 'Wearing_Hat']
+    
+    img_key = img_name.split('.')[0]
+    if img_key in attributes:
         for attr in desired_attributes:
-            attribute_value = find_attribute_value(img_name, attr, attribute_csv_file)
+            attribute_value = attributes[img_key].get(attr, None)
             if attribute_value is not None:
                 attribute_value = int(attribute_value)
                 if attr == 'Eyeglasses':
