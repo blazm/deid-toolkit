@@ -1,19 +1,3 @@
-"""
-brief: face alignment with FFHQ method (https://github.com/NVlabs/ffhq-dataset)
-author: lzhbrian (https://lzhbrian.me)
-date: 2020.1.5
-note: code is heavily borrowed from
-    https://github.com/NVlabs/ffhq-dataset
-    http://dlib.net/face_landmark_detection.py.html
-
-requirements:
-    apt install cmake
-    conda install Pillow numpy scipy
-    pip install dlib
-    # download face landmark model from:
-    # http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2
-"""
-
 import numpy as np
 import PIL
 import PIL.Image
@@ -24,6 +8,7 @@ import dlib
 from pathlib import Path
 import cv2
 from mtcnn import MTCNN
+from tqdm import tqdm  # Importer tqdm pour la barre de progression
 
 root = Path()
 print("Root directory:", root.resolve().as_posix())
@@ -41,7 +26,7 @@ def get_landmark(filepath):
     if img is None:
         raise ValueError(f"Image not found or could not be loaded: {filepath}")
     
-    print(f"Processing image: {filepath}")
+    #print(f"Processing image: {filepath}")
     dets = detector(img, 1)
 
     if len(dets) == 0:
@@ -231,13 +216,12 @@ def ensure_dir(file_path):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-def main(img_paths=None, save_paths=None, dataset_path=None, dataset_save_path=None):
+def main(img_paths=None, save_paths=None, dataset_path=None, dataset_save_path=None, dataset_name=None):
     dataset_filetype = "jpg"
     dataset_filetype_1 = "JPG"
     dataset_filetype_2 = "png"
     dataset_newtype = "jpg"
     if dataset_path is not None:
-        print(f"\n\nNumber of images to align: {len(os.listdir(dataset_path))}\n\n")
         img_names = [
             i for i in os.listdir(dataset_path)
             if (dataset_filetype in i or dataset_filetype_1 in i or dataset_filetype_2 in i)
@@ -248,13 +232,12 @@ def main(img_paths=None, save_paths=None, dataset_path=None, dataset_save_path=N
             for i in img_names]
     
     count = 0
-    for img_path, save_path in zip(img_paths, save_paths):
+    for img_path, save_path in tqdm(zip(img_paths, save_paths), total=len(img_paths), desc=f"Processing images of {dataset_name}"):
         try:
             img = align_face(img_path)
             ensure_dir(save_path)
             img.save(save_path, "JPEG")
             count += 1
-            print(f"Successfully aligned and saved image {count}: {save_path}")
+            #print(f"Successfully aligned and saved image {count}: {save_path}")
         except Exception as e:
             print(f"Failed to process image {img_path}: {e}")
-

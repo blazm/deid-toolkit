@@ -1,6 +1,7 @@
 import os
 import csv
-import numpy as np
+from tqdm import tqdm
+
 
 headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race_code', 'Race', 'date of birth', 'Emotion_code',
            'Neutral', 'Anger', 'Scream', 'Contempt', 'Disgust', 'Fear', 'Happy', 'Sadness', 'Surprise', 'Sun glasses',
@@ -11,20 +12,17 @@ emotion_directory = r"root_dir/datasets/labels/doc/ck+/Emotion_labels"
 
 labels_ck = []
 
+# Dictionary to map emotion labels to codes
 emotion_dict = {'Neutral': 0, 'Anger': 1, 'Scream': 2, 'Contempt': 3, 'Disgust': 4,
                 'Fear': 5, 'Happy': 6, 'Sadness': 7, 'Surprise': 8}
 
-c = 0
-nb_img = len(os.listdir(directory))
+img_list = [img_name for img_name in os.listdir(directory) if img_name.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
-for img_name in os.listdir(directory):
-    c += 1
-    progression = np.round(100 * c / nb_img, 2)
-    print(f"\n Progression: {progression}% \n")
-
+for img_name in tqdm(img_list, desc="Processing images"):
     if img_name.lower().endswith(('.png', '.jpg', '.jpeg')):
         img_path = os.path.join(directory, img_name)
         
+        # Initialize a label dictionary with default values
         label = {
             'Name': img_name, 'Path': img_path, 'Identity': '', 'Gender_code': '', 'Gender': '', 'Age': '',
             'Race_code': '', 'Race': '', 'date of birth': '', 'Emotion_code': '', 'Neutral': '', 'Anger': '',
@@ -35,7 +33,7 @@ for img_name in os.listdir(directory):
         infos = img_name.split('_')
         label['Identity'] = infos[0]
 
-        # Generating the text file path to search for emotion label
+        # Generate the path to the emotion label file
         text_file_name = f"{img_name.split('.')[0]}_emotion.txt"
         text_file_path = os.path.join(emotion_directory, text_file_name)
 
@@ -43,6 +41,8 @@ for img_name in os.listdir(directory):
             with open(text_file_path, "r") as text_file:
                 emotion_value = text_file.readline().strip()
                 emotion_value_int = int(emotion_value.split('.')[0])
+                
+                # Map the emotion value to the corresponding emotion and set the label
                 if emotion_value_int == 0:
                     label['Neutral'] = 1
                     label['Emotion_code'] = emotion_dict['Neutral']
@@ -67,13 +67,12 @@ for img_name in os.listdir(directory):
                 elif emotion_value_int == 7:
                     label['Surprise'] = 1
                     label['Emotion_code'] = emotion_dict['Surprise']
+        
         labels_ck.append(label)
 
-# Ensure the output directory exists
 output_path = r"root_dir/datasets/labels/ck+_labels.csv"
 os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-# Write the labels to the CSV file
 with open(output_path, "w", newline='') as csv_file:
     csv_writer = csv.DictWriter(csv_file, fieldnames=headers)
     csv_writer.writeheader()
@@ -87,6 +86,3 @@ with open(output_path, "r", newline='') as csv_file:
         c += 1
         if c % 500 == 0:
             print(line)
-
-
-

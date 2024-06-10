@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import imageio
 import os
 
-def blur(img_path, output_path, kernel_size=30):
+def main(img_path, output_path, kernel_size=30):
     try:
         # Check if the directory of the output path exists and create it if it doesn't
         output_dir = os.path.dirname(output_path)
@@ -40,7 +40,7 @@ def blur(img_path, output_path, kernel_size=30):
 # if __name__ == "__main__":
 #     img_path = '/home/matthieup/deid-toolkit/root_dir/datasets/aligned/fri/AjdaLampe.jpg'
 #     output_path = '/home/matthieup/deid-toolkit/root_dir/datasets/blurred/fri/AjdaLampe.jpg'  # Change this to the desired output path
-#     blurred_image = blur(img_path, output_path, kernel_size=30)
+#     blurred_image = main(img_path, output_path, kernel_size=30)
 #     if blurred_image is not None:
 #         print(type(blurred_image))
 #         plt.imshow(blurred_image)
