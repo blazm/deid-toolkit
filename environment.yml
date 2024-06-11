@@ -5,24 +5,16 @@ channels:
   - conda-forge
 dependencies:
   - python
-  - bzip2
-  - colorama
-  - dlib
-  - jupyter 
-  - opencv
-  - pytorch
-  - pillow=8.2
-  - torchvision 
-  - numpy
-  - pandas
-  - scikit-learn
-  - matplotlib
-  - seaborn
-  - scipy
+  - colorama==0.4.6
+  - dlib==19.24.0
+  - opencv==4.5.1
+  - numpy==1.26.4
+  - matplotlib==3.8.4
+  - scipy==1.13.0
   - pip
   - pip:
-    - geoopt
-    - safetensors
-    - isort
-    - ruff
-    - rootutils
+    - scikit-image==0.22.0
+    - mtcnn==0.1.1
+    - pillow==9.0.1
+    - imageio==2.34.1
+    - tqdm==4.66.4
