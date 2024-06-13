@@ -232,7 +232,7 @@ def main(img_paths=None, save_paths=None, dataset_path=None, dataset_save_path=N
             for i in img_names]
     
     count = 0
-    for img_path, save_path in tqdm(zip(img_paths, save_paths), total=len(img_paths), desc=f"Processing images of {dataset_name}"):
+    for img_path, save_path in tqdm(zip(img_paths, save_paths), total=len(img_paths), desc=f"Processing images of {dataset_name}", unit="it"):
         try:
             img = align_face(img_path)
             ensure_dir(save_path)

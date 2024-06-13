@@ -19,29 +19,35 @@ class DeidShell(cmd.Cmd):
     root_dir = None
     config = None
    
+
     def __init__(
         self,
     ):  # , completekey: str = "tab", stdin: os.IO[str] | None = None, stdout: os.IO[str] | None = None) -> None:
         super().__init__()  # completekey, stdin, stdout)
         self.config = None
 
+
     def __init__(self, config):
         super().__init__()
         self.config = config
         self.root_dir = config.get("settings", "root_dir")
-        datasets_initial_update(self,os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED_SAVE),
+        self.datasets_initial_update(os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED_SAVE),
                                 os.path.join(self.root_dir,FOLDER_DATASETS))
-        techniques_initial_update(self,os.path.join(self.root_dir,FOLDER_TECHNIQUES))
+        self.techniques_initial_update(os.path.join(self.root_dir,FOLDER_TECHNIQUES))
+        self.evaluation_initial_update(os.path.join(self.root_dir,FOLDER_EVALUATION))
+
 
     def do_exit(self, arg):
         "Exit the shell:  EXIT"
         self.close()
         return True  # self.do_bye(arg)
 
+
     def do_set_root(self, arg):
         "Set the root directory:  SET_ROOT /path/to/root"
         self.root_dir = arg
         print(Fore.CYAN + "Root directory set to: ", self.root_dir, Fore.RESET)
+
 
     def do_root(self, arg):
         "Print the current root directory:  ROOT"
@@ -50,11 +56,13 @@ class DeidShell(cmd.Cmd):
         else:
             print(Fore.CYAN + "Current root directory: ", self.root_dir, Fore.RESET)
 
+
     def do_datasets(self, arg):
         "List all datasets:  DATASETS"
-        get_available_datasets(self,arg)
+        self.get_available_datasets()
 
-    """           
+
+    """""          
     def do_set(self, arg):
         'Set configuration:  SET key value'
         args = arg.split()
@@ -68,7 +76,8 @@ class DeidShell(cmd.Cmd):
                 self.config.write(configfile)
         else:
             print(Fore.RED + 'Invalid number of arguments. Type "help set" for more information', Fore.RESET)
-            
+
+                    
     def do_get(self, arg):
         'Get configuration:  GET key'
         args = arg.split()
@@ -76,7 +85,8 @@ class DeidShell(cmd.Cmd):
             print(Fore.CYAN + self.config.get('user_values', args[0]), Fore.RESET)
         else:
             print(Fore.RED + 'Invalid number of arguments. Type "help get" for more information', Fore.RESET)
-    """
+    """""
+
 
     def do_select(self, arg):
         "Select datasets, techniques, evaluation:  SELECT datasets|techniques|evaluation"
@@ -91,14 +101,21 @@ class DeidShell(cmd.Cmd):
             "evaluation": self.select_evaluation,
         }
 
-        switcher["*"] = lambda arg: [
-            switcher[option](arg) for option in switcher.keys()
-        ]  # run all
+        def run_all():
+            for option in switcher.values():
+                option()
 
-        args = arg.split("|")
-        for arg in args:
-            if arg in switcher:
-                switcher[arg](arg)
+        if arg == "*":
+            run_all()
+        else:
+            args = arg.split("|")
+            for arg in args:
+                if arg in switcher:
+                    switcher[arg]()
+                else:
+                    print(f"Unknown argument: {arg}. Please provide a valid argument (datasets, techniques, evaluation).")
+
+
 
     def do_run(self, arg):
         "Run selected preprocessing, techniques, evaluation, visualize:  RUN"
@@ -132,6 +149,7 @@ class DeidShell(cmd.Cmd):
             if arg in switcher:
                 switcher[arg](remaining_args)
 
+
     def run_preprocess(self, arg):
         "Run preprocessing:  RUN_PREPROCESS"
         print("Running preprocessing")
@@ -153,30 +171,20 @@ class DeidShell(cmd.Cmd):
         for step in preprocess_order:
             switcher[step](arg)
 
+
     def run_preprocess_alignment(self, arg):
         "Run alignment:  RUN_PREPROCESS_ALIGNMENT"
         print("Running alignment")
         import align_face_mtcnn
         
-        if not self.config.has_section("selection"):
-            print("No datasets selected.")
-            return
-
-        selected_datasets = self.config.get("selection", "datasets").split()
+        selected_datasets_names = self.config.get("selection", "datasets").split()
         datasets_path = os.path.join(self.root_dir, FOLDER_DATASETS)
 
         if not os.path.exists(datasets_path):
             print(f"Datasets directory not found: {datasets_path}")
             return
 
-        datasets = os.listdir(datasets_path)
-
-        for index in selected_datasets:
-            try:
-                dataset_name = datasets[int(index)]
-            except (ValueError, IndexError):
-                print(f"Invalid dataset index: {index}")
-                continue
+        for dataset_name in selected_datasets_names:
 
             dataset_path = os.path.join(datasets_path, dataset_name, "img")
             dataset_save_path = os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED_SAVE, dataset_name)
@@ -201,41 +209,34 @@ class DeidShell(cmd.Cmd):
     #    'Run normalization:  RUN_PREPROCESS_NORMALIZATION'
     #    print('Running normalization')
 
+
     def run_techniques(self, arg):
         "Run selected techniques on selected datasets: RUN_TECHNIQUES"
         print("Running techniques")
-
-        if not self.config.has_section("selection"):
-            print("No selection section in configuration.")
-            return
 
         if not self.config.has_option("selection", "techniques") or not self.config.has_option("selection", "datasets"):
             print("No datasets or techniques selected.")
             return
 
-        selected_datasets = self.config.get("selection", "datasets").split()
-        selected_techniques = self.config.get("selection", "techniques").split()
+        selected_datasets_names = self.config.get("selection", "datasets").split()
+        selected_techniques_names = self.config.get("selection", "techniques").split()
 
-        datasets_available = self._list_available_datasets()
-        techniques_available = self._list_available_techniques()
-
-        for technique_index in selected_techniques:
+        for technique_name in selected_techniques_names:
             try:
-                technique_name = techniques_available[int(technique_index)]
                 technique_module = self._import_technique(technique_name)
-                for dataset_index in selected_datasets:
+                for dataset_name in selected_datasets_names:
                     try:
-                        dataset_name = datasets_available[int(dataset_index)]
                         self._process_dataset_with_technique(technique_name, technique_module, dataset_name)
                     except (ValueError, IndexError) as e:
-                        print(f"Invalid dataset index: {dataset_index}. Error: {e}")
+                        print(f"Invalid dataset index: {dataset_name}. Error: {e}")
             except (ValueError, IndexError) as e:
-                print(f"Invalid technique index: {technique_index}. Error: {e}")
+                print(f"Invalid technique index: {technique_name}. Error: {e}")
                  
 
         
         # TODO: every technique must have a python script that can be run and deidentify either a single file or a directory
         # the script should be able to take input and output directories as arguments
+
 
     def run_evaluation(self, arg):
         "Run evaluation:  RUN_EVALUATION"
@@ -243,23 +244,25 @@ class DeidShell(cmd.Cmd):
         # TODO: every evaluation step must have a python script that can be run and preprocess either a single file or a directory
         # the script should be able to take input and output directories as arguments
 
+
     def run_visualize(self, arg):
         "Run visualization:  RUN_VISUALIZE"
         print("Running visualization")
         # TODO: every visualization step must have a python script that can be run and preprocess either a single file or a directory
         # the script should be able to take input and output directories as arguments
 
+
     def run_generate_pairs(self, arg):
         print("Generation of pairs on selected datasets")
         import generate_img_pairs_all
 
         if self.config.has_section("selection"):
-            selected_datasets = self.config.get("selection", "datasets").split()
+            selected_datasets_names = self.config.get("selection", "datasets").split()
             datasets_path = os.path.join(self.root_dir, FOLDER_DATASETS)
             datasets_names = []
             if os.path.exists(datasets_path):
                 datasets = os.listdir(datasets_path)
-            for index in selected_datasets:
+            for index in selected_datasets_names:
                 try:
                     datasets_names.append(datasets[int(index)])
                 except ValueError:
@@ -271,9 +274,10 @@ class DeidShell(cmd.Cmd):
         else:
             print("No datasets selected.")
 
-    def select_datasets(self, arg):
+
+    def select_datasets(self):
         "List and interactively let user select datasets: SELECT_DATASETS"
-        available_datasets = get_available_datasets(self,arg)
+        available_datasets = self.get_available_datasets()
         print(Fore.CYAN + "Select datasets by entering their numbers separated by space", Fore.RESET)
         # Prompt the user to select datasets
         selected_datasets_indices = input("Selection: ").split()
@@ -300,9 +304,10 @@ class DeidShell(cmd.Cmd):
         with open("config.ini", "w") as configfile:
             self.config.write(configfile)
 
-    def select_techniques(self, arg):
+
+    def select_techniques(self):
         "List and interactively let user select techniques: SELECT_TECHNIQUES"
-        available_techniques = get_available_techniques(self,arg)
+        available_techniques = self.get_available_techniques()
 
         if not available_techniques:
             print("No techniques available")
@@ -333,78 +338,50 @@ class DeidShell(cmd.Cmd):
         with open("config.ini", "w") as configfile:
             self.config.write(configfile)
 
-    def select_evaluation(self, arg):
+
+    def select_evaluation(self):
         "List and interactively let user select evaluation modes:  SELECT_EVALUATION"
-        if self.root_dir is None:
-            print(Fore.RED + "Root directory not set, set it with SET_ROOT", Fore.RESET)
-        else:
-            print(Fore.CYAN + "[Evaluation]", Fore.RESET)
-            evaluation_path = os.path.join(self.root_dir, FOLDER_EVALUATION)
-            if os.path.exists(evaluation_path):
-                evaluation = os.listdir(evaluation_path)
-                for i, eval in enumerate(evaluation):
-                    print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + eval, Fore.RESET)
-                print(
-                    Fore.CYAN
-                    + "Select evaluation by entering their numbers separated by space",
-                    Fore.RESET,
-                )
-                selected_evaluation = input("Selection: ").split()
-                for i in selected_evaluation:
-                    try:
-                        print(
-                            Fore.LIGHTYELLOW_EX
-                            + "\t"
-                            + str(i)
-                            + ". "
-                            + evaluation[int(i)],
-                            Fore.RESET,
-                        )
-                    except:
-                        print(Fore.RED + "Invalid evaluation number: ", i, Fore.RESET)
+        available_evaluations = self.get_available_evaluations()
 
-                # create config section if it doesn't exist
-                if not self.config.has_section("selection"):
-                    self.config.add_section("selection")
-                # save selected evaluation to config
-                self.config.set(
-                    "selection", "evaluation", " ".join(selected_evaluation)
-                )
-                # save config
-                with open("config.ini", "w") as configfile:
-                    self.config.write(configfile)
-            else:
-                print(
-                    Fore.RED
-                    + 'Evaluation directory not found. Does the ROOT_DIR ({0}) have folder named "evaluation"?'.format(
-                        self.root_dir
-                    ),
-                    Fore.RESET,
-                )
+        if not available_evaluations:
+            print("No evaluation method available")
+            return
+        print(Fore.CYAN + "Select evaluation by entering their numbers separated by space", Fore.RESET)
+        # Prompt the user to select techniques
+        selected_evaluations_indices = input("Selection: ").split()
 
-    def do_techniques(self, arg):
+        # Validate and display the user's selections
+        selected_evaluations = []
+        for i in selected_evaluations_indices:
+            try:
+                index = int(i)
+                if 0 <= index < len(available_evaluations):
+                    selected_evaluations.append(available_evaluations[index])
+                    print(Fore.LIGHTYELLOW_EX + "\t" + str(index) + ". " + available_evaluations[index], Fore.RESET)
+                else:
+                    print(Fore.RED + "Invalid technique number: ", i, Fore.RESET)
+            except ValueError:
+                print(Fore.RED + "Invalid input, not a number: ", i, Fore.RESET)
+
+        # Create a config section if it doesn't exist and save selected techniques
+        if not self.config.has_section("selection"):
+            self.config.add_section("selection")
+        self.config.set("selection", "evaluation", " ".join(selected_evaluations))
+
+        # Save the configuration
+        with open("config.ini", "w") as configfile:
+            self.config.write(configfile)
+
+
+    def do_techniques(self,arg):
         "List all techniques in root:  TECHNIQUES"
-        get_available_techniques(self,arg)
+        self.get_available_techniques()
 
-    def do_evaluation(self, arg):
-        "List all evaluation methods:  LIST_EVALUATION"
-        if self.root_dir is None:
-            print(Fore.RED + "Root directory not set, set it with SET_ROOT", Fore.RESET)
-        else:
-            print(Fore.CYAN + "[Evaluation]", Fore.RESET)
-            evaluation_path = os.path.join(self.root_dir, "evaluation")
-            if os.path.exists(evaluation_path):
-                evaluation_list = os.listdir(evaluation_path)
-                for i, eval in enumerate(evaluation_list):
-                    print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + eval, Fore.RESET)
-            else:
-                print(
-                    Fore.RED
-                    + 'Evaluation directory not found. Does the ROOT_DIR ({0}) have folder named "evaluation"?'.format(
-                        self.root_dir
-                    ),
-                    Fore.RESET,
-                )
+
+    def do_evaluation(self,arg):
+        "List all evaluation methods in root:  LIST_EVALUATION"
+        self.get_available_evaluations()
+
 
     def _list_available_datasets(self):
         path = os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED_SAVE)
@@ -414,6 +391,7 @@ class DeidShell(cmd.Cmd):
             print(f"Dataset directory not found: {path}")
             return []
 
+
     def _list_available_techniques(self):
         techniques_path = os.path.join(self.root_dir,FOLDER_TECHNIQUES)
         if os.path.exists(techniques_path):
@@ -421,6 +399,7 @@ class DeidShell(cmd.Cmd):
         else:
             print(f"Techniques directory not found: {techniques_path}")
             return []
+
 
     def _import_technique(self, technique_name):
         try:
@@ -432,15 +411,30 @@ class DeidShell(cmd.Cmd):
             print(f"Error importing {technique_name}: {e}")
             return None
 
+
     def _process_dataset_with_technique(self, technique_name, technique_module, dataset_name):
+        answer=''
+        original_dataset_path=os.path.join(self.root_dir,FOLDER_DATASETS,dataset_name,"img")
         if technique_module is None:
             print(f"Technique module is None for {technique_name}")
             return
 
-        dataset_path = os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED_SAVE, dataset_name)
-        if technique_name == 'pixel.py':
+        aligned_dataset_path = os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED_SAVE, dataset_name)
+        if not os.path.exists(aligned_dataset_path):
+            print(f"{dataset_name} dataset has not been preprocessed yet. Do you want to preprocess it first ? [y/n]")
+            answer = input("Answer :")
+            if answer =='y':
+                import align_face_mtcnn
+                align_face_mtcnn.main(dataset_name=dataset_name,dataset_path=original_dataset_path,
+                                      dataset_save_path=aligned_dataset_path)
+            else:
+                print(f"Running {technique_name} on unaligned {dataset_name} dataset")
+                aligned_dataset_path = original_dataset_path
+    
+            
+        if technique_name == 'pixel':
             dataset_save_path = os.path.join(self.root_dir,FOLDER_PIXEL, dataset_name)
-        elif technique_name == 'blur.py':
+        elif technique_name == 'blur':
             dataset_save_path = os.path.join(self.root_dir,FOLDER_BLUR, dataset_name)
         else:
             print(f"Unknown technique: {technique_name}")
@@ -449,11 +443,11 @@ class DeidShell(cmd.Cmd):
         if not os.path.exists(dataset_save_path):
             os.makedirs(dataset_save_path)
 
-        print(f"Processing dataset: {dataset_name} | Source path: {dataset_path} | Save path: {dataset_save_path}")
+        print(f"Processing dataset: {dataset_name} | Source path: {aligned_dataset_path} | Save path: {dataset_save_path}")
         
-        images = os.listdir(dataset_path)
+        images = os.listdir(aligned_dataset_path)
         for img in tqdm(images, desc=f"Processing {dataset_name}"):
-            input_path = os.path.join(dataset_path, img)
+            input_path = os.path.join(aligned_dataset_path, img)
             output_path = os.path.join(dataset_save_path, img)
             try:
                 technique_module.main(img_path=input_path, output_path=output_path)
@@ -461,7 +455,188 @@ class DeidShell(cmd.Cmd):
             except Exception as e:
                 print(f"Error processing image {img} with {technique_name}: {e}")
 
-             
+
+    def datasets_initial_update(self, aligned_folder, original_folder):
+        datasets_name = ""
+
+        # Check if the config section for datasets exists; if not, create it
+        if not self.config.has_section("Available Datasets"):
+            self.config.add_section("Available Datasets")
+            self.config.set("Available Datasets", "Original", "")
+            self.config.set("Available Datasets", "Aligned", "")
+
+        # Process the original datasets
+        if os.path.exists(original_folder):
+            datasets = os.listdir(original_folder)
+            datasets.sort()
+            for dataset in datasets:
+                if os.path.isdir(os.path.join(original_folder, dataset)):
+                    datasets_name += (dataset + " ")
+            # Remove the trailing space
+            datasets_name = datasets_name.strip()
+            self.config.set("Available Datasets", "Original", datasets_name)
+            datasets_name = ''
+        else:
+            print(Fore.RED + 'Original datasets directory not found. Does the ROOT_DIR ({0}) have a folder named "datasets"?'.format(self.root_dir), Fore.RESET)
+
+        # Process the aligned datasets
+        if os.path.exists(aligned_folder):
+            datasets = os.listdir(aligned_folder)
+            datasets.sort()
+            for dataset in datasets:
+                if os.path.isdir(os.path.join(aligned_folder, dataset)):
+                    datasets_name += (dataset + " ")
+            # Remove the trailing space
+            datasets_name = datasets_name.strip()
+            self.config.set("Available Datasets", "Aligned", datasets_name)
+            datasets_name = ''
+        else:
+            print(Fore.RED + 'Aligned datasets directory not found. Does the ROOT_DIR ({0}) have a folder named "datasets"?'.format(self.root_dir), Fore.RESET)
+
+        # Save the configuration to the file
+        with open("config.ini", "w") as configfile:
+            self.config.write(configfile)        
+
+
+    def get_available_datasets(self):
+            # Retrieve available datasets from the configuration
+        original_datasets = self.config.get("Available Datasets", "original").split(" ")
+        aligned_datasets = self.config.get("Available Datasets", "aligned").split(" ")
+
+        # Merge available datasets into a single list
+        available_datasets = set(original_datasets) | set(aligned_datasets)
+        if not available_datasets:
+            print("No datasets available")
+            return
+        available_datasets = sorted(available_datasets)
+
+        # Check if the root directory is set
+        if self.root_dir is None:
+            print(Fore.RED + "Root directory not set, set it with SET_ROOT", Fore.RESET)
+            return
+
+        # Print instructions and legend for dataset selection
+        print(Fore.GREEN + "Green name = aligned version available", Fore.RESET)
+        print(Fore.YELLOW + "Yellow name = only non-aligned version available", Fore.RESET)
+        print(Fore.CYAN + "[Datasets]", Fore.RESET)
+
+        # Display available datasets with appropriate colors
+        for i, dataset in enumerate(available_datasets):
+            if dataset in aligned_datasets:
+                print(Fore.LIGHTGREEN_EX + "\t" + str(i) + ". " + dataset, Fore.RESET)
+            else:
+                print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + dataset, Fore.RESET)
+
+        
+        return available_datasets
+
+
+    def techniques_initial_update(self, techniques_folder):
+        techniques_name = ""
+
+        # Check if the config section for techniques exists; if not, create it
+        if not self.config.has_section("Available Techniques"):
+            self.config.add_section("Available Techniques")
+            self.config.set("Available Techniques", "techniques", "")
+
+        # Process the techniques folder
+        if os.path.exists(techniques_folder):
+            techniques = os.listdir(techniques_folder)
+            techniques.sort()
+            for technique in techniques:
+                # Check if it's a file and not a directory (pycache i s problem)
+                if os.path.isfile(os.path.join(techniques_folder,technique)):
+                    # Remove the .py extension
+                    technique_name = technique[:-3]
+                    techniques_name += (technique_name + " ")
+            # Remove the trailing space
+            techniques_name = techniques_name.strip()
+            self.config.set("Available Techniques", "techniques", techniques_name)
+        else:
+            print(Fore.RED + 'Techniques directory not found. Does the ROOT_DIR ({0}) have a folder named "techniques"?'.format(self.root_dir), Fore.RESET)
+
+        # Save the configuration to the file
+        with open("config.ini", "w") as configfile:
+            self.config.write(configfile)
+
+
+    def get_available_techniques(self):
+        # Retrieve available techniques from the configuration
+        techniques = self.config.get("Available Techniques", "techniques").split(" ")
+
+        if not techniques:
+            print("No techniques available")
+            return
+        techniques = sorted(techniques)
+
+        # Check if the root directory is set
+        if self.root_dir is None:
+            print(Fore.RED + "Root directory not set, set it with SET_ROOT", Fore.RESET)
+            return
+
+        # Print instructions for technique selection
+        print(Fore.CYAN + "[Techniques]", Fore.RESET)
+
+        # Display available techniques
+        for i, technique in enumerate(techniques):
+            print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + technique, Fore.RESET)
+
+        return techniques
+
+
+    def evaluation_initial_update(self, evaluation_folder):
+        evaluation_names = ""
+
+        # Check if the config section for techniques exists; if not, create it
+        if not self.config.has_section("Available Evaluations"):
+            self.config.add_section("Available Evaluations")
+            self.config.set("Available Evaluations", "evaluations", "")
+
+        # Process the evaluation folder
+        if os.path.exists(evaluation_folder):
+            evaluations = os.listdir(evaluation_folder)
+            evaluations.sort()
+            for evaluation in evaluations:
+                # Check if it's a file and not a directory
+                if (os.path.isfile(os.path.join(evaluation_folder,evaluation)) 
+                    and (evaluation.endswith(".py") or evaluation.endswith(".sh") )):
+                        # Remove the extension
+                        evaluation_name = evaluation[:-3]
+                        evaluation_names += (evaluation_name + " ")
+            # Remove the trailing space
+            evaluation_names = evaluation_names.strip()
+            self.config.set("Available Evaluations", "evaluations", evaluation_names)
+        else:
+            print(Fore.RED + 'Techniques directory not found. Does the ROOT_DIR ({0}) have a folder named "techniques"?'.format(self.root_dir), Fore.RESET)
+
+        # Save the configuration to the file
+        with open("config.ini", "w") as configfile:
+            self.config.write(configfile)
+
+
+    def get_available_evaluations(self):
+        # Retrieve available techniques from the configuration
+        evaluations = self.config.get("Available Evaluations", "evaluations").split(" ")
+
+        if not evaluations:
+            print("No techniques available")
+            return
+        evaluations = sorted(evaluations)
+
+        # Check if the root directory is set
+        if self.root_dir is None:
+            print(Fore.RED + "Root directory not set, set it with SET_ROOT", Fore.RESET)
+            return
+
+        # Print instructions for technique selection
+        print(Fore.CYAN + "[Techniques]", Fore.RESET)
+
+        # Display available techniques
+        for i, evaluation in enumerate(evaluations):
+            print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + evaluation, Fore.RESET)
+
+        return evaluations
+    
 
     # arbitrary method to parse all other commands
     def default(self, line):
@@ -505,133 +680,6 @@ class DeidShell(cmd.Cmd):
             self.file = None
 
 
-def parse(arg):
-    "Convert a series of zero or more numbers to an argument tuple"
-    return tuple(map(int, arg.split()))
-
-
-def datasets_initial_update(self, aligned_folder, original_folder):
-    datasets_name = ""
-
-    # Check if the config section for datasets exists; if not, create it
-    if not self.config.has_section("Available Datasets"):
-        self.config.add_section("Available Datasets")
-        self.config.set("Available Datasets", "Original", "")
-        self.config.set("Available Datasets", "Aligned", "")
-
-    # Process the original datasets
-    if os.path.exists(original_folder):
-        datasets = os.listdir(original_folder)
-        datasets.sort()
-        for dataset in datasets:
-            if os.path.isdir(os.path.join(original_folder, dataset)):
-                datasets_name += (dataset + " ")
-        # Remove the trailing space
-        datasets_name = datasets_name.strip()
-        self.config.set("Available Datasets", "Original", datasets_name)
-        datasets_name = ''
-    else:
-        print(Fore.RED + 'Original datasets directory not found. Does the ROOT_DIR ({0}) have a folder named "datasets"?'.format(self.root_dir), Fore.RESET)
-
-    # Process the aligned datasets
-    if os.path.exists(aligned_folder):
-        datasets = os.listdir(aligned_folder)
-        datasets.sort()
-        for dataset in datasets:
-            if os.path.isdir(os.path.join(aligned_folder, dataset)):
-                datasets_name += (dataset + " ")
-        # Remove the trailing space
-        datasets_name = datasets_name.strip()
-        self.config.set("Available Datasets", "Aligned", datasets_name)
-        datasets_name = ''
-    else:
-        print(Fore.RED + 'Aligned datasets directory not found. Does the ROOT_DIR ({0}) have a folder named "datasets"?'.format(self.root_dir), Fore.RESET)
-
-    # Save the configuration to the file
-    with open("config.ini", "w") as configfile:
-        self.config.write(configfile)
-
-def techniques_initial_update(self, techniques_folder):
-    techniques_name = ""
-
-    # Check if the config section for techniques exists; if not, create it
-    if not self.config.has_section("Available Techniques"):
-        self.config.add_section("Available Techniques")
-        self.config.set("Available Techniques", "techniques", "")
-
-    # Process the techniques folder
-    if os.path.exists(techniques_folder):
-        techniques = os.listdir(techniques_folder)
-        techniques.sort()
-        for technique in techniques:
-            # Check if it's a file and not a directory (pycache i s problem)
-            if os.path.isfile(os.path.join(techniques_folder,technique)):
-                # Remove the .py extension
-                technique_name = technique[:-3]
-                techniques_name += (technique_name + " ")
-        # Remove the trailing space
-        techniques_name = techniques_name.strip()
-        self.config.set("Available Techniques", "techniques", techniques_name)
-    else:
-        print(Fore.RED + 'Techniques directory not found. Does the ROOT_DIR ({0}) have a folder named "techniques"?'.format(self.root_dir), Fore.RESET)
-
-    # Save the configuration to the file
-    with open("config.ini", "w") as configfile:
-        self.config.write(configfile)
-
-
-def get_available_datasets(self,arg):
-            # Retrieve available datasets from the configuration
-        original_datasets = self.config.get("Available Datasets", "original").split(" ")
-        aligned_datasets = self.config.get("Available Datasets", "aligned").split(" ")
-
-        # Merge available datasets into a single list
-        available_datasets = set(original_datasets) | set(aligned_datasets)
-        if not available_datasets:
-            print("No datasets available")
-            return
-        available_datasets = sorted(available_datasets)
-
-        # Check if the root directory is set
-        if self.root_dir is None:
-            print(Fore.RED + "Root directory not set, set it with SET_ROOT", Fore.RESET)
-            return
-
-        # Print instructions and legend for dataset selection
-        print(Fore.GREEN + "Green name = aligned version available", Fore.RESET)
-        print(Fore.YELLOW + "Yellow name = only non-aligned version available", Fore.RESET)
-        print(Fore.CYAN + "[Datasets]", Fore.RESET)
-
-        # Display available datasets with appropriate colors
-        for i, dataset in enumerate(available_datasets):
-            if dataset in aligned_datasets:
-                print(Fore.LIGHTGREEN_EX + "\t" + str(i) + ". " + dataset, Fore.RESET)
-            else:
-                print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + dataset, Fore.RESET)
-
-        
-        return available_datasets
-
-
-def get_available_techniques(self, arg):
-    # Retrieve available techniques from the configuration
-    techniques = self.config.get("Available Techniques", "techniques").split(" ")
-
-    if not techniques:
-        print("No techniques available")
-        return
-    techniques = sorted(techniques)
-
-    # Check if the root directory is set
-    if self.root_dir is None:
-        print(Fore.RED + "Root directory not set, set it with SET_ROOT", Fore.RESET)
-        return
-
-    # Print instructions for technique selection
-    print(Fore.CYAN + "[Techniques]", Fore.RESET)
-
-    # Display available techniques
-    for i, technique in enumerate(techniques):
-        print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + technique, Fore.RESET)
-
-    return techniques
+    def parse(arg):
+        "Convert a series of zero or more numbers to an argument tuple"
+        return tuple(map(int, arg.split()))
