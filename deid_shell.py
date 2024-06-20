@@ -176,9 +176,11 @@ class DeidShell(cmd.Cmd):
         "Run alignment:  RUN_PREPROCESS_ALIGNMENT"
         print("Running alignment")
         import align_face_mtcnn
-        
+        aligned_datasets = self.config.get("Available Datasets","aligned").split()
         selected_datasets_names = self.config.get("selection", "datasets").split()
         datasets_path = os.path.join(self.root_dir, FOLDER_DATASETS)
+
+        dataset_names = ''
 
         if not os.path.exists(datasets_path):
             print(f"Datasets directory not found: {datasets_path}")
@@ -202,6 +204,15 @@ class DeidShell(cmd.Cmd):
             try:
                 align_face_mtcnn.main(dataset_path=dataset_path, dataset_save_path=dataset_save_path,dataset_name=dataset_name)
                 print(f"Successfully aligned dataset: {dataset_name}")
+                if dataset_name not in aligned_datasets:
+                    aligned_datasets.append(dataset_name)
+                    aligned_datasets.sort()
+                    for i in aligned_datasets:
+                        dataset_names+= (i+' ')
+                    dataset_names = dataset_names.strip()
+                    self.config.set("Available Datasets","aligned",dataset_names)
+                    with open("config.ini", "w") as configfile:
+                        self.config.write(configfile)   
             except Exception as e:
                 print(f"Error aligning dataset {dataset_name}: {e}")
 
@@ -278,6 +289,7 @@ class DeidShell(cmd.Cmd):
     def select_datasets(self):
         "List and interactively let user select datasets: SELECT_DATASETS"
         available_datasets = self.get_available_datasets()
+        aligned_datasets = self.config.get("Available Datasets", "aligned").split(" ")
         print(Fore.CYAN + "Select datasets by entering their numbers separated by space", Fore.RESET)
         # Prompt the user to select datasets
         selected_datasets_indices = input("Selection: ").split()
@@ -289,7 +301,10 @@ class DeidShell(cmd.Cmd):
                 index = int(i)
                 if 0 <= index < len(available_datasets):
                     selected_datasets.append(available_datasets[index])
-                    print(Fore.LIGHTYELLOW_EX + "\t" + str(index) + ". " + available_datasets[index], Fore.RESET)
+                    if available_datasets[index] in aligned_datasets:
+                        print(Fore.LIGHTGREEN_EX + "\t" + str(index) + ". " + available_datasets[index], Fore.RESET)
+                    else:
+                        print(Fore.LIGHTYELLOW_EX + "\t" + str(index) + ". " + available_datasets[index], Fore.RESET)
                 else:
                     print(Fore.RED + "Invalid dataset number: ", i, Fore.RESET)
             except ValueError:
