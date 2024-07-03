@@ -3,8 +3,10 @@ from scipy.ndimage import gaussian_filter
 import matplotlib.pyplot as plt
 import imageio
 import os
+from tqdm import tqdm
+import argparse
 
-def main(img_path, output_path, kernel_size=30):
+def blur(img_path, output_path, kernel_size=30):
     try:
         # Check if the directory of the output path exists and create it if it doesn't
         output_dir = os.path.dirname(output_path)
@@ -37,12 +39,23 @@ def main(img_path, output_path, kernel_size=30):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-# if __name__ == "__main__":
-#     img_path = '/home/matthieup/deid-toolkit/root_dir/datasets/aligned/fri/AjdaLampe.jpg'
-#     output_path = '/home/matthieup/deid-toolkit/root_dir/datasets/blurred/fri/AjdaLampe.jpg'  # Change this to the desired output path
-#     blurred_image = main(img_path, output_path, kernel_size=30)
-#     if blurred_image is not None:
-#         print(type(blurred_image))
-#         plt.imshow(blurred_image)
-#         plt.axis('off')
-#         plt.show()
+def main(dir_path,save_dir):
+        images = os.listdir(dir_path)
+        dataset_name = os.path.basename(dir_path)
+        for img in tqdm(images, desc=f"Processing {dataset_name}"):
+            input_path = os.path.join(dir_path, img)
+            output_path = os.path.join(save_dir, img)
+            try:
+                blur(img_path=input_path, output_path=output_path)
+            except Exception as e:
+                print(f"Error processing image {img} with blur: {e}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Process and anonymize images.")
+    parser.add_argument('dataset_path', type=str, help="Path to the dataset directory")
+    parser.add_argument('dataset_save', type=str, help="Path to the save directory")
+    parser.add_argument('--dataset_filetype', type=str, default='jpg', help="Filetype of the dataset images (default: jpg)")
+    parser.add_argument('--dataset_newtype', type=str, default='jpg', help="Filetype for the anonymized images (default: jpg)")
+
+    args = parser.parse_args()
+    main(args.dataset_path, args.dataset_save)

@@ -2,12 +2,14 @@ import os  # os module provides a way of using operating system dependent functi
 import cmd  # cmd is a module to create line-oriented command interpreters
 from colorama import Fore  # color text
 from tqdm import tqdm
+import subprocess
+import select
 
-FOLDER_DATASETS = "datasets/original"
+FOLDER_DATASET_ORIGINAL = "datasets/original"
 FOLDER_TECHNIQUES = "techniques"
 FOLDER_EVALUATION = "evaluation"
 FOLDER_VISUALIZATION = "visualization"
-FOLDER_DATASET_ALIGNED_SAVE = "datasets/aligned"
+FOLDER_DATASET_ALIGNED = "datasets/aligned"
 FOLDER_BLUR = "datasets/blurred"
 FOLDER_PIXEL = "datasets/pixelized"
 
@@ -31,8 +33,8 @@ class DeidShell(cmd.Cmd):
         super().__init__()
         self.config = config
         self.root_dir = config.get("settings", "root_dir")
-        self.datasets_initial_update(os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED_SAVE),
-                                os.path.join(self.root_dir,FOLDER_DATASETS))
+        self.datasets_initial_update(os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED),
+                                os.path.join(self.root_dir,FOLDER_DATASET_ORIGINAL))
         self.techniques_initial_update(os.path.join(self.root_dir,FOLDER_TECHNIQUES))
         self.evaluation_initial_update(os.path.join(self.root_dir,FOLDER_EVALUATION))
 
@@ -178,7 +180,7 @@ class DeidShell(cmd.Cmd):
         import align_face_mtcnn
         aligned_datasets = self.config.get("Available Datasets","aligned").split()
         selected_datasets_names = self.config.get("selection", "datasets").split()
-        datasets_path = os.path.join(self.root_dir, FOLDER_DATASETS)
+        datasets_path = os.path.join(self.root_dir, FOLDER_DATASET_ORIGINAL)
 
         dataset_names = ''
 
@@ -189,7 +191,7 @@ class DeidShell(cmd.Cmd):
         for dataset_name in selected_datasets_names:
 
             dataset_path = os.path.join(datasets_path, dataset_name, "img")
-            dataset_save_path = os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED_SAVE, dataset_name)
+            dataset_save_path = os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED, dataset_name)
 
             if not os.path.exists(dataset_save_path):
                 os.makedirs(dataset_save_path)
@@ -224,7 +226,6 @@ class DeidShell(cmd.Cmd):
     def run_techniques(self, arg):
         "Run selected techniques on selected datasets: RUN_TECHNIQUES"
         print("Running techniques")
-
         if not self.config.has_option("selection", "techniques") or not self.config.has_option("selection", "datasets"):
             print("No datasets or techniques selected.")
             return
@@ -234,10 +235,13 @@ class DeidShell(cmd.Cmd):
 
         for technique_name in selected_techniques_names:
             try:
-                technique_module = self._import_technique(technique_name)
+                venv_exits= self.check_and_create_conda_env(technique_name)
+                venv_name='toolkit'
+                if venv_exits:
+                    venv_name = technique_name
                 for dataset_name in selected_datasets_names:
                     try:
-                        self._process_dataset_with_technique(technique_name, technique_module, dataset_name)
+                        self._process_dataset_with_technique(technique_name,venv_name, dataset_name)
                     except (ValueError, IndexError) as e:
                         print(f"Invalid dataset index: {dataset_name}. Error: {e}")
             except (ValueError, IndexError) as e:
@@ -269,7 +273,7 @@ class DeidShell(cmd.Cmd):
 
         if self.config.has_section("selection"):
             selected_datasets_names = self.config.get("selection", "datasets").split()
-            datasets_path = os.path.join(self.root_dir, FOLDER_DATASETS)
+            datasets_path = os.path.join(self.root_dir, FOLDER_DATASET_ORIGINAL)
             datasets_names = []
             if os.path.exists(datasets_path):
                 datasets = os.listdir(datasets_path)
@@ -399,7 +403,7 @@ class DeidShell(cmd.Cmd):
 
 
     def _list_available_datasets(self):
-        path = os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED_SAVE)
+        path = os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED)
         if os.path.exists(path):
             return os.listdir(path)
         else:
@@ -408,67 +412,87 @@ class DeidShell(cmd.Cmd):
 
 
     def _list_available_techniques(self):
-        techniques_path = os.path.join(self.root_dir,FOLDER_TECHNIQUES)
+        techniques_path = os.path.join(self.root_dir, FOLDER_TECHNIQUES)
         if os.path.exists(techniques_path):
-            return os.listdir(techniques_path)
+            # Lister uniquement les fichiers avec l'extension .py
+            return [f for f in os.listdir(techniques_path) if f.endswith('.py')]
         else:
             print(f"Techniques directory not found: {techniques_path}")
             return []
 
 
-    def _import_technique(self, technique_name):
-        try:
-            module_name = technique_name.replace('.py', '')
-            module = __import__(f"root_dir.techniques.{module_name}", fromlist=[''])
-            print(f"{technique_name} imported")
-            return module
-        except ImportError as e:
-            print(f"Error importing {technique_name}: {e}")
-            return None
+    def check_and_create_conda_env(self,env_name):
+        envs_list = subprocess.check_output(['mamba', 'env', 'list']).decode('utf-8').split('\n')
+        env_exists = any(env_name in line.split()[0] for line in envs_list if line)
+
+        if env_exists:
+            print(f"'{env_name}' environment already exists")
+            return True
+        else:
+            print(f"'{env_name}' environment does not exist")
+            yaml_file = f"{env_name}.yaml"
+            if os.path.isfile(yaml_file):
+                try:
+                    subprocess.check_call(['mamba', 'env', 'create', '-f', yaml_file])
+                    print(f"'{env_name}' environment have been created")
+                    return True
+                except subprocess.CalledProcessError as e:
+                    print(f"error occured creating '{env_name}' environment : {e}")
+            else:
+                print(f"'{yaml_file}' does not exist.'{env_name}' can not be create.\n Using the toolkit environment")
+                return False
 
 
-    def _process_dataset_with_technique(self, technique_name, technique_module, dataset_name):
+    def _process_dataset_with_technique(self, technique_name,venv_name, dataset_name):
         answer=''
-        original_dataset_path=os.path.join(self.root_dir,FOLDER_DATASETS,dataset_name,"img")
-        if technique_module is None:
+        original_dataset_path=os.path.join(self.root_dir, FOLDER_DATASET_ORIGINAL, dataset_name, "img")
+        if technique_name is None:
             print(f"Technique module is None for {technique_name}")
             return
 
-        aligned_dataset_path = os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED_SAVE, dataset_name)
+        aligned_dataset_path = os.path.join(self.root_dir, FOLDER_DATASET_ALIGNED, dataset_name)
         if not os.path.exists(aligned_dataset_path):
-            print(f"{dataset_name} dataset has not been preprocessed yet. Do you want to preprocess it first ? [y/n]")
-            answer = input("Answer :")
-            if answer =='y':
+            print(f"{dataset_name} dataset has not been preprocessed yet. Do you want to preprocess it first? [y/n]")
+            answer = input("Answer: ")
+            if answer == 'y':
                 import align_face_mtcnn
-                align_face_mtcnn.main(dataset_name=dataset_name,dataset_path=original_dataset_path,
-                                      dataset_save_path=aligned_dataset_path)
+                align_face_mtcnn.main(dataset_name=dataset_name, dataset_path=original_dataset_path,
+                                    dataset_save_path=aligned_dataset_path)
             else:
                 print(f"Running {technique_name} on unaligned {dataset_name} dataset")
                 aligned_dataset_path = original_dataset_path
-    
-            
-        if technique_name == 'pixel':
-            dataset_save_path = os.path.join(self.root_dir,FOLDER_PIXEL, dataset_name)
-        elif technique_name == 'blur':
-            dataset_save_path = os.path.join(self.root_dir,FOLDER_BLUR, dataset_name)
-        else:
-            print(f"Unknown technique: {technique_name}")
-            return
+
+        dataset_save_path = os.path.join(self.root_dir, 'datasets', technique_name, dataset_name)
 
         if not os.path.exists(dataset_save_path):
             os.makedirs(dataset_save_path)
 
         print(f"Processing dataset: {dataset_name} | Source path: {aligned_dataset_path} | Save path: {dataset_save_path}")
-        
-        images = os.listdir(aligned_dataset_path)
-        for img in tqdm(images, desc=f"Processing {dataset_name}"):
-            input_path = os.path.join(aligned_dataset_path, img)
-            output_path = os.path.join(dataset_save_path, img)
-            try:
-                technique_module.main(img_path=input_path, output_path=output_path)
-                #print(f"Processed {img} with {technique_name}")
-            except Exception as e:
-                print(f"Error processing image {img} with {technique_name}: {e}")
+
+        perm = 'chmod +x root_dir/techniques/bash_scripts/run_techniques.sh'
+        p = subprocess.Popen(perm, shell=True)
+        p.wait()
+
+        cmd = f'./root_dir/techniques/bash_scripts/run_techniques.sh {venv_name} {technique_name} {aligned_dataset_path} {dataset_save_path}'
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
+
+        while True:
+            reads = [process.stdout.fileno(), process.stderr.fileno()]
+            ret = select.select(reads, [], [])
+            for fd in ret[0]:
+                if fd == process.stdout.fileno():
+                    output = process.stdout.readline()
+                    if output:
+                        print("STDOUT:", output.strip())
+                if fd == process.stderr.fileno():
+                    error = process.stderr.readline()
+                    if error:
+                        print("STDERR:", error.strip())
+
+            if process.poll() is not None:
+                break
+
+        process.wait()
 
 
     def datasets_initial_update(self, aligned_folder, original_folder):
@@ -693,7 +717,6 @@ class DeidShell(cmd.Cmd):
         if self.file:
             self.file.close()
             self.file = None
-
 
     def parse(arg):
         "Convert a series of zero or more numbers to an argument tuple"
