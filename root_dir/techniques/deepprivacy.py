@@ -58,7 +58,7 @@ def main(dataset_path, dataset_save, dataset_filetype='jpg', dataset_newtype='jp
     save_paths = [os.path.join(dataset_save, i.replace(dataset_filetype, dataset_newtype)) for i in img_names]
 
     for img_path, save_path in zip(img_paths, save_paths):
-        p = subprocess.Popen(['python', 'root_dir/techniques/DeepPrivacy/anonymize.py', '-s', img_path, '-t', save_path],
+        p = subprocess.Popen(['python', 'DeepPrivacy/anonymize.py', '-s', img_path, '-t', save_path],
                              bufsize=2048, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         while True:
