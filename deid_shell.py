@@ -235,13 +235,13 @@ class DeidShell(cmd.Cmd):
 
         for technique_name in selected_techniques_names:
             try:
-                venv_exits= self.check_and_create_conda_env(technique_name)
-                venv_name='toolkit'
-                if venv_exits:
+                venv_exists = self.check_and_create_conda_env(technique_name)
+                venv_name = 'toolkit'
+                if venv_exists:
                     venv_name = technique_name
                 for dataset_name in selected_datasets_names:
                     try:
-                        self._process_dataset_with_technique(technique_name,venv_name, dataset_name)
+                        self._process_dataset_with_technique(technique_name, venv_name, dataset_name)
                     except (ValueError, IndexError) as e:
                         print(f"Invalid dataset index: {dataset_name}. Error: {e}")
             except (ValueError, IndexError) as e:
@@ -421,7 +421,7 @@ class DeidShell(cmd.Cmd):
             return []
 
 
-    def check_and_create_conda_env(self,env_name):
+    def check_and_create_conda_env(self, env_name):
         envs_list = subprocess.check_output(['mamba', 'env', 'list']).decode('utf-8').split('\n')
         env_exists = any(env_name in line.split()[0] for line in envs_list if line)
 
@@ -437,15 +437,15 @@ class DeidShell(cmd.Cmd):
                     print(f"'{env_name}' environment have been created")
                     return True
                 except subprocess.CalledProcessError as e:
-                    print(f"error occured creating '{env_name}' environment : {e}")
+                    print(f"Error occurred creating '{env_name}' environment: {e}")
             else:
-                print(f"'{yaml_file}' does not exist.'{env_name}' can not be create.\n Using the toolkit environment")
+                print(f"'{yaml_file}' does not exist. '{env_name}' cannot be created.\nUsing the toolkit environment")
                 return False
 
 
-    def _process_dataset_with_technique(self, technique_name,venv_name, dataset_name):
-        answer=''
-        original_dataset_path=os.path.join(self.root_dir, FOLDER_DATASET_ORIGINAL, dataset_name, "img")
+    def _process_dataset_with_technique(self, technique_name, venv_name, dataset_name):
+        answer = ''
+        original_dataset_path = os.path.join(self.root_dir, FOLDER_DATASET_ORIGINAL, dataset_name, "img")
         if technique_name is None:
             print(f"Technique module is None for {technique_name}")
             return
@@ -469,31 +469,34 @@ class DeidShell(cmd.Cmd):
 
         print(f"Processing dataset: {dataset_name} | Source path: {aligned_dataset_path} | Save path: {dataset_save_path}")
 
-        perm = 'chmod +x root_dir/techniques/bash_scripts/run_techniques.sh'
-        p = subprocess.Popen(perm, shell=True)
-        p.wait()
+        self.run_script(venv_name, technique_name, aligned_dataset_path, dataset_save_path)
 
-        cmd = f'./root_dir/techniques/bash_scripts/run_techniques.sh {venv_name} {technique_name} {aligned_dataset_path} {dataset_save_path}'
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
+    def run_script(self, venv_name, technique_name, aligned_dataset_path, dataset_save_path):
+        # Activer l'environnement conda et exécuter le script technique dans le même processus
+        conda_sh_path = os.path.expanduser("~/miniforge3/etc/profile.d/conda.sh")
 
-        while True:
-            reads = [process.stdout.fileno(), process.stderr.fileno()]
-            ret = select.select(reads, [], [])
-            for fd in ret[0]:
-                if fd == process.stdout.fileno():
-                    output = process.stdout.readline()
-                    if output:
-                        print("STDOUT:", output.strip())
-                if fd == process.stderr.fileno():
-                    error = process.stderr.readline()
-                    if error:
-                        print("STDERR:", error.strip())
-
-            if process.poll() is not None:
-                break
-
-        process.wait()
-
+        aligned_dataset_path = os.path.abspath(aligned_dataset_path)
+        dataset_save_path = os.path.abspath(dataset_save_path)
+        
+        command = (
+            f"source {conda_sh_path} && "
+            f"conda activate {venv_name} && "
+            f"cd {self.root_dir}/techniques && "
+            f"python {technique_name}.py {aligned_dataset_path} {dataset_save_path} "
+        )
+        
+        try:
+            process = subprocess.run(command, shell=True, executable="/bin/bash", check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            
+            # Print STDOUT and STDERR
+            if process.stdout:
+                print("STDOUT:", process.stdout.strip())
+            if process.stderr:
+                print("STDERR:", process.stderr.strip())
+                
+        except subprocess.CalledProcessError as e:
+            print(f"Error occurred while running the script: {e}")
+    
 
     def datasets_initial_update(self, aligned_folder, original_folder):
         datasets_name = ""
