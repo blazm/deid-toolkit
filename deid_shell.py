@@ -472,7 +472,6 @@ class DeidShell(cmd.Cmd):
         self.run_script(venv_name, technique_name, aligned_dataset_path, dataset_save_path)
 
     def run_script(self, venv_name, technique_name, aligned_dataset_path, dataset_save_path):
-        # Activer l'environnement conda et exécuter le script technique dans le même processus
         conda_sh_path = os.path.expanduser("~/miniforge3/etc/profile.d/conda.sh")
 
         aligned_dataset_path = os.path.abspath(aligned_dataset_path)
@@ -486,14 +485,19 @@ class DeidShell(cmd.Cmd):
         )
         
         try:
-            process = subprocess.run(command, shell=True, executable="/bin/bash", check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            process = subprocess.Popen(command, shell=True, executable="/bin/bash", stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             
-            # Print STDOUT and STDERR
-            if process.stdout:
-                print("STDOUT:", process.stdout.strip())
-            if process.stderr:
-                print("STDERR:", process.stderr.strip())
-                
+            while True:
+                output = process.stdout.readline()
+                if output == '' and process.poll() is not None:
+                    break
+                if output:
+                    print(output.strip())
+            
+            stderr_output, _ = process.communicate()
+            if stderr_output:
+                print("STDERR:", stderr_output.strip())
+
         except subprocess.CalledProcessError as e:
             print(f"Error occurred while running the script: {e}")
     
