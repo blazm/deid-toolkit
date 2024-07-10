@@ -481,26 +481,38 @@ class DeidShell(cmd.Cmd):
             f"source {conda_sh_path} && "
             f"conda activate {venv_name} && "
             f"cd {self.root_dir}/techniques && "
-            f"python {technique_name}.py {aligned_dataset_path} {dataset_save_path} "
+            f"python -u {technique_name}.py {aligned_dataset_path} {dataset_save_path} "
         )
         
         try:
             process = subprocess.Popen(command, shell=True, executable="/bin/bash", stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             
             while True:
-                output = process.stdout.readline()
-                if output == '' and process.poll() is not None:
+                reads = [process.stdout.fileno(), process.stderr.fileno()]
+                ret = select.select(reads, [], [])
+                for fd in ret[0]:
+                    if fd == process.stdout.fileno():
+                        output = process.stdout.readline()
+                        if output:
+                            print(output.strip())
+                    if fd == process.stderr.fileno():
+                        error_output = process.stderr.readline()
+                        if error_output:
+                            print(error_output.strip())
+                
+                if process.poll() is not None:
                     break
-                if output:
-                    print(output.strip())
             
-            stderr_output, _ = process.communicate()
-            if stderr_output:
-                print("STDERR:", stderr_output.strip())
+            process.stdout.close()
+            process.stderr.close()
+            process.wait()
 
-        except subprocess.CalledProcessError as e:
+            if process.returncode != 0:
+                print(f"Script exited with return code {process.returncode}")
+
+        except Exception as e:
             print(f"Error occurred while running the script: {e}")
-    
+        
 
     def datasets_initial_update(self, aligned_folder, original_folder):
         datasets_name = ""
