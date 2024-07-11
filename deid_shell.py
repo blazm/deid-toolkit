@@ -423,14 +423,23 @@ class DeidShell(cmd.Cmd):
 
     def check_and_create_conda_env(self, env_name):
         envs_list = subprocess.check_output(['mamba', 'env', 'list']).decode('utf-8').split('\n')
-        env_exists = any(env_name in line.split()[0] for line in envs_list if line)
+        print(f"env list : {envs_list}")
+        print(f"env_name: {env_name}")
+        env_name_from_list =''
+        env_names =[]
+        for line in envs_list:
+            if line:
+                env_name_from_list = line.split()[0]
+                print(f"env_name_from_list : {env_name_from_list}")
+                env_names.append(env_name_from_list)
 
-        if env_exists:
+
+        if env_name in env_names:
             print(f"'{env_name}' environment already exists")
             return True
         else:
             print(f"'{env_name}' environment does not exist")
-            yaml_file = f"{env_name}.yaml"
+            yaml_file = os.path.join(self.root_dir,"techniques","environments",env_name+".yml")
             if os.path.isfile(yaml_file):
                 try:
                     subprocess.check_call(['mamba', 'env', 'create', '-f', yaml_file])
