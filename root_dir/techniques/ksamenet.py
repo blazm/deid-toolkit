@@ -15,7 +15,7 @@ def make_gen():
     deconv_layer = 6 # 5 or 6
     model_name = 'FaceGen.RaFD.model.d{}.adam'.format(deconv_layer)
 #    model_path = '../de-id/generator/output/{}.h5'.format(model_name)
-    model_path = 'k_same_net/models/{}.h5'.format(model_name) # locally stored models
+    model_path = os.path.join('k_same_net', 'models', '{}.h5'.format(model_name)) # locally stored models
 
     gen = Generator(model_path, deconv_layer=deconv_layer)
     return gen
@@ -40,7 +40,7 @@ def main(dataset_path,dataset_save, dataset_filetype = 'jpg',dataset_newtype = '
     img_names.sort()
     img_paths = [os.path.join(dataset_path, i) for i in img_names]
     dataset_name = os.path.basename(dataset_save)
-    labels_path = os.path.join("../datasets/labels",dataset_name+"_labels.csv")
+    labels_path = os.path.join("..","datasets","labels",dataset_name+"_labels.csv")
     emotion_code = 0
     emotion_dict = {'0': "neutral", "1":"anger", "3": "contempt", "4": "disgust", "5":"fear","6":"happy","7":"sad","8":"surprise"}
     def ensure_dir(d):

@@ -54,7 +54,7 @@ def main(src_dir, dst_dir, nb_outputs):
                 im.save(os.path.join(dst_dir, img_name + '.jpg')) # + '_' + str(i)
 
 if __name__ == '__main__':
-    MODEL_PATH = 'cleanir/model'
+    MODEL_PATH = os.path.join('cleanir','model')
     parser = argparse.ArgumentParser(description="Process and anonymize images.")
     parser.add_argument('dataset_path', type=str, help="Path to the dataset directory")
     parser.add_argument('dataset_save', type=str, help="Path to the save directory")

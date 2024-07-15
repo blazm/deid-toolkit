@@ -6,8 +6,8 @@ headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race_cod
            'Emotion_code', 'Neutral', 'Anger', 'Scream', 'Contempt', 'Disgust', 'Fear', 'Happy', 'Sadness',
            'Surprise', 'Sun glasses', 'Scarf', 'Eyeglasses', 'Beard', 'Hat', 'Angle']
 
-directory = "root_dir/datasets/aligned/muct"
-output_directory = "root_dir/datasets/labels"
+directory = os.path.join('root_dir', 'datasets', 'aligned', 'muct')
+output_directory = os.path.join('root_dir', 'datasets', 'labels')
 output_path = os.path.join(output_directory, "muct_labels.csv")
 
 labels_muct = []

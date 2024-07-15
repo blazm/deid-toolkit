@@ -6,8 +6,8 @@ headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race_cod
            'Neutral', 'Anger', 'Scream', 'Contempt', 'Disgust', 'Fear', 'Happy', 'Sadness', 'Surprise',
            'Sun glasses', 'Scarf', 'Eyeglasses', 'Beard', 'Hat', 'Angle']
 
-directory = "root_dir/datasets/aligned/colorferet"
-ground_truths_directory = "root_dir/datasets/labels/doc/colorferet/ground_truths/name_value"
+directory = os.path.join('root_dir', 'datasets', 'aligned', 'colorferet')
+ground_truths_directory = os.path.join('root_dir', 'datasets', 'labels', 'doc', 'colorferet', 'ground_truths', 'name_value')
 
 labels_colorferet = []
 
@@ -71,7 +71,8 @@ for img_name in tqdm(img_names, desc="Processing images"):
     })
     labels_colorferet.append(label)
 
-output_path = "root_dir/datasets/labels/colorferet_labels.csv"
+output_path = os.path.join('root_dir', 'datasets', 'labels', 'colorferet_labels.csv')
+
 os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
 with open(output_path, "w", newline='') as csv_file:

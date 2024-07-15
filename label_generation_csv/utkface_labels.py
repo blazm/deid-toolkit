@@ -6,8 +6,8 @@ headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race_cod
            'Neutral', 'Anger', 'Scream', 'Contempt', 'Disgust', 'Fear', 'Happy', 'Sadness', 'Surprise',
            'Sun glasses', 'Scarf', 'Eyeglasses', 'Beard', 'Hat', 'Angle']
 
-directory = "root_dir/datasets/aligned/utkface"
-output_file = "root_dir/datasets/labels/utkface_labels.csv"
+directory = os.path.join('root_dir', 'datasets', 'aligned', 'utkface')
+output_file = os.path.join('root_dir', 'datasets', 'labels', 'utkface_labels.csv')
 labels_utkface = []
 race_dict = {'0': 'White', '1': 'Black', '2': 'Asian', '3': 'Indian', '4': 'Other'}
 

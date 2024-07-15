@@ -6,7 +6,7 @@ headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race_cod
            'Neutral', 'Anger', 'Scream', 'Contempt', 'Disgust', 'Fear', 'Happy', 'Sadness', 'Surprise',
            'Sun glasses', 'Scarf', 'Eyeglasses', 'Beard', 'Hat', 'Angle']
 
-directory = "root_dir/datasets/aligned/rafd"
+directory = os.path.join('root_dir', 'datasets', 'aligned', 'rafd')
 labels_rafd = []
 
 pose_dict = {'000': 90, '045': 45, '090': 0, '135': -45, '180': -90}
@@ -78,7 +78,7 @@ for img_name in tqdm(image_files, desc="Processing Images"):
     
     labels_rafd.append(label)
 
-output_path = "root_dir/datasets/labels/rafd_labels.csv"
+output_path = os.path.join('root_dir', 'datasets', 'labels', 'rafd_labels.csv')
 with open(output_path, "w", newline='') as csv_file:
     csv_writer = csv.DictWriter(csv_file, fieldnames=headers)
     csv_writer.writeheader()

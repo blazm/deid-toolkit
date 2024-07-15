@@ -6,7 +6,7 @@ headers = ['Name','Path','Identity','Gender_code','Gender','Age','Race_code','Ra
            'Neutral','Anger','Scream','Contempt','Disgust','Fear','Happy','Sadness','Surprise',
            'Sun glasses','Scarf','Eyeglasses','Beard','Hat','Angle']
 
-directory = "root_dir/datasets/aligned/arface"
+directory =  os.path.join('root_dir', 'datasets', 'aligned', 'arface')
 
 labels_arface = []
 
@@ -55,7 +55,7 @@ for img_name in tqdm(img_list, desc="Processing images"):
         label['Scarf'] = 1
     labels_arface.append(label)
 
-output_path = r"root_dir/datasets/labels/arface_labels.csv"
+output_path = os.path.join("root_dir","datasets","labels","arface_labels.csv")
 
 with open(output_path, "w", newline='') as csv_file:
     csv_writer = csv.DictWriter(csv_file, fieldnames=headers)
