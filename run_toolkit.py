@@ -1,4 +1,3 @@
-import colorama
 from colorama import Fore, init
 from configparser import ConfigParser
 from deid_shell import DeidShell

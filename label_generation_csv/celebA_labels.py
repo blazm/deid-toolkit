@@ -6,15 +6,15 @@ headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race_cod
            'Neutral', 'Anger', 'Scream', 'Contempt', 'Disgust', 'Fear', 'Happy', 'Sadness', 'Surprise',
            'Sun glasses', 'Scarf', 'Eyeglasses', 'Beard', 'Hat', 'Angle']
 
-directory = r"root_dir/datasets/aligned/celeba"
+directory = os.path.join("root_dir","datasets","aligned","celeba")
 labels_celeba = []
 
 emotion_dict = {'Neutral': 0, 'Anger': 1, 'Scream': 2, 'Contempt': 3, 'Disgust': 4,
                 'Fear': 5, 'Happy': 6, 'Sadness': 7, 'Surprise': 8}
 
-mapping_path = r"root_dir/datasets/labels/doc/celebA/CelebA-HQ-to-CelebA-mapping.txt"
-identity_path = r"root_dir/datasets/labels/doc/celebA/identity_CelebA.txt"
-attribute_csv_file = r"root_dir/datasets/labels/doc/celebA/CelebAMask-HQ-attribute-anno.csv"
+mapping_path = os.path.join('root_dir', 'datasets', 'labels', 'doc', 'celebA', 'CelebA-HQ-to-CelebA-mapping.txt')
+identity_path = os.path.join('root_dir', 'datasets', 'labels', 'doc', 'celebA', 'identity_CelebA.txt')
+attribute_csv_file = os.path.join('root_dir', 'datasets', 'labels', 'doc', 'celebA', 'CelebAMask-HQ-attribute-anno.csv')
 
 # Function to load data from a text file into a dictionary
 def load_data(file_path):
@@ -92,7 +92,7 @@ for img_name in tqdm(img_list, desc="Processing images"):
         
         labels_celeba.append(label)
 
-output_path = r"root_dir/datasets/labels/celeba_labels.csv"
+output_path = os.path.join("root_dir","datasets","labels","celeba_labels.csv")
 os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
 with open(output_path, "w", newline='') as csv_file:
