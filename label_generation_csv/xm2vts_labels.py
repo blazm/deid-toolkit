@@ -6,8 +6,8 @@ headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race_cod
            'Neutral', 'Anger', 'Scream', 'Contempt', 'Disgust', 'Fear', 'Happy', 'Sadness', 'Surprise',
            'Sun glasses', 'Scarf', 'Eyeglasses', 'Beard', 'Hat', 'Angle']
 
-directory = "root_dir/datasets/aligned/xm2vts"
-output_file = "root_dir/datasets/labels/xm2vts_labels.csv"
+directory = os.path.join('root_dir', 'datasets', 'aligned', 'xm2vts')
+output_file = os.path.join('root_dir', 'datasets', 'labels', 'xm2vts_labels.csv')
 labels_xm2vts = []
 
 image_files = [img_name for img_name in os.listdir(directory) if img_name.lower().endswith(('.png', '.jpg', '.jpeg'))]

@@ -3,10 +3,6 @@ import os
 import itertools
 import random
 
-LABELS_FOLDER = "root_dir/datasets/labels"
-PAIRS_FOLDER = "root_dir/datasets/pairs"
-ALIGNED_FOLDER ='root_dir/datasets/aligned'
-
 
 def count_lines(file_path):
     count = 0
@@ -16,7 +12,7 @@ def count_lines(file_path):
     return count
 
 
-def main(selected_datasets_names: list):
+def main(selected_datasets_names: list,LABELS_FOLDER:str,PAIRS_FOLDER:str):
     # Set a random seed for reproducibility
     random.seed(42)
 

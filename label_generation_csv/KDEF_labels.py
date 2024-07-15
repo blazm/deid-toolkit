@@ -6,7 +6,7 @@ headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race_cod
            'Emotion_code', 'Neutral', 'Anger', 'Scream', 'Contempt', 'Disgust', 'Fear', 'Happy', 'Sadness', 
            'Surprise', 'Sun glasses', 'Scarf', 'Eyeglasses', 'Beard', 'Hat', 'Angle']
 
-directory = "root_dir/datasets/aligned/kdef"
+directory = os.path.join('root_dir', 'datasets', 'aligned', 'kdef')
 
 labels_kdef = []
 
@@ -71,7 +71,7 @@ for img_name in tqdm(img_names, desc="Processing images"):
 
     labels_kdef.append(label)
 
-output_directory = "root_dir/datasets/labels"
+output_directory = os.path.join('root_dir', 'datasets', 'labels')
 output_path = os.path.join(output_directory, "kdef_labels.csv")
 os.makedirs(output_directory, exist_ok=True)
 

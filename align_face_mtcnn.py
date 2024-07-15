@@ -13,7 +13,7 @@ from tqdm import tqdm  # Importer tqdm pour la barre de progression
 root = Path()
 print("Root directory:", root.resolve().as_posix())
 
-predictor_path = "root_dir/preprocess/shape_predictor_68_face_landmarks.dat"
+predictor_path = os.path.join("root_dir","preprocess","shape_predictor_68_face_landmarks.dat")
 assert os.path.exists(predictor_path), f"Model file not found: {predictor_path}"
 predictor = dlib.shape_predictor(predictor_path)
 

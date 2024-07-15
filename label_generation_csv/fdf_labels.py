@@ -6,7 +6,7 @@ headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race_cod
            'Emotion_code', 'Neutral', 'Anger', 'Scream', 'Contempt', 'Disgust', 'Fear', 'Happy', 'Sadness', 
            'Surprise', 'Sun glasses', 'Scarf', 'Eyeglasses', 'Beard', 'Hat', 'Angle']
 
-directory = "root_dir/datasets/aligned/fdf"
+directory = os.path.join('root_dir', 'datasets', 'aligned', 'fdf')
 labels_fdf = []
 
 img_names = [img for img in os.listdir(directory) if img.lower().endswith(('.png', '.jpg', '.jpeg'))]
@@ -24,7 +24,7 @@ for img_name in tqdm(img_names, desc="Processing images"):
     
     labels_fdf.append(label)
 
-output_path = "root_dir/datasets/labels/fdf_labels.csv"
+output_path = os.path.join('root_dir', 'datasets', 'labels', 'fdf_labels.csv')
 os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
 with open(output_path, "w", newline='') as csv_file:

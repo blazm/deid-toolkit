@@ -31,10 +31,9 @@ headers = [
     "Angle",
 ]
 
-directory = "root_dir/datasets/aligned/morph"
-csv_file_out = "root_dir/datasets/labels/morph_labels.csv"
-all_data = "root_dir/datasets/labels/doc/morph/all_data.csv"
-
+directory = os.path.join('root_dir', 'datasets', 'aligned', 'morph')
+csv_file_out = os.path.join('root_dir', 'datasets', 'labels', 'morph_labels.csv')
+all_data = os.path.join('root_dir', 'datasets', 'labels', 'doc', 'morph', 'all_data.csv')
 labels_morph = []
 
 image_files = [img for img in os.listdir(directory) if img.lower().endswith((".png", ".jpg", ".jpeg"))]

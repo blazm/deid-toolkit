@@ -8,7 +8,7 @@ headers = ['Name', 'Path', 'Identity', 'Gender_code', 'Gender', 'Age', 'Race', '
            'Neutral', 'Anger', 'Scream', 'Contempt', 'Disgust', 'Fear', 'Happy', 'Sadness', 'Surprise', 
            'Sun glasses', 'Scarf', 'Eyeglasses', 'Beard', 'Hat', 'Angle']
 
-directory = "root_dir/datasets/aligned/fri"
+directory = os.path.join('root_dir', 'datasets', 'aligned', 'fri')
 labels_fri = []
 
 nb_img = len(os.listdir(directory))
@@ -30,7 +30,7 @@ for c, img_name in enumerate(os.listdir(directory), 1):
         labels_fri.append(label)
 
 # Ensure the output directory exists
-output_directory = "root_dir/datasets/labels"
+output_directory = 'root_dir', 'datasets', 'labels'
 output_path = os.path.join(output_directory, "fri_labels.csv")
 os.makedirs(output_directory, exist_ok=True)
 

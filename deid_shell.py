@@ -5,13 +5,10 @@ from tqdm import tqdm
 import subprocess
 import select
 
-FOLDER_DATASET_ORIGINAL = "datasets/original"
+FOLDER_DATASET = "datasets"
 FOLDER_TECHNIQUES = "techniques"
 FOLDER_EVALUATION = "evaluation"
 FOLDER_VISUALIZATION = "visualization"
-FOLDER_DATASET_ALIGNED = "datasets/aligned"
-FOLDER_BLUR = "datasets/blurred"
-FOLDER_PIXEL = "datasets/pixelized"
 
 
 class DeidShell(cmd.Cmd):
@@ -33,8 +30,8 @@ class DeidShell(cmd.Cmd):
         super().__init__()
         self.config = config
         self.root_dir = config.get("settings", "root_dir")
-        self.datasets_initial_update(os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED),
-                                os.path.join(self.root_dir,FOLDER_DATASET_ORIGINAL))
+        self.datasets_initial_update(os.path.join(self.root_dir,FOLDER_DATASET,"aligned"),
+                                os.path.join(self.root_dir,FOLDER_DATASET,"original"))
         self.techniques_initial_update(os.path.join(self.root_dir,FOLDER_TECHNIQUES))
         self.evaluation_initial_update(os.path.join(self.root_dir,FOLDER_EVALUATION))
 
@@ -180,7 +177,7 @@ class DeidShell(cmd.Cmd):
         import align_face_mtcnn
         aligned_datasets = self.config.get("Available Datasets","aligned").split()
         selected_datasets_names = self.config.get("selection", "datasets").split()
-        datasets_path = os.path.join(self.root_dir, FOLDER_DATASET_ORIGINAL)
+        datasets_path = os.path.join(self.root_dir, FOLDER_DATASET,"original")
 
         dataset_names = ''
 
@@ -191,13 +188,13 @@ class DeidShell(cmd.Cmd):
         for dataset_name in selected_datasets_names:
 
             dataset_path = os.path.join(datasets_path, dataset_name, "img")
-            dataset_save_path = os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED, dataset_name)
+            dataset_save_path = os.path.join(self.root_dir,FOLDER_DATASET,"aligned", dataset_name)
 
             if not os.path.exists(dataset_save_path):
                 os.makedirs(dataset_save_path)
 
-            if os.path.exists(os.path.join('root_dir/datasets/mirrored', dataset_name)):
-                dataset_path = os.path.join('root_dir/datasets/mirrored', dataset_name)
+            if os.path.exists(os.path.join(self.root_dir,FOLDER_DATASET,"mirrored", dataset_name)):
+                dataset_path = os.path.join(self.root_dir,FOLDER_DATASET,"mirrored", dataset_name)
 
             print(f"Aligning dataset: {dataset_name}")
             print(f"Source path: {dataset_path}")
@@ -273,19 +270,9 @@ class DeidShell(cmd.Cmd):
 
         if self.config.has_section("selection"):
             selected_datasets_names = self.config.get("selection", "datasets").split()
-            datasets_path = os.path.join(self.root_dir, FOLDER_DATASET_ORIGINAL)
-            datasets_names = []
-            if os.path.exists(datasets_path):
-                datasets = os.listdir(datasets_path)
-            for index in selected_datasets_names:
-                try:
-                    datasets_names.append(datasets[int(index)])
-                except ValueError:
-                    print("Invalid dataset index:", index)
-                except IndexError:
-                    print("Dataset index out of range:", index)
-            print(datasets_names)
-            generate_img_pairs_all.main(datasets_names)
+            FOLDER_LABELS = os.path.join(self.root_dir,FOLDER_DATASET,"labels")
+            PAIRS_FOLDER = os.path.join(self.root_dir,FOLDER_DATASET,"pairs")
+            generate_img_pairs_all.main(selected_datasets_names, FOLDER_LABELS,PAIRS_FOLDER)
         else:
             print("No datasets selected.")
 
@@ -403,7 +390,7 @@ class DeidShell(cmd.Cmd):
 
 
     def _list_available_datasets(self):
-        path = os.path.join(self.root_dir,FOLDER_DATASET_ALIGNED)
+        path = os.path.join(self.root_dir,FOLDER_DATASET,"aligned")
         if os.path.exists(path):
             return os.listdir(path)
         else:
@@ -436,7 +423,7 @@ class DeidShell(cmd.Cmd):
 
         if env_name in env_names:
             print(f"'{env_name}' environment already exists")
-            return True
+            return True 
         else:
             print(f"'{env_name}' environment does not exist")
             yaml_file = os.path.join(self.root_dir,"techniques","environments",env_name+".yml")
@@ -454,12 +441,12 @@ class DeidShell(cmd.Cmd):
 
     def _process_dataset_with_technique(self, technique_name, venv_name, dataset_name):
         answer = ''
-        original_dataset_path = os.path.join(self.root_dir, FOLDER_DATASET_ORIGINAL, dataset_name, "img")
+        original_dataset_path = os.path.join(self.root_dir, FOLDER_DATASET,"original", dataset_name, "img")
         if technique_name is None:
             print(f"Technique module is None for {technique_name}")
             return
 
-        aligned_dataset_path = os.path.join(self.root_dir, FOLDER_DATASET_ALIGNED, dataset_name)
+        aligned_dataset_path = os.path.join(self.root_dir, FOLDER_DATASET,"aligned", dataset_name)
         if not os.path.exists(aligned_dataset_path):
             print(f"{dataset_name} dataset has not been preprocessed yet. Do you want to preprocess it first? [y/n]")
             answer = input("Answer: ")
