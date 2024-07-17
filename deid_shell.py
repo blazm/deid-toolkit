@@ -410,14 +410,14 @@ class DeidShell(cmd.Cmd):
 
     def check_and_create_conda_env(self, env_name):
         envs_list = subprocess.check_output(['mamba', 'env', 'list']).decode('utf-8').split('\n')
-        print(f"env list : {envs_list}")
-        print(f"env_name: {env_name}")
+        # print(f"env list : {envs_list}")
+        # print(f"env_name: {env_name}")
         env_name_from_list =''
         env_names =[]
         for line in envs_list:
             if line:
                 env_name_from_list = line.split()[0]
-                print(f"env_name_from_list : {env_name_from_list}")
+                # print(f"env_name_from_list : {env_name_from_list}")
                 env_names.append(env_name_from_list)
 
 
@@ -472,11 +472,12 @@ class DeidShell(cmd.Cmd):
 
         aligned_dataset_path = os.path.abspath(aligned_dataset_path)
         dataset_save_path = os.path.abspath(dataset_save_path)
+        path_technique_folder = os.path.join(self.root_dir,FOLDER_TECHNIQUES)
         
         command = (
             f"source {conda_sh_path} && "
             f"conda activate {venv_name} && "
-            f"cd {self.root_dir}/techniques && "
+            f"cd {path_technique_folder} && "
             f"python -u {technique_name}.py {aligned_dataset_path} {dataset_save_path} "
         )
         
@@ -598,8 +599,8 @@ class DeidShell(cmd.Cmd):
             techniques = os.listdir(techniques_folder)
             techniques.sort()
             for technique in techniques:
-                # Check if it's a file and not a directory (pycache i s problem)
-                if os.path.isfile(os.path.join(techniques_folder,technique)):
+                # Check if it's a python file and not a directory (pycache i s problem)
+                if os.path.basename(os.path.join(techniques_folder,technique)).endswith("py"):
                     # Remove the .py extension
                     technique_name = technique[:-3]
                     techniques_name += (technique_name + " ")

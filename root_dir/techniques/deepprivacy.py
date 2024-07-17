@@ -15,7 +15,7 @@ from face_detection.retinaface.models.retinaface import RetinaFace
 class face_detection(base.Detector):
     def __init__(self, model: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        model_dir = os.path.join('home', 'matthieup', '.cache', 'torch', 'hub', 'checkpoints')
+        model_dir = os.path.join("DeepPrivacy","deep_privacy","checkpoints")
         map_location = torch_utils.get_device()
 
         if model == "mobilenet":
