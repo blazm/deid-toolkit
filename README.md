@@ -113,6 +113,7 @@ Name,Path,Identity,Gender_code,Gender,Age,Race_code,Race,date_of_birth,Emotion_c
 - `Gender_code`: Male = 1 and Female = -1
 - `Emotion_code`: 0 = Neutral, 1 = Anger, 2 = Scream, 3 = Contempt, 4 = Disgust, 5 = Fear, 6 = Happy, 7 = Sadness, 8 = Surprise
 - `Race_code` is not defined for now
+- `Angle` :  90 = Rigth profile, 0 = Frontal, -90 = Left profile
 
 If one of the labels isn't available for the images, leave an empty string.
 
