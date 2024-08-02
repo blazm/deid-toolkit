@@ -84,11 +84,24 @@ An attempt to develop a toolkit for running and evaluating privacy preserving te
 ## How to add a dataset
 If the dataset is already aligned, put all images according to this structure:
 ```
-root_dir/datasets/aligned/dataset_name/image1.jpg
+deid-toolkit
+├── root_dir
+    ├── datasets
+        ├── aligned
+            ├── img1.jpg
+            ├── img2.jpg
+            ├── ...
 ```
 If the dataset has not been preprocessed, put all images as follows:
 ```
-root_dir/datasets/original/dataset_name/img/image1.jpg
+deid-toolkit
+├── root_dir
+    ├── datasets
+        ├── original
+            ├── img
+                ├── img1.jpg
+                ├── img2.jpg
+                ├── ...
 ```
 
 ## Labels 
