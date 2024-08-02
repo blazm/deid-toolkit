@@ -124,7 +124,7 @@ Add a Python script `technique_name.py` in `root_dir/techniques`. This script mu
 python technique_name.py dataset_path dataset_save_path
 ```
 
-## ToolKit Command Examples
+## ToolKit Command
 
 ### General commands
 - `root` - see currently set root directory
