@@ -63,7 +63,6 @@ An attempt to develop a toolkit for running and evaluating privacy preserving te
 - Extras
 
 
-```markdown
 ## Set up 
 1. Clone the project:
    ```sh
