@@ -60,6 +60,23 @@ class DeidShell(cmd.Cmd):
         "List all datasets:  DATASETS"
         self.get_available_datasets()
 
+    def do_selection(self,arg):
+        selected_datasets = self.config.get("selection","datasets").split(" ")
+        selected_techniques =self.config.get("selection","techniques").split(" ")
+        selected_evaluation =self.config.get("selection","evaluation").split(" ")
+        print(Fore.LIGHTYELLOW_EX + "Current selection :", Fore.RESET )#\n Datasets : {selected_datasets} \n Techniques : {selected_techniques} \n Evaluation : {selected_evaluation}")
+        print(Fore.LIGHTGREEN_EX + "Datasets:",Fore.RESET)
+        for i in enumerate(selected_datasets):
+            index = int(i[0])
+            print(Fore.LIGHTGREEN_EX + "\t"+str(index)+". "+selected_datasets[index],Fore.RESET)
+        print(Fore.LIGHTCYAN_EX + "Techniques:",Fore.RESET)
+        for i in enumerate(selected_techniques):
+            index = int(i[0])
+            print(Fore.LIGHTCYAN_EX + "\t"+str(index)+". "+selected_techniques[index],Fore.RESET)
+        print(Fore.LIGHTMAGENTA_EX + "Evaluation:",Fore.RESET)
+        for i in enumerate(selected_evaluation):
+            index = int(i[0])
+            print(Fore.LIGHTMAGENTA_EX + "\t"+str(index)+". "+selected_evaluation[index],Fore.RESET)
 
     """""          
     def do_set(self, arg):
@@ -469,6 +486,9 @@ class DeidShell(cmd.Cmd):
 
     def run_script(self, venv_name, technique_name, aligned_dataset_path, dataset_save_path):
         conda_sh_path = os.path.expanduser("~/miniforge3/etc/profile.d/conda.sh")
+
+        if not os.path.exists(conda_sh_path):
+            print("conda.sh path does'nt exist, please change it in run_script() in deid_toolkit.py")
 
         aligned_dataset_path = os.path.abspath(aligned_dataset_path)
         dataset_save_path = os.path.abspath(dataset_save_path)

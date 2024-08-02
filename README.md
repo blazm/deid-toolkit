@@ -62,40 +62,82 @@ An attempt to develop a toolkit for running and evaluating privacy preserving te
   - Reverse alignment
 - Extras
 
+
+```markdown
+## Set up 
+1. Clone the project:
+   ```sh
+   git clone https://github.com/blazm/deid-toolkit
+   ```
+
+2. Get `techniques.zip` and `aligned.zip` (and `original.zip` if wanted) and extract them with unzip:
+   ```sh
+   unzip techniques.zip -d root_dir
+   unzip aligned.zip -d root_dir/datasets
+   unzip original.zip -d root_dir/datasets
+   ```
+
+3. Create the toolkit environment:
+   ```sh
+   conda env create -f toolkit.yml
+   ```
+
+## How to add a dataset
+If the dataset is already aligned, put all images according to this structure:
+```
+root_dir/datasets/aligned/dataset_name/image1.jpg
+```
+If the dataset has not been preprocessed, put all images as follows:
+```
+root_dir/datasets/original/dataset_name/img/image1.jpg
+```
+
+## Labels 
+Each dataset has a corresponding `.csv` file in `root_dir/datasets/labels` containing all the labels.
+For each file, the headers are as follows:
+```
+Name,Path,Identity,Gender_code,Gender,Age,Race_code,Race,date_of_birth,Emotion_code,Neutral,Anger,Scream,Contempt,Disgust,Fear,Happy,Sadness,Surprise,Sun_glasses,Scarf,Eyeglasses,Beard,Hat,Angle
+```
+- `Gender_code`: Male = 1 and Female = -1
+- `Emotion_code`: 0 = Neutral, 1 = Anger, 2 = Scream, 3 = Contempt, 4 = Disgust, 5 = Fear, 6 = Happy, 7 = Sadness, 8 = Surprise
+- `Race_code` is not defined for now
+
+If one of the labels isn't available for the images, leave an empty string.
+
+## How to add a technique
+Add a Python script `technique_name.py` in `root_dir/techniques`. This script must be callable with:
+```sh
+python technique_name.py dataset_path dataset_save_path
+```
+
 ## ToolKit Command Examples
 
-### general commands
-- root - see currently set root directory
-- set root - set root directory
-- serve - run webserver to see the generated results
-- set serve - set results directory for serving results
+### General commands
+- `root` - see currently set root directory
+- `set root` - set root directory
+- `serve` - run webserver to see the generated results
+- `set serve` - set results directory for serving results
+- `load config "filename.ini"`
+- `save config "filename.ini"`
+- `help "command"`
+- `?` - list of all commands
 
-- load config "filename.ini"
-- save config "filename.ini"
-- help "command"
-- ? (list of all commands)
+### Listing commands for displaying implemented methods and current selection
+- `datasets`
+- `techniques`
+- `evaluation`
+- `visuals`
+- `selection`
 
-### listing commands for displaying implemented methods, * is a wildcard to run all
-- list datasets
-- list techniques
-- list evaluation
-- list visuals
-- list *
+### Selection commands for dataset|technique|evaluation|all
+- `select datasets`
+- `select techniques`
+- `select evaluation`
+- `select *` 
 
-### preprocessing commands (once the datasets were selected)
-- preprocess images
-- preprocess labels
-- preprocess *  
-
-### dataset|technique|evaluation selection
-- select datasets
-- select techniques
-- select evaluation
-- select *
-- current selection
-
-### running the processing (with feedback on the progress)
-- run preprocess
-- run techniques
-- run evaluation
-- run *
+### Running the processing (with feedback on the progress)
+- `run preprocess`
+- `run techniques`
+- `run evaluation`
+- `run *`
+```
