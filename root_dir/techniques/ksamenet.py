@@ -3,6 +3,7 @@ import cv2
 import argparse
 from k_same_net.Generator import Emotion
 import csv
+from tqdm import tqdm
 
 def make_gen():
     
@@ -52,11 +53,11 @@ def main(dataset_path,dataset_save, dataset_filetype = 'jpg',dataset_newtype = '
     # TODO: go over all files
     gen = make_gen()
     
-    for img_name, img_path in zip(img_names, img_paths):  
+    for img_name, img_path in tqdm(zip(img_names, img_paths), total=len(img_names)):  
         if os.path.exists(os.path.join(dataset_save, img_name)):
-            print("File already exists, skipping: ", img_name )
+            #print("File already exists, skipping: ", img_name )
             continue
-        print("Processing: ", img_name)
+        #print("Processing: ", img_name)
         emo = ''
         with open(labels_path,"r") as labels:
             reader=csv.DictReader(labels)
@@ -64,7 +65,7 @@ def main(dataset_path,dataset_save, dataset_filetype = 'jpg',dataset_newtype = '
                 if row['Name']==img_name and row['Emotion_code']!='':
                     emotion_code = row['Emotion_code']
                     emo = emotion_dict[emotion_code]
-                    print("Emotion : ", emo )
+                    #print("Emotion : ", emo )
                     break
         if emo=='':
             print("No emotion label available, deidentification will run with neutral expression")

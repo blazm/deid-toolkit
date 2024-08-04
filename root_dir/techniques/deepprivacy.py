@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import argparse
 import select
+from tqdm import tqdm 
 from DeepPrivacy.deep_privacy import logger
 from DeepPrivacy.deep_privacy.inference.deep_privacy_anonymizer import DeepPrivacyAnonymizer
 from DeepPrivacy.deep_privacy.build import build_anonymizer, available_models
@@ -52,11 +53,17 @@ class face_detection(base.Detector):
         return state_dict
     
 
+
 def main(dataset_path, dataset_save, dataset_filetype='jpg', dataset_newtype='jpg'):
     img_names = [i for i in os.listdir(dataset_path) if dataset_filetype in i]
     img_paths = [os.path.join(dataset_path, i) for i in img_names]
     save_paths = [os.path.join(dataset_save, i.replace(dataset_filetype, dataset_newtype)) for i in img_names]
     anonymize_path = os.path.join('DeepPrivacy', 'anonymize.py')
+
+    pbar = tqdm(total=len(img_paths), desc="Processing images", ncols=80)
+    update_interval=int(np.round(2*len(img_names)/100))
+    iteration_count = 0
+
     for img_path, save_path in zip(img_paths, save_paths):
         p = subprocess.Popen(['python', anonymize_path, '-s', img_path, '-t', save_path],
                              bufsize=2048, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -68,11 +75,11 @@ def main(dataset_path, dataset_save, dataset_filetype='jpg', dataset_newtype='jp
                 if fd == p.stdout.fileno():
                     output = p.stdout.readline()
                     if output:
-                        print("STDOUT:", output.strip())
+                        print(output.strip())
                 if fd == p.stderr.fileno():
                     error = p.stderr.readline()
                     if error:
-                        print("STDERR:", error.strip())
+                        print(error.strip())
 
             if p.poll() is not None:
                 break
@@ -83,6 +90,16 @@ def main(dataset_path, dataset_save, dataset_filetype='jpg', dataset_newtype='jp
             print(f"Image: {img_path} processed OK.")
         else:
             print(f"Image: {img_path} FAILED.")
+        
+        iteration_count += 1
+        if iteration_count >= update_interval:
+            pbar.update(update_interval)
+            iteration_count = 0
+
+    if iteration_count > 0:
+        pbar.update(iteration_count)
+
+    pbar.close()
 
 if __name__ == '__main__':
     RetinaNetDetector.__init__= face_detection.__init__
