@@ -694,7 +694,7 @@ class DeidShell(cmd.Cmd):
         evaluations = self.config.get("Available Evaluations", "evaluations").split(" ")
 
         if not evaluations:
-            print("No techniques available")
+            print("No evaluation method available")
             return
         evaluations = sorted(evaluations)
 
@@ -704,7 +704,7 @@ class DeidShell(cmd.Cmd):
             return
 
         # Print instructions for technique selection
-        print(Fore.CYAN + "[Techniques]", Fore.RESET)
+        print(Fore.CYAN + "[Evaluation methods]", Fore.RESET)
 
         # Display available techniques
         for i, evaluation in enumerate(evaluations):
