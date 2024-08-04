@@ -80,6 +80,7 @@ An attempt to develop a toolkit for running and evaluating privacy preserving te
    ```sh
    conda env create -f toolkit.yml
    ```
+4. In `deid_shell.py`, change the `conda_sh_path` variable with the correct path to the conda.sh file on your machine
 
 ## How to add a dataset
 If the dataset is already aligned, put all images according to this structure:
@@ -123,6 +124,7 @@ Add a Python script `technique_name.py` in `root_dir/techniques`. This script mu
 ```sh
 python technique_name.py dataset_path dataset_save_path
 ```
+If the new technique needs an environment different from the toolkit, put a file `technique_name.yml` in the directory `techniques/environment`
 
 ## ToolKit Command
 
