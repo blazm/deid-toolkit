@@ -3,7 +3,6 @@ import os
 import sys
 import subprocess
 import select
-from colorama import Fore
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Process")
     parser.add_argument('dataset_path', type=str, help="Path to the dataset directory")
@@ -11,13 +10,12 @@ if __name__ == '__main__':
     parser.add_argument('--dataset_filetype', type=str, default='jpg', help="Filetype of the dataset images (default: jpg)")
     parser.add_argument('--dataset_newtype', type=str, default='jpg', help="Filetype for the anonymized images (default: jpg)")
     args = parser.parse_args()
-    
-    command = ("cd LeeCroft_GNN && "
-               f"python -u generate_random.py {args.dataset_path} {args.dataset_save}")
+
+    command = ("cd APVFA && "
+               f"python -u demo/demo_folder.py {args.dataset_path} {args.dataset_save}")
 
     try:
             process = subprocess.Popen(command, shell=True, executable="/bin/bash", stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-            
             while True:
                 reads = [process.stdout.fileno(), process.stderr.fileno()]
                 ret = select.select(reads, [], [])
