@@ -12,9 +12,11 @@ dependencies:
   - matplotlib==3.8.4
   - scipy==1.13.0
   - pip
+  - mamba 
   - pip:
     - scikit-image==0.22.0
     - mtcnn==0.1.1
     - pillow==9.0.1
     - imageio==2.34.1
     - tqdm==4.66.4
+    - tensorflow
