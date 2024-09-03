@@ -269,7 +269,27 @@ class DeidShell(cmd.Cmd):
 
     def run_evaluation(self, arg):
         "Run evaluation:  RUN_EVALUATION"
-        print("Running evaluation arg: ", arg)
+        print("Running evaluation")
+        #Check if datasets or evaluation methods are selected
+        if not self.config.has_option("selection", "evaluation") or not self.config.has_option("selection", "datasets"):
+            print("No datasets or evaluation selected.")
+            return
+        selected_datasets_names = self.config.get("selection", "datasets").split()
+        selected_evaluation_names = self.config.get("selection", "evaluation").split()
+
+        for evaluation_name in selected_evaluation_names:
+            print(f"Evaluation method {evaluation_name}")
+            try:
+                #TODO check if need something before run evaluation for each dataset
+                for dataset_name in selected_datasets_names:
+                    try:
+                        #TODO run evalatuation method for each technique like _process_dataset_with_evalatuation(technique, venv_name, dataset_name)
+                        print(f"LOG: Evaluating dataset {dataset_name} with {evaluation_name}")
+                    except (ValueError, IndexError) as e: 
+                        print(f"Invalid dataset index: {dataset_name}. Error: {e}")
+            except (ValueError, IndexError) as e:
+                print(f"Invalid eevaluation method index: {evaluation_name}. Error: {e}")
+        
         # TODO: every evaluation step must have a python script that can be run and preprocess either a single file or a directory
         # the script should be able to take input and output directories as arguments
 
