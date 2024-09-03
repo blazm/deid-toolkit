@@ -269,7 +269,7 @@ class DeidShell(cmd.Cmd):
 
     def run_evaluation(self, arg):
         "Run evaluation:  RUN_EVALUATION"
-        print("Running evaluation")
+        print("Running evaluation arg: ", arg)
         # TODO: every evaluation step must have a python script that can be run and preprocess either a single file or a directory
         # the script should be able to take input and output directories as arguments
 
@@ -682,7 +682,7 @@ class DeidShell(cmd.Cmd):
             evaluation_names = evaluation_names.strip()
             self.config.set("Available Evaluations", "evaluations", evaluation_names)
         else:
-            print(Fore.RED + 'Techniques directory not found. Does the ROOT_DIR ({0}) have a folder named "techniques"?'.format(self.root_dir), Fore.RESET)
+            print(Fore.RED + 'Evalauation directory not found. Does the ROOT_DIR ({0}) have a folder named "evaluation"?'.format(self.root_dir), Fore.RESET)
 
         # Save the configuration to the file
         with open("config.ini", "w") as configfile:
