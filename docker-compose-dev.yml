@@ -8,5 +8,3 @@ services:
       - .:/home/deidtoolkit #
     container_name: deidtoolkit
     tty: true
-    stdin_open: true
-    
