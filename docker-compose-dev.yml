@@ -1,0 +1,12 @@
+services:
+  deidtoolkit:
+    platform: linux/amd64
+    build:
+      context: . #where is the application
+      dockerfile: Dockerfile.dev  
+    volumes:
+      - .:/home/deidtoolkit #
+    container_name: deidtoolkit
+    tty: true
+    stdin_open: true
+    

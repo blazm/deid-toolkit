@@ -1,0 +1,21 @@
+FROM ubuntu:20.04
+
+RUN mkdir -p /home/deidtoolkit
+
+
+#Setting conda environment
+COPY toolkit.yml /home/deidtoolkit/
+WORKDIR /home/deidtoolkit
+#RUN conda env create -f toolkit.yml
+#SHELL ["conda", "run", "-n", "toolkit", "/bin/bash", "-c"]
+
+#COPY run_toolkit.py /home/deidtoolkit/
+#CMD ["python", "run_toolkit.py"]
+
+
+#RUN ONLY NEED TO EXECUTE THIS COMMAND IN YOUR TERMINAL 
+#docker compose -f docker-compose-dev.yml up 
+#docker ps
+#docker exec -it deidtoolkit /bin/bash
+#conda activate toolkit
+
