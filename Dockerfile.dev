@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM condaforge/miniforge3
 
 RUN mkdir -p /home/deidtoolkit
 
@@ -6,6 +6,12 @@ RUN mkdir -p /home/deidtoolkit
 #Setting conda environment
 COPY toolkit.yml /home/deidtoolkit/
 WORKDIR /home/deidtoolkit
+
+RUN echo "Copy & paste the following commands in your terminal"
+RUN echo "docker exec -it deidtoolkit /bin/bash"
+RUN echo "conda env create -f toolkit.yml"
+RUN echo "conda activate toolkit"
+RUN echo "python3 run_toolkit.py"
 #RUN conda env create -f toolkit.yml
 #SHELL ["conda", "run", "-n", "toolkit", "/bin/bash", "-c"]
 
@@ -13,9 +19,17 @@ WORKDIR /home/deidtoolkit
 #CMD ["python", "run_toolkit.py"]
 
 
-#RUN ONLY NEED TO EXECUTE THIS COMMAND IN YOUR TERMINAL 
-#docker compose -f docker-compose-dev.yml up 
-#docker ps
-#docker exec -it deidtoolkit /bin/bash
-#conda activate toolkit
+#RUN ONLY NEED TO EXECUTE THE FOLLOWING COMMANDS IN YOUR TERMINAL 
+#   docker compose -f docker-compose-dev.yml up -d
+#   docker exec -it deidtoolkit /bin/bash
+#   conda env create -f toolkit.yml
+#   conda activate toolkit
+#   python3 run_toolkit.py
+
+# docker compose -f docker-compose-dev.yml stop (stop the container without removing to run it later)
+# docker compose -f docker-compose.dev.yml start (when you're ready to start the container again)
+# docker compose -f docker-compose.dev.yml down (stops and remove the container)
+# docker ps or docker ps -a (check containers)
+
+
 
