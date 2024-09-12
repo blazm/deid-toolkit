@@ -1,5 +1,3 @@
-version: '3.8'  # Docker Compose version
-
 services:
   deidtoolkit:
     platform: linux/amd64  # Specify the target platform
