@@ -63,8 +63,8 @@ ENTRYPOINT ["/usr/bin/tini", "--"]
 
 #RUN ONLY NEED TO EXECUTE THE FOLLOWING COMMANDS IN YOUR TERMINAL 
 #   docker compose -f docker-compose-dev.yml up -d
-#   docker exec -it deidtoolkit /bin/bash 
-#   docker run --gpus all -it deidtoolkit /bin/bash 
+#   docker run --gpus all -it \ --name deidtoolkit \ --shm-size=8g \  --ulimit memlock=-1 --ulimit stack=67108864 \ deidtoolkit
+
 #   conda env create -f toolkit.yml
 #   conda activate toolkit
 #   python3 run_toolkit.py
