@@ -12,13 +12,16 @@ services:
       - DEBIAN_FRONTEND=noninteractive  # Prevents interactive prompts during apt-get
     volumes:
       - .:/home/deidtoolkit  # Mounts the local directory inside the container
-    shm_size: '8g'  # Increases shared memory size to 8 GB
+    shm_size: '12g'  # Increases shared memory size to 8 GB
     deploy:
       resources:
         reservations:
           devices:
+            - driver: nvidia
+            - count: all
             - capabilities: [gpu]  # Enable GPU usage
     ulimits:
       memlock: -1  # Unlock memory
       stack: 67108864  # Maximum stack size (64 MB)
+#docker compose -f docker-compose-dev.yml up -d                                                                
 #docker compose -f docker-compose-dev.yml up -d --build                                                               
