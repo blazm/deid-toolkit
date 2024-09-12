@@ -1,10 +1,26 @@
+version: '3.8'  # Docker Compose version
+
 services:
   deidtoolkit:
-    platform: linux/amd64
+    platform: linux/amd64  # Specify the target platform
     build:
-      context: . #where is the application
-      dockerfile: Dockerfile.dev  
+      context: .  # Where the application is located
+      dockerfile: Dockerfile.dev  # The Dockerfile you want to use
+    container_name: deidtoolkit  # Name of the container
+    runtime: nvidia  # Use NVIDIA runtime for GPU support
+    tty: true  # Provides a TTY terminal
+    stdin_open: true  # Interactive mode
+    environment:
+      - DEBIAN_FRONTEND=noninteractive  # Prevents interactive prompts during apt-get
     volumes:
-      - .:/home/deidtoolkit #
-    container_name: deidtoolkit
-    tty: true
+      - .:/home/deidtoolkit  # Mounts the local directory inside the container
+    shm_size: '8g'  # Increases shared memory size to 8 GB
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]  # Enable GPU usage
+    ulimits:
+      memlock: -1  # Unlock memory
+      stack: 67108864  # Maximum stack size (64 MB)
+#docker compose -f docker-compose-dev.yml up -d --build                                                               
