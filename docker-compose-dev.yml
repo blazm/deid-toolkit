@@ -23,9 +23,11 @@ services:
     ulimits:
       memlock: -1  # Unlock memory
       stack: 67108864  # Maximum stack size (64 MB)
-    command: tail -f /dev/null #prevent stops 
+    command: bash -c "while true; do sleep 10; done"  # #prevent stops 
 
 #docker compose -f docker-compose-dev.yml up -d                                                                
-#docker compose -f docker-compose-dev.yml up -d --build                                                               
+#docker compose -f docker-compose-dev.yml up -d --build   
+#docker exec -it deidtoolkit /bin/bash
+                                                  
 
 

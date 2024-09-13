@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu20.04
+FROM nvidia/cuda:12.6.1-cudnn-devel-ubuntu20.04
 
 ARG MINIFORGE_NAME=Miniforge3
 ARG MINIFORGE_VERSION=24.7.1-0
@@ -37,8 +37,6 @@ RUN apt-get update > /dev/null && \
     echo ". ${CONDA_DIR}/etc/profile.d/conda.sh && conda activate base" >> /etc/skel/.bashrc && \
     echo ". ${CONDA_DIR}/etc/profile.d/conda.sh && conda activate base" >> ~/.bashrc
 
-
-
 # Set up the working directory and copy environment file
 RUN mkdir -p /home/deidtoolkit
 WORKDIR /home/deidtoolkit
@@ -76,3 +74,19 @@ ENTRYPOINT ["/usr/bin/tini", "--"]
 
 
 
+# Should have nvidia container toolkit to install the necesary packages to run with docker
+# curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
+#&& curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+#sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+#sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+# 
+# sudo apt-get update
+# sudo apt-get install -y nvidia-container-toolkit
+
+#
+#
+#
+#
+#
+#
+#
