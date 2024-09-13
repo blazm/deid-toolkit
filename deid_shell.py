@@ -5,6 +5,8 @@ from tqdm import tqdm
 import subprocess
 import select
 
+
+
 FOLDER_DATASET = "datasets"
 FOLDER_TECHNIQUES = "techniques"
 FOLDER_EVALUATION = "evaluation"
@@ -505,7 +507,7 @@ class DeidShell(cmd.Cmd):
         self.run_script(venv_name, technique_name, aligned_dataset_path, dataset_save_path)
 
     def run_script(self, venv_name, technique_name, aligned_dataset_path, dataset_save_path):
-        conda_sh_path = os.path.expanduser("~/miniforge3/etc/profile.d/conda.sh")
+        conda_sh_path = os.path.expanduser("/opt/conda/etc/profile.d/conda.sh")
 
         if not os.path.exists(conda_sh_path):
             print("conda.sh path does'nt exist, please change it in run_script() in deid_toolkit.py")
