@@ -18,10 +18,14 @@ services:
         reservations:
           devices:
             - driver: nvidia
-            - count: all
-            - capabilities: [gpu]  # Enable GPU usage
+              count: all
+              capabilities: [gpu]  # Enable GPU usage
     ulimits:
       memlock: -1  # Unlock memory
       stack: 67108864  # Maximum stack size (64 MB)
+    command: tail -f /dev/null #prevent stops 
+
 #docker compose -f docker-compose-dev.yml up -d                                                                
 #docker compose -f docker-compose-dev.yml up -d --build                                                               
+
+
