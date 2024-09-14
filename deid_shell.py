@@ -465,7 +465,7 @@ class DeidShell(cmd.Cmd):
             yaml_file = os.path.join(self.root_dir,"techniques","environments",env_name+".yml")
             if os.path.isfile(yaml_file):
                 try:
-                    subprocess.check_call(['mamba', 'env', 'create', '-f', yaml_file, "--prefix", "/opt/conda/envs/"])
+                    subprocess.check_call(['mamba', 'env', 'create', '-f', yaml_file, "--prefix", f"/opt/conda/envs/{env_name}"])
                     print(f"'{env_name}' environment have been created")
                     return True
                 except subprocess.CalledProcessError as e:
