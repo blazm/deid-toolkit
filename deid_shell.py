@@ -262,9 +262,6 @@ class DeidShell(cmd.Cmd):
                         print(f"Invalid dataset index: {dataset_name}. Error: {e}")
             except (ValueError, IndexError) as e:
                 print(f"Invalid technique index: {technique_name}. Error: {e}")
-                 
-
-        
         # TODO: every technique must have a python script that can be run and deidentify either a single file or a directory
         # the script should be able to take input and output directories as arguments
 
@@ -468,7 +465,7 @@ class DeidShell(cmd.Cmd):
             yaml_file = os.path.join(self.root_dir,"techniques","environments",env_name+".yml")
             if os.path.isfile(yaml_file):
                 try:
-                    subprocess.check_call(['mamba', 'env', 'create', '-f', yaml_file])
+                    subprocess.check_call(['mamba', 'env', 'create', '-f', yaml_file, "--prefix", "/opt/conda/envs/"])
                     print(f"'{env_name}' environment have been created")
                     return True
                 except subprocess.CalledProcessError as e:
@@ -476,7 +473,6 @@ class DeidShell(cmd.Cmd):
             else:
                 print(f"'{yaml_file}' does not exist. '{env_name}' cannot be created.\nUsing the toolkit environment")
                 return False
-
 
     def _process_dataset_with_technique(self, technique_name, venv_name, dataset_name):
         answer = ''
