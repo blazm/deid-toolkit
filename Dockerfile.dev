@@ -42,10 +42,21 @@ RUN mkdir -p /home/deidtoolkit
 WORKDIR /home/deidtoolkit
 COPY toolkit.yml .
 
+#Needed dependencies for the correct functionality
+#https://stackoverflow.com/questions/55313610/importerror-libgl-so-1-cannot-open-shared-object-file-no-such-file-or-directo
+RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
+# https://github.com/ultralytics/ultralytics/issues/1270
+RUN apt-get install -y libgl1-mesa-dev 
+RUN apt-get install -y libglib2.0-0
+
+
 # Automatically create and activate the Conda environment
 RUN conda env create -f toolkit.yml && conda clean --all --yes
 ENV PATH /opt/conda/envs/toolkit/bin:$PATH
 RUN echo "conda activate toolkit" >> ~/.bashrc
+RUN apt-get update && apt-get -y install cmake
+
+
 
 # Use tini as the entrypoint to handle process signals properly
 ENTRYPOINT ["/usr/bin/tini", "--"]
