@@ -1,3 +1,4 @@
+from importlib.resources import path
 import os  # os module provides a way of using operating system dependent functionality
 import cmd  # cmd is a module to create line-oriented command interpreters
 from colorama import Fore  # color text
@@ -516,15 +517,26 @@ class DeidShell(cmd.Cmd):
 
         deidentified_paths = [os.path.abspath(os.path.join(self.root_dir, 'datasets', technique, dataset_name)) 
                               for technique in techniques_names]
+        path_evaluation  = os.path.join(self.root_dir, FOLDER_EVALUATION,f"{evaluation_name}.py" )
       
-        print(deidentified_paths)
         for deidpath in deidentified_paths: 
             if not (os.path.isdir(deidpath)):
-                #TODO: test if techniques is provided but no deidentified folder exist, skip to the next one
                 print(f"Cannot find deidentified folder: {deidpath} - Skip evaluation for {dataset_name}")
                 continue
-            #TODO call the script 
-            print(f"(REMOVE THIS PRINT) This is a valid folder! {deidpath}")
+            command = ["python", "-u", path_evaluation, aligned_dataset_path, deidpath]   
+            try:
+                # Cambia el directorio de trabajo y ejecuta el comando
+                result = subprocess.run(
+                    command,
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                print(result.stdout)
+            except subprocess.CalledProcessError as e:
+                print(f"Error occurred while running the script:\n{e.stderr}")
+            except Exception as e:
+                print(f"Unexpected error: {e}")
 
         return None
 

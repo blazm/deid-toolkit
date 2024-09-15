@@ -17,7 +17,6 @@ def main():
         # Cambia el directorio de trabajo y ejecuta el comando
         result = subprocess.run(
             command,
-            cwd="pytorch_fid",
             capture_output=True,
             text=True,
             check=True
