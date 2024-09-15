@@ -2,15 +2,16 @@ import argparse
 import subprocess
 def main():
     parser = argparse.ArgumentParser(description="Evaluate FID score")
-    parser.add_argument('aligned_path', type=str, help="Path to the aligned dataset directory")
-    parser.add_argument('deidentified_path', type=str, help="Path to the deidentified directory")
+    parser.add_argument('path', type=str, nargs=2,
+                    help=('Paths of the datasets aligned and deidentified'))
+
     args = parser.parse_args()
     
     # Construir el comando
     command = [
 
         "python", "-u", "__main__.py", "--batch-size", "8",
-        args.aligned_path, args.deidentified_path
+        args.path[0], args.path[1]
     ]
 
     try:
