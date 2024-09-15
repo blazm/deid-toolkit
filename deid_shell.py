@@ -287,7 +287,6 @@ class DeidShell(cmd.Cmd):
                 #TODO check if need something before run evaluation for each dataset
                 for dataset_name in selected_datasets_names:
                     try:
-                        print(f"LOG: Evaluating dataset {dataset_name} with {evaluation_name}")
                         self._process_dataset_with_evaluation(dataset_name,selected_techniques_names,evaluation_name)
                     except (ValueError, IndexError) as e: 
                         print(f"Invalid dataset index: {dataset_name}. Error: {e}")
@@ -518,11 +517,12 @@ class DeidShell(cmd.Cmd):
         aligned_dataset_path = os.path.abspath(aligned_dataset_path)
 
         deidentified_paths = [os.path.abspath(os.path.join(self.root_dir, 'datasets', technique, dataset_name)) 
-                              for technique in techniques_names]
-        path_evaluation  = os.path.join(self.root_dir, FOLDER_EVALUATION,f"{evaluation_name}.py" )
+                              for technique in techniques_names] #conver techniques into absolute deidentified paths, needed by the called function
+        path_evaluation  = os.path.join(self.root_dir, FOLDER_EVALUATION,f"{evaluation_name}.py" ) #file to call
 
+        #This two lines are for logs for intermediary results
         output_path  = os.path.join(self.root_dir, FOLDER_EVALUATION, "output", "metrics.log")
-
+        output_path = os.path.abspath(output_path)
         for deidpath in deidentified_paths: 
             if not (os.path.isdir(deidpath)):
                 print(f"Cannot find deidentified folder: {deidpath} - Skip evaluation for {dataset_name}")
@@ -537,7 +537,7 @@ class DeidShell(cmd.Cmd):
                     check=True
                 )
                 print(result.stdout)
-                with open(output_path, "a") as log_file:
+                with open(output_path, "a") as log_file: #log the output
                     import json
                     from datetime import datetime
                     data = {
