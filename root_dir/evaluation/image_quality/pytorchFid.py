@@ -8,6 +8,7 @@ def main():
     
     # Construir el comando
     command = [
+
         "python", "-u", "__main__.py", "--batch-size", "8",
         args.aligned_path, args.deidentified_path
     ]
@@ -16,7 +17,7 @@ def main():
         # Cambia el directorio de trabajo y ejecuta el comando
         result = subprocess.run(
             command,
-            cwd="pytorch-fid",
+            cwd="pytorch_fid",
             capture_output=True,
             text=True,
             check=True
