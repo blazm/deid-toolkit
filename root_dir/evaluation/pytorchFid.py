@@ -6,14 +6,12 @@ def main():
                     help=('Paths of the datasets aligned and deidentified'))
 
     args = parser.parse_args()
-    # Construir el comando
     command = [
         "python", "-u", "image_quality/pytorch_fid/__main__.py", "--batch-size", "8",
         args.path[0], args.path[1]
     ]
 
     try:
-        # Cambia el directorio de trabajo y ejecuta el comando
         result = subprocess.run(
             command,
             cwd="root_dir/evaluation/",
