@@ -512,17 +512,19 @@ class DeidShell(cmd.Cmd):
             select_metrics (list): selected metrics to evaluate
         """
         aligned_dataset_path = os.path.join(self.root_dir, FOLDER_DATASET,"aligned", dataset_name)
-        print(f"(REMOVE THIS PRINT) Aligned path: {aligned_dataset_path}")
         aligned_dataset_path = os.path.abspath(aligned_dataset_path)
-        print(f"(REMOVE THIS PRINT) aligned absolute path {aligned_dataset_path}")
-        for technique in techniques_names: 
-            path_technique_folder = os.path.join(self.root_dir,FOLDER_TECHNIQUES, dataset_name)
-            if not (os.path.isdir(path_technique_folder)):
-                print(f"Skip evaluation for {dataset_name} with technique {technique}")
+
+        deidentified_paths = [os.path.abspath(os.path.join(self.root_dir, 'datasets', technique, dataset_name)) 
+                              for technique in techniques_names]
+      
+        print(deidentified_paths)
+        for deidpath in deidentified_paths: 
+            if not (os.path.isdir(deidpath)):
+                #TODO: test if techniques is provided but no deidentified folder exist, skip to the next one
+                print(f"Cannot find deidentified folder: {deidpath} - Skip evaluation for {dataset_name}")
                 continue
             #TODO call the script 
-            print("(REMOVE THIS PRINT) This is a valid folder!")
-        #TODO: test if techniques is provided but no deidentified folder exist, skip to the next one
+            print(f"(REMOVE THIS PRINT) This is a valid folder! {deidpath}")
 
         return None
 
