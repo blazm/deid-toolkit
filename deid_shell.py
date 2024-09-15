@@ -1,10 +1,12 @@
-from importlib.resources import path
 import os  # os module provides a way of using operating system dependent functionality
-import cmd  # cmd is a module to create line-oriented command interpreters
+import cmd
+from turtle import color  # cmd is a module to create line-oriented command interpreters
 from colorama import Fore  # color text
 from tqdm import tqdm
 import subprocess
 import select
+
+from yaspin import yaspin
 
 
 
@@ -269,7 +271,6 @@ class DeidShell(cmd.Cmd):
 
     def run_evaluation(self, arg):
         "Run evaluation:  RUN_EVALUATION"
-        print("Running evaluation")
         #Check if datasets or evaluation methods are selected
         if not self.config.has_option("selection", "evaluation") or not self.config.has_option("selection", "datasets"):
             print("No datasets or evaluation selected.")
@@ -280,13 +281,13 @@ class DeidShell(cmd.Cmd):
         if not selected_evaluation_names:
             print("No evaluation methods are selected")
             return
-
         for evaluation_name in selected_evaluation_names:
-            print(f"Evaluation method {evaluation_name}")
+            print(f"{evaluation_name} in progress...")
             try:
                 #TODO check if need something before run evaluation for each dataset
                 for dataset_name in selected_datasets_names:
                     try:
+                        print(f"\tDataset:{dataset_name}")
                         self._process_dataset_with_evaluation(dataset_name,selected_techniques_names,evaluation_name)
                     except (ValueError, IndexError) as e: 
                         print(f"Invalid dataset index: {dataset_name}. Error: {e}")
@@ -523,35 +524,41 @@ class DeidShell(cmd.Cmd):
         #This two lines are for logs for intermediary results
         output_path  = os.path.join(self.root_dir, FOLDER_EVALUATION, "output", "metrics.log")
         output_path = os.path.abspath(output_path)
-        for deidpath in deidentified_paths: 
-            if not (os.path.isdir(deidpath)):
-                print(f"Cannot find deidentified folder: {deidpath} - Skip evaluation for {dataset_name}")
-                continue
-            command = ["python", "-u", path_evaluation, aligned_dataset_path, deidpath]   
-            try:
-                # Cambia el directorio de trabajo y ejecuta el comando
-                result = subprocess.run(
-                    command,
-                    capture_output=True,
-                    text=True,
-                    check=True
-                )
-                print(result.stdout)
-                with open(output_path, "a") as log_file: #log the output
-                    import json
-                    from datetime import datetime
-                    data = {
-                    "dataset": aligned_dataset_path, 
-                    "technique": deidpath,
-                    "result": result.stdout,
-                    "date": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                    }
-                    log_file.write(json.dumps(data, indent=4) + "\n")
+        with yaspin(text=f"Running evaluation for {dataset_name}...", color="cyan") as sp:
+            for i,deidpath in enumerate(deidentified_paths): 
+                sp.text = f"Running evaluation with technique {techniques_names[i]}..."
+                if not (os.path.isdir(deidpath)):
+                    sp.write(f"\t\t> {techniques_names[i]} : Cannot find deidentified {techniques_names[i]} folder for {dataset_name} - (Skipped)")
+                    continue
+                command = ["python", "-u", path_evaluation, aligned_dataset_path, deidpath]   
+                try:
+                    # Cambia el directorio de trabajo y ejecuta el comando
+                    result = subprocess.run(
+                        command,
+                        capture_output=True,
+                        text=True,
+                        check=True
+                    )
+                    result = result.stdout.replace("\n","").split(" ")[-1]
+                    sp.write(f"\t\t> {techniques_names[i]} : {result} ")
+                    with open(output_path, "a") as log_file: #log the output
+                        import json
+                        from datetime import datetime
+                        data = {
+                        "dataset": aligned_dataset_path, 
+                        "technique": deidpath,
+                        "result": result,
+                        "date": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        }
+                        log_file.write(json.dumps(data, indent=4) + "\n")
 
-            except subprocess.CalledProcessError as e:
-                print(f"Error occurred while running the script:\n{e.stderr}")
-            except Exception as e:
-                print(f"Unexpected error: {e}")
+                except subprocess.CalledProcessError as e:
+                    print(f"Error occurred while running the script:\n{e.stderr}")
+                except Exception as e:
+                    print(f"Unexpected error: {e}")
+            else:
+                sp.text = ""
+                sp.ok("Done")
         return None
 
     def run_script(self, venv_name, technique_name, aligned_dataset_path, dataset_save_path):
