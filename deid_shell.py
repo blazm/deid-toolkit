@@ -277,6 +277,9 @@ class DeidShell(cmd.Cmd):
         selected_datasets_names = self.config.get("selection", "datasets").split()
         selected_techniques_names = self.config.get("selection", "techniques").split()
         selected_evaluation_names = self.config.get("selection", "evaluation").split()
+        if not selected_evaluation_names:
+            print("No evaluation methods are selected")
+            return
 
         for evaluation_name in selected_evaluation_names:
             print(f"Evaluation method {evaluation_name}")
@@ -290,7 +293,6 @@ class DeidShell(cmd.Cmd):
                         print(f"Invalid dataset index: {dataset_name}. Error: {e}")
             except (ValueError, IndexError) as e:
                 print(f"Invalid eevaluation method index: {evaluation_name}. Error: {e}")
-        
         # TODO: every evaluation step must have a python script that can be run and preprocess either a single file or a directory
         # the script should be able to take input and output directories as arguments
 
@@ -537,7 +539,6 @@ class DeidShell(cmd.Cmd):
                 print(f"Error occurred while running the script:\n{e.stderr}")
             except Exception as e:
                 print(f"Unexpected error: {e}")
-
         return None
 
     def run_script(self, venv_name, technique_name, aligned_dataset_path, dataset_save_path):
