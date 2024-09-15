@@ -274,6 +274,7 @@ class DeidShell(cmd.Cmd):
             print("No datasets or evaluation selected.")
             return
         selected_datasets_names = self.config.get("selection", "datasets").split()
+        selected_techniques_names = self.config.get("selection", "techniques").split()
         selected_evaluation_names = self.config.get("selection", "evaluation").split()
 
         for evaluation_name in selected_evaluation_names:
@@ -282,8 +283,8 @@ class DeidShell(cmd.Cmd):
                 #TODO check if need something before run evaluation for each dataset
                 for dataset_name in selected_datasets_names:
                     try:
-                        #TODO run evalatuation method for each technique like _process_dataset_with_evalatuation(technique, venv_name, dataset_name)
                         print(f"LOG: Evaluating dataset {dataset_name} with {evaluation_name}")
+                        self._process_dataset_with_evaluation(dataset_name,selected_techniques_names,evaluation_name)
                     except (ValueError, IndexError) as e: 
                         print(f"Invalid dataset index: {dataset_name}. Error: {e}")
             except (ValueError, IndexError) as e:
@@ -501,6 +502,29 @@ class DeidShell(cmd.Cmd):
         print(f"Processing dataset: {dataset_name} | Source path: {aligned_dataset_path} | Save path: {dataset_save_path}")
 
         self.run_script(venv_name, technique_name, aligned_dataset_path, dataset_save_path)
+    def _process_dataset_with_evaluation(self,dataset_name:str, techniques_names:list, evaluation_name:str):
+        """This function performs the evaluation method for one dataset (provided in params),
+          with the several deidentified methods. If not file exist for the technique, skip to the next one.
+          run_evaluation
+        Args:
+            dataset_name (str): the dataset name to evaluate
+            techniques (list): techniques which build the path to access to deidentified folder
+            select_metrics (list): selected metrics to evaluate
+        """
+        aligned_dataset_path = os.path.join(self.root_dir, FOLDER_DATASET,"aligned", dataset_name)
+        print(f"(REMOVE THIS PRINT) Aligned path: {aligned_dataset_path}")
+        aligned_dataset_path = os.path.abspath(aligned_dataset_path)
+        print(f"(REMOVE THIS PRINT) aligned absolute path {aligned_dataset_path}")
+        for technique in techniques_names: 
+            path_technique_folder = os.path.join(self.root_dir,FOLDER_TECHNIQUES, dataset_name)
+            if not (os.path.isdir(path_technique_folder)):
+                print(f"Skip evaluation for {dataset_name} with technique {technique}")
+                continue
+            #TODO call the script 
+            print("(REMOVE THIS PRINT) This is a valid folder!")
+        #TODO: test if techniques is provided but no deidentified folder exist, skip to the next one
+
+        return None
 
     def run_script(self, venv_name, technique_name, aligned_dataset_path, dataset_save_path):
         conda_sh_path = os.path.expanduser("/opt/conda/etc/profile.d/conda.sh")
