@@ -6,11 +6,10 @@ def main():
                     help=('Paths of the datasets aligned and deidentified'))
 
     args = parser.parse_args()
-    
+    print(args.path[0], args.path[1])
     # Construir el comando
     command = [
-
-        "python", "-u", "__main__.py", "--batch-size", "8",
+        "python", "-u", "./image_quality/__main__.py", "--batch-size", "8",
         args.path[0], args.path[1]
     ]
 
