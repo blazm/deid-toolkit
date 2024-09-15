@@ -520,7 +520,9 @@ class DeidShell(cmd.Cmd):
         deidentified_paths = [os.path.abspath(os.path.join(self.root_dir, 'datasets', technique, dataset_name)) 
                               for technique in techniques_names]
         path_evaluation  = os.path.join(self.root_dir, FOLDER_EVALUATION,f"{evaluation_name}.py" )
-      
+
+        output_path  = os.path.join(self.root_dir, FOLDER_EVALUATION, "output", "metrics.log")
+
         for deidpath in deidentified_paths: 
             if not (os.path.isdir(deidpath)):
                 print(f"Cannot find deidentified folder: {deidpath} - Skip evaluation for {dataset_name}")
@@ -535,6 +537,17 @@ class DeidShell(cmd.Cmd):
                     check=True
                 )
                 print(result.stdout)
+                with open(output_path, "a") as log_file:
+                    import json
+                    from datetime import datetime
+                    data = {
+                    "dataset": aligned_dataset_path, 
+                    "technique": deidpath,
+                    "result": result.stdout,
+                    "date": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    }
+                    log_file.write(json.dumps(data, indent=4) + "\n")
+
             except subprocess.CalledProcessError as e:
                 print(f"Error occurred while running the script:\n{e.stderr}")
             except Exception as e:
