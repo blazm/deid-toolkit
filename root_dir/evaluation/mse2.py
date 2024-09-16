@@ -1,6 +1,7 @@
 import argparse
 import os
 import lpips
+import torch
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -16,8 +17,7 @@ def main():
 
     output_scores_file = f"./mse_{dataset_name}_{technique_name}.txt"
     print("Save file: ", output_scores_file)
-    use_gpu =  True
- 
+    use_gpu =  True if torch.cuda.is_available() else False
     from torch import nn
     loss_fn = nn.MSELoss()
     if(use_gpu):
@@ -42,6 +42,9 @@ def main():
             if(use_gpu):
                 img0 = img0.cuda()
                 img1 = img1.cuda()
+            else:
+                img0 = img0.cpu()
+                img1 = img1.cpu()
             #print("Shapes: ", img0.shape, " ", img1.shape)
             # Compute distance
             dist01 = loss_fn(img0, img1) # mse 
