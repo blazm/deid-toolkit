@@ -24,7 +24,6 @@ def main():
     technique_name = deidentified_path.split("/")[-2]
 
     output_scores_file = f"./root_dir/evaluation/output/mse_{dataset_name}_{technique_name}.txt" #TODO: fix this to absolute path
-    print("Save file: ", output_scores_file)
     use_gpu = True if torch.cuda.is_available() else False
     from torch import nn
     loss_fn = nn.MSELoss()
@@ -64,7 +63,6 @@ def main():
             f.writelines('%.6f\n' % dist01)
     
     f.close()
-    
     # Calculate mean and standard deviation
     arr = np.loadtxt(output_scores_file)
     print(" mean & std: " + "{:1.2f}".format(arr.mean()) + " ± " + "{:1.2f}".format(arr.std()))
