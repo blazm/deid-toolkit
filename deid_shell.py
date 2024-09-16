@@ -539,7 +539,7 @@ class DeidShell(cmd.Cmd):
                         text=True,
                         check=True
                     )
-                    result = result.stdout.replace("\n","").split(" ")[-1]
+                    result = result.stdout.replace("\n","")
                     sp.write(f"\t\t> {techniques_names[i]} : {result} ")
                     with open(output_path, "a") as log_file: #log the output
                         import json
@@ -558,7 +558,7 @@ class DeidShell(cmd.Cmd):
                     print(f"Unexpected error: {e}")
             else:
                 sp.text = ""
-                sp.ok("Done")
+                sp.ok(f"{evaluation_name} done")
         return None
 
     def run_script(self, venv_name, technique_name, aligned_dataset_path, dataset_save_path):
