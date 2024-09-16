@@ -23,7 +23,7 @@ def main():
     dataset_name = aligned_path.split("/")[-1]
     technique_name = deidentified_path.split("/")[-2]
 
-    output_scores_file = f"./mse_{dataset_name}_{technique_name}.txt"
+    output_scores_file = f"./root_dir/evaluation/output/mse_{dataset_name}_{technique_name}.txt" #TODO: fix this to absolute path
     print("Save file: ", output_scores_file)
     use_gpu = True if torch.cuda.is_available() else False
     from torch import nn
@@ -49,8 +49,8 @@ def main():
                 img0 = resize(img0, img1)
             
             # Convert to tensors
-            img0 = lpips.im2tensor(img0)  # RGB image from [-1,1]
-            img1 = lpips.im2tensor(img1)  # RGB image from [-1,1]
+            img0 = lpips.im2tensor(np.array(img0))  # RGB image from [-1,1]
+            img1 = lpips.im2tensor(np.array(img1))  # RGB image from [-1,1]
             
             if use_gpu:
                 img0 = img0.cuda()
@@ -67,7 +67,7 @@ def main():
     
     # Calculate mean and standard deviation
     arr = np.loadtxt(output_scores_file)
-    print(dataset_name + " mean & std: " + "{:1.2f}".format(arr.mean()) + " ± " + "{:1.2f}".format(arr.std()))
+    print(" mean & std: " + "{:1.2f}".format(arr.mean()) + " ± " + "{:1.2f}".format(arr.std()))
 
 if __name__ == '__main__':
     main()
