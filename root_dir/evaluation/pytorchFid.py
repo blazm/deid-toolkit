@@ -19,7 +19,7 @@ def main():
             text=True,
             check=True
         )
-        print(result.stdout)
+        print(result.stdout.split(" ")[-1])
     except subprocess.CalledProcessError as e:
         print(f"Error occurred while running the script:\n{e.stderr}")
     except Exception as e:
