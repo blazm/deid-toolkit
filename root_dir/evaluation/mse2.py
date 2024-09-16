@@ -68,4 +68,7 @@ def main():
     print(" mean & std: " + "{:1.2f}".format(arr.mean()) + " ± " + "{:1.2f}".format(arr.std()))
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"Unexpected error: {e}")
