@@ -4,10 +4,10 @@ import lpips
 import torch
 import numpy as np
 from PIL import Image
-from utils import compute_mean_std, get_output_filename, resize_if_different
+from utils import MetricsBuilder, compute_mean_std, get_output_filename, resize_if_different
 
 
-def main():
+def main(output_result: MetricsBuilder):
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser = argparse.ArgumentParser(description="Evaluate MSE score between aligned and deidentified images")
     parser.add_argument('path', type=str, nargs=2,
@@ -22,7 +22,7 @@ def main():
     from torch import nn
     loss_fn = nn.MSELoss()
     if use_gpu:
-        print("CUDA is available")
+        output_result.add_misc_message("Cuda is available")
         loss_fn.cuda()
         
     f = open(output_scores_file, 'w')
@@ -49,9 +49,14 @@ def main():
     f.close()
     # Calculate mean and standard deviation
     mean, std = compute_mean_std(output_scores_file)
-    print(" mean & std: " + "{:1.2f}".format(mean) + " ± " + "{:1.2f}".format(std))
+    
+    print(output_result.add_metric("mse", "mean", "{:1.2f}".format(mean))
+          .add_metric("mse", "std","{:1.2f}".format(std))
+          .build())
 if __name__ == '__main__':
+    output_result = MetricsBuilder()
     try:
-        main()
+        main(output_result)
     except Exception as e:
-        print(f"Unexpected error: {e}")
+        output_result.add_error(f"Unexpected error: {e}")
+        print(output_result.build())

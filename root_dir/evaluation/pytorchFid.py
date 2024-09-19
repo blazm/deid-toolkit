@@ -1,6 +1,8 @@
 import argparse
 import subprocess
+from utils import MetricsBuilder
 def main():
+    output_result = MetricsBuilder()
     parser = argparse.ArgumentParser(description="Evaluate FID score")
     parser.add_argument('path', type=str, nargs=2,
                     help=('Paths of the datasets aligned and deidentified'))
@@ -10,7 +12,6 @@ def main():
         "python", "-u", "image_quality/pytorch_fid/__main__.py", "--batch-size", "8",
         args.path[0], args.path[1]
     ]
-
     try:
         result = subprocess.run(
             command,
@@ -19,11 +20,11 @@ def main():
             text=True,
             check=True
         )
-        print(result.stdout.split(" ")[-1])
+        output_result.add_metric("pytorchFid", "score", result.stdout.split(" ")[-1].replace("\n",""))
     except subprocess.CalledProcessError as e:
-        print(f"Error occurred while running the script:\n{e.stderr}")
+        output_result.add_error(f"Error occurred while running the script:\n{e.stderr}")
     except Exception as e:
-        print(f"Unexpected error: {e}")
-
+        output_result.add_error(f"Unexpected error: {e}")
+    print(output_result.build())
 if __name__ == '__main__':
     main()

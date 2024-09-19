@@ -5,12 +5,13 @@ import torch
 import numpy as np
 from PIL import Image
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
-from utils import compute_mean_std, get_output_filename,resize_if_different
+from utils import compute_mean_std, get_output_filename,resize_if_different, MetricsBuilder
 # Now you can import the functions and classes
 
 # X: (N,3,H,W) a batch of non-negative RGB images (0~255)
 # Y: (N,3,H,W)  
 def main():
+    output_result = MetricsBuilder()
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser = argparse.ArgumentParser(description="Evaluate ssim score between aligned and deidentified images")
     parser.add_argument('path', type=str, nargs=2,
@@ -28,10 +29,10 @@ def main():
     from torch import nn
     loss_fn = nn.MSELoss()
     if use_gpu:
-        print("\nCUDA is available\n")
+        output_result.add_misc_message("Cuda is available")
         loss_fn.cuda()
     else: 
-        print("\nNot CUDA available\n")
+        output_result.add_misc_message("Cuda is available")
     
     f = open(ssim_output_scores_file, 'w')
     f_ms = open(msssim_output_scores_file,'w')
@@ -66,9 +67,14 @@ def main():
     f_ms.close()
     ssim_mean, ssim_std = compute_mean_std(ssim_output_scores_file)
     mssim_mean, mssim_std = compute_mean_std(msssim_output_scores_file)
-    print("ssim | mean & std: {:1.2f}".format(ssim_mean) + " ± "+"{:1.2f}".format(ssim_std))
-    print("msssim | mean & std: {:1.2f}".format(mssim_mean) + " ± "+"{:1.2f}".format(mssim_std))
-    
+   
+    print(output_result
+          .add_metric("ssim", "mean", "{:1.2f}".format(ssim_mean))
+          .add_metric("ssim", "std", "{:1.2f}".format(ssim_std))
+          .add_metric("mssim", "mean","{:1.2f}".format(mssim_mean))
+          .add_metric("mssim", "std", "{:1.2f}".format(mssim_std))
+          .build() # don't forget to build at the end
+          )
 
 
 
