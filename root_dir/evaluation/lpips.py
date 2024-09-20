@@ -4,7 +4,7 @@ import lpips
 import torch
 import numpy as np
 from PIL import Image
-from utils import compute_mean_std,resize_if_different,get_output_filename, MetricsBuilder
+from utils import compute_mean_std,resize_if_different,get_output_filename, MetricsBuilder, with_no_prints
 def main():
     output_result = MetricsBuilder()
     parser = argparse.ArgumentParser(description="Evaluate lpips score")
@@ -20,10 +20,8 @@ def main():
     
     loss_fn = lpips.LPIPS(net='alex', version="0.1") # alex
     if use_gpu:
-        output_result.add_misc_message("Cuda is available")
         loss_fn.cuda()
-    else: 
-        output_result.add_misc_message("Cuda is not available")
+    
     
     f = open(output_scores_file, 'w')
     files = os.listdir(aligned_dataset_path)
@@ -46,10 +44,10 @@ def main():
             f.writelines('%.6f\n'%(dist01)) # we need only scores, to compute averages easily
 
     f.close()
-    
+    output_result.add_output_message("Executed on Cuda" if use_gpu else "Executed on cpu")
     mean, std = compute_mean_std(output_scores_file)
-    output_result.add_metric("lpips", "mean", "{:1.2f}".format(mean))
-    output_result.add_metric("lpips", "std", "{:1.2f}".format(std))
-    print(output_result.build())
+    output_result.add_metric("lpips", "mean", "{:1.2f}".format(mean)).add_metric("lpips", "std", "{:1.2f}".format(std))
+    return output_result.build()
 if __name__ == '__main__':
-    main()
+    result, output , _ =with_no_prints(main)
+    print(result)
