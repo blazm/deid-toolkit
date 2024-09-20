@@ -1,5 +1,7 @@
 from PIL import Image
 import numpy as np
+import io
+from contextlib import redirect_stdout, redirect_stderr
 """
 This file will provide usefull functions for the scripts that performs evaluation techniques.
 """
@@ -57,6 +59,26 @@ def compute_mean_std(output_scores_file:str)-> tuple:
     """
     arr = np.loadtxt(output_scores_file)
     return arr.mean() , arr.std()
+def with_no_prints(function, *args, **kwargs)->tuple:
+    """
+    This function will redirect the undesired prints to the returned variables, 
+    to control the flow of the outputs from other three parties scripts
+
+    Arguments: 
+        function: the function to execte without undesired prints, 
+        *args: the arguments of the function
+    Returns:
+        result: the returned value of the funcion
+        output: the prints, without errors
+        error: the error prints. 
+    """
+    f = io.StringIO()
+    errors = io.StringIO()
+    with redirect_stdout(f), redirect_stderr(errors):
+        result = function(*args, **kwargs)
+    output = f.getvalue()
+    error_output = errors.getvalue()
+    return result, output, error_output
 
 class MetricsBuilder:
     """
@@ -72,7 +94,7 @@ class MetricsBuilder:
             .build()
     """
     def __init__(self):
-        self._output_result = {"result": [], "errors":[], "misc_messages": []}
+        self._output_result = {"result": [], "errors":[], "output_messages": []}
     def add_metric(self, metric_name:str, score_name="score",value="n/d"):
         """Adds or update a value"""
         for result in self._output_result['result']:
@@ -85,15 +107,15 @@ class MetricsBuilder:
         """If something goes wrong, you can add a error message"""
         self._output_result['errors'].append(message)
         return self
-    def add_misc_message(self,message):
-        self._output_result["misc_messages"].append(message)
+    def add_output_message(self,message):
+        self._output_result["output_messages"].append(message)
         return self
     def build(self):
         """Call this function when you want to print the dictionary"""
         return self._output_result
     def reset(self):
         """restart"""
-        self._output_result = {"result": [], "errors":[]}
+        self._output_result = {"result": [], "errors":[], "output_messages": []}
         return self
 
 
