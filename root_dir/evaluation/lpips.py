@@ -46,7 +46,7 @@ def main():
     f.close()
     output_result.add_output_message("Executed on Cuda" if use_gpu else "Executed on cpu")
     mean, std = compute_mean_std(output_scores_file)
-    output_result.add_metric("lpips", "mean", "{:1.2f}".format(mean)).add_metric("lpips", "std", "{:1.2f}".format(std))
+    output_result.add_metric("lpips", "mean ± std", "{:1.2f} ± {:1.2f}".format(mean, std))
     return output_result.build()
 if __name__ == '__main__':
     result, output , _ =with_no_prints(main)
