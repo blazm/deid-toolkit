@@ -1,10 +1,11 @@
 import argparse
 import os
+from unittest import result
 import lpips
 import torch
 import numpy as np
 from PIL import Image
-from utils import MetricsBuilder, compute_mean_std, get_output_filename, resize_if_different
+from utils import MetricsBuilder, compute_mean_std, get_output_filename, resize_if_different, with_no_prints
 
 
 def main(output_result: MetricsBuilder):
@@ -22,7 +23,6 @@ def main(output_result: MetricsBuilder):
     from torch import nn
     loss_fn = nn.MSELoss()
     if use_gpu:
-        output_result.add_misc_message("Cuda is available")
         loss_fn.cuda()
         
     f = open(output_scores_file, 'w')
@@ -49,14 +49,14 @@ def main(output_result: MetricsBuilder):
     f.close()
     # Calculate mean and standard deviation
     mean, std = compute_mean_std(output_scores_file)
-    
-    print(output_result.add_metric("mse", "mean", "{:1.2f}".format(mean))
-          .add_metric("mse", "std","{:1.2f}".format(std))
-          .build())
+    output_result.add_output_message("Cuda is available" if use_gpu else "Not cuda available")
+    return output_result.add_metric("mse", "mean ± std", "{:1.2f} ± {:1.2f}".format(mean, std))
 if __name__ == '__main__':
     output_result = MetricsBuilder()
     try:
-        main(output_result)
+        result, output , _ =with_no_prints(main, output_result)
+        
     except Exception as e:
         output_result.add_error(f"Unexpected error: {e}")
-        print(output_result.build())
+    #    print(output_result.build())
+    print(output_result.build())
