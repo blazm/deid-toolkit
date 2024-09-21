@@ -5,7 +5,7 @@ import torch
 import numpy as np
 from PIL import Image
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
-from utils import compute_mean_std, get_output_filename,resize_if_different, MetricsBuilder
+from utils import compute_mean_std, get_output_filename,resize_if_different, MetricsBuilder, with_no_prints
 # Now you can import the functions and classes
 
 # X: (N,3,H,W) a batch of non-negative RGB images (0~255)
@@ -29,10 +29,8 @@ def main():
     from torch import nn
     loss_fn = nn.MSELoss()
     if use_gpu:
-        output_result.add_misc_message("Cuda is available")
         loss_fn.cuda()
-    else: 
-        output_result.add_misc_message("Cuda is available")
+ 
     
     f = open(ssim_output_scores_file, 'w')
     f_ms = open(msssim_output_scores_file,'w')
@@ -69,14 +67,12 @@ def main():
     mssim_mean, mssim_std = compute_mean_std(msssim_output_scores_file)
    
     print(output_result
-          .add_metric("ssim", "mean", "{:1.2f}".format(ssim_mean))
-          .add_metric("ssim", "std", "{:1.2f}".format(ssim_std))
-          .add_metric("mssim", "mean","{:1.2f}".format(mssim_mean))
-          .add_metric("mssim", "std", "{:1.2f}".format(mssim_std))
+          .add_metric("ssim", "mean ± std", "{:1.2f} ± {:1.2f}".format(ssim_mean, ssim_std))
+          .add_metric("mssim", "mean ± std", "{:1.2f} ± {:1.2f}".format(mssim_mean, mssim_std))
+          .add_output_message("Executed on cuda" if use_gpu else "Cuda not available, executed in cpu")
           .build() # don't forget to build at the end
-          )
-
-
+    )
 
 if __name__ == "__main__":
-    main()
+    _, result, _ = with_no_prints(main)
+    print(result)

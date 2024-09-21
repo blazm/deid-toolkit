@@ -1,6 +1,7 @@
 import argparse
 import subprocess
-from utils import MetricsBuilder
+from unittest import result
+from utils import MetricsBuilder, with_no_prints
 def main():
     output_result = MetricsBuilder()
     parser = argparse.ArgumentParser(description="Evaluate FID score")
@@ -25,6 +26,7 @@ def main():
         output_result.add_error(f"Error occurred while running the script:\n{e.stderr}")
     except Exception as e:
         output_result.add_error(f"Unexpected error: {e}")
-    print(output_result.build())
+    return output_result.build()
 if __name__ == '__main__':
-    main()
+    result, _, _ =with_no_prints(main)
+    print(result)
