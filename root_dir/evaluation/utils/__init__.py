@@ -2,6 +2,7 @@ from PIL import Image
 import numpy as np
 import io
 from contextlib import redirect_stdout, redirect_stderr
+import json
 """
 This file will provide usefull functions for the scripts that performs evaluation techniques.
 """
@@ -94,14 +95,15 @@ class MetricsBuilder:
             .build()
     """
     def __init__(self):
-        self._output_result = {"result": [], "errors":[], "output_messages": []}
+        self._output_result = {"result": {}, "errors":[], "output_messages": []}
     def add_metric(self, metric_name:str, score_name="score",value="n/d"):
         """Adds or update a value"""
-        for result in self._output_result['result']:
-            if metric_name in result:
-                result[metric_name][score_name] = value
-                return self
-        self._output_result['result'].append({metric_name: {score_name: value}})
+        
+        if metric_name not in self._output_result["result"]:
+            self._output_result["result"][metric_name] = {}
+        if score_name not in self._output_result["result"][metric_name]:
+            self._output_result["result"][metric_name][score_name] = "n/d"
+        self._output_result["result"][metric_name][score_name] =value
         return self
     def add_error(self, message, error="Unexpected error"): 
         """If something goes wrong, you can add a error message"""
@@ -111,8 +113,8 @@ class MetricsBuilder:
         self._output_result["output_messages"].append(message)
         return self
     def build(self):
-        """Call this function when you want to print the dictionary"""
-        return self._output_result
+        """Call this function when you want to print the dictionary in json format"""
+        return json.dumps(self._output_result, indent=4)
     def reset(self):
         """restart"""
         self._output_result = {"result": [], "errors":[], "output_messages": []}
