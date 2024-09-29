@@ -1,7 +1,6 @@
 from ast import For
 import os  # os module provides a way of using operating system dependent functionality
 import cmd
-from re import A
 from turtle import color  # cmd is a module to create line-oriented command interpreters
 from colorama import Fore  # color text
 from tqdm import tqdm
@@ -17,13 +16,14 @@ FOLDER_DATASET = "datasets"
 FOLDER_TECHNIQUES = "techniques"
 FOLDER_EVALUATION = "evaluation"
 FOLDER_VISUALIZATION = "visualization"
-
+FOLDER_ENVIRONMENTS = "environments"
 
 class DeidShell(cmd.Cmd):
     intro = "Welcome to DeID-ToolKit.   Type help or ? to list commands.\n"
     prompt = "(deid) "
     file = None
     root_dir = None
+    logs_dir = None
     config = None
    
 
@@ -38,11 +38,14 @@ class DeidShell(cmd.Cmd):
         super().__init__()
         self.config = config
         self.root_dir = config.get("settings", "root_dir")
+        self.logs_dir  = config.get("settings", "logs_dir")
         self.datasets_initial_update(os.path.join(self.root_dir,FOLDER_DATASET,"aligned"),
                                 os.path.join(self.root_dir,FOLDER_DATASET,"original"))
         self.techniques_initial_update(os.path.join(self.root_dir,FOLDER_TECHNIQUES))
         self.evaluation_initial_update(os.path.join(self.root_dir,FOLDER_EVALUATION))
-
+        self.logs_initial_update(
+            os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION),
+            os.path.join(self.root_dir,self.logs_dir, FOLDER_TECHNIQUES)) #
 
     def do_exit(self, arg):
         "Exit the shell:  EXIT"
@@ -471,13 +474,12 @@ class DeidShell(cmd.Cmd):
                 # print(f"env_name_from_list : {env_name_from_list}")
                 env_names.append(env_name_from_list)
 
-
         if env_name in env_names:
             print(f"'{env_name}' environment already exists")
             return True 
         else:
             print(f"'{env_name}' environment does not exist")
-            yaml_file = os.path.join(self.root_dir,"techniques","environments",env_name+".yml")
+            yaml_file = os.path.join(self.root_dir,"techniques",FOLDER_ENVIRONMENTS,env_name+".yml")
             if os.path.isfile(yaml_file):
                 try:
                     subprocess.check_call(['mamba', 'env', 'create', '-f', yaml_file, "--prefix", f"/opt/conda/envs/{env_name}"])
@@ -725,6 +727,7 @@ class DeidShell(cmd.Cmd):
 
         
         return available_datasets
+    
 
 
     def techniques_initial_update(self, techniques_folder):
@@ -803,12 +806,11 @@ class DeidShell(cmd.Cmd):
             evaluation_names = evaluation_names.strip()
             self.config.set("Available Evaluations", "evaluations", evaluation_names)
         else:
-            print(Fore.RED + 'Evalauation directory not found. Does the ROOT_DIR ({0}) have a folder named "evaluation"?'.format(self.root_dir), Fore.RESET)
+            print(Fore.RED + 'Evaluation directory not found. Does the ROOT_DIR ({0}) have a folder named "evaluation"?'.format(self.root_dir), Fore.RESET)
 
         # Save the configuration to the file
         with open("config.ini", "w") as configfile:
             self.config.write(configfile)
-
 
     def get_available_evaluations(self):
         # Retrieve available techniques from the configuration
@@ -832,7 +834,11 @@ class DeidShell(cmd.Cmd):
             print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + evaluation, Fore.RESET)
 
         return evaluations
-    
+    def logs_initial_update(self, *logs_folders):
+        #if log path, exist, otherwise, create one
+        for log_folder in logs_folders:
+            if not os.path.exists(log_folder):
+                os.makedirs(log_folder)
 
     # arbitrary method to parse all other commands
     def default(self, line):
