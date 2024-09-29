@@ -9,6 +9,8 @@ import select
 import json # to get the results from metrics
 from yaspin import yaspin #fancy loader spinner
 from tabulate import tabulate
+from datetime import datetime #to log file with datetime
+
 
 
 
@@ -46,7 +48,6 @@ class DeidShell(cmd.Cmd):
         self.environments_initial_update(os.path.join(self.root_dir, FOLDER_ENVIRONMENTS))
         self.logs_initial_update(os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION)) #can log techniques output later, just add the path separate by ","
        
-        self.get_available_environments()
 
     def do_exit(self, arg):
         "Exit the shell:  EXIT"
@@ -290,6 +291,8 @@ class DeidShell(cmd.Cmd):
         if not selected_evaluation_names:
             print("No evaluation methods are selected")
             return
+        #Print the available environments
+        self.get_available_environments()
         #start the pipeline for each evaluation
         scores_per_evaluation = {} #recolect information to print the table for each evaluation
         for evaluation_name in selected_evaluation_names:
@@ -301,9 +304,11 @@ class DeidShell(cmd.Cmd):
                 venv_exists = self.check_and_create_conda_env(venv_name)
                 if not venv_exists:
                     venv_name = "toolkit"
+                
                 for dataset_name in selected_datasets_names:
                     dataset_scores[dataset_name] = {}
                     try:
+                        
                         techniques_scores = self._process_dataset_with_evaluation(evaluation_name=evaluation_name,
                                                                                   venv_name=venv_name,
                                                                                   dataset_name=dataset_name,
@@ -551,18 +556,27 @@ class DeidShell(cmd.Cmd):
         #output_path = os.path.abspath(output_path)
         print(f"Evaluation: {Fore.LIGHTCYAN_EX}{evaluation_name} -> {dataset_name} {Fore.RESET}")
         with yaspin(text=f"Running {Fore.LIGHTMAGENTA_EX}{evaluation_name}{Fore.RESET}  for {Fore.LIGHTMAGENTA_EX}{dataset_name}{Fore.RESET}...", color="cyan") as sp:
+            import time
+
             for i,deidpath_abspath in enumerate(deidentified_paths): 
                 techniques_scores[techniques_names[i]]={}
                 sp.text = f"{Fore.GREEN}Running: {Fore.LIGHTMAGENTA_EX}{evaluation_name}{Fore.RESET} for {Fore.LIGHTMAGENTA_EX}{dataset_name}{Fore.RESET} with technique {Fore.LIGHTMAGENTA_EX}{techniques_names[i]}{Fore.RESET}..."
                 if not (os.path.isdir(deidpath_abspath)): #skip if cannot find the identified dataset path
                     sp.write(f"\t>{techniques_names[i]}: Cannot find deidentified folder for {techniques_names[i]}/{dataset_name} in datasets - {Fore.LIGHTYELLOW_EX}(Skipped){Fore.RESET}")
                     continue
+                #get the initinal time
+                start_time = time.time()
                 
                 #Executes the function
                 results, errors, output = self.run_evaluation_script(venv_name=venv_name, 
                                            path_evaluation=path_evaluation, 
                                            aligned_dataset_path=aligned_dataset_path,
                                            deidentified_dataset_path=deidpath_abspath)
+                end_time = time.time()
+                duration = end_time - start_time
+
+
+                #print(output)
                 #print in terminal
                 sp.write(f"\t>{techniques_names[i]}:")
                 for error in errors:
@@ -570,6 +584,29 @@ class DeidShell(cmd.Cmd):
                 sp.write(f"\t\t{Fore.WHITE}{results}{Fore.RESET}")
                 techniques_scores[techniques_names[i]]= results
                 # log the results
+                log_file = os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION, "evaluation_results.txt")
+                with open(log_file, 'a') as log:
+                    hours, remainder = divmod(duration, 3600)  # 3600 seconds in one hour
+                    minutes, seconds = divmod(remainder, 60)  # 60 seconds in one minute
+                    log.write("=" * 40 + "\n")
+                    log.write(f"Evaluation metric: {evaluation_name}")
+                    log.write(f" Dataset: {dataset_name}")
+                    log.write(f" technique: {techniques_names[i]}")
+                    log.write(f" Environment: {venv_name}\n")
+                    log.write(f"Hour: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                    log.write(f" Duration: {int(hours)}h {int(minutes)}m {int(seconds)}s\n")
+                    log.write(f"-"*20)
+                    log.write(f"\nResults: \n{results}\n")
+                    log.write(f"-"*20)
+                    log.write(f"\nerrors:\n")
+                    for ms in errors:
+                        log.write(f"{ms}\n")
+                    log.write(f"-"*20)
+                    log.write(f"\noutput:\n")
+                    for ms in output:
+                        log.write(f"{ms}\n")
+                    log.write("=" * 40 + "\n")
+
             else:
                 sp.text = ""
                 sp.ok(f"{evaluation_name} for {dataset_name} done")
