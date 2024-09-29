@@ -1,7 +1,6 @@
 from ast import For
 import os  # os module provides a way of using operating system dependent functionality
 import cmd
-from re import A
 from turtle import color  # cmd is a module to create line-oriented command interpreters
 from colorama import Fore  # color text
 from tqdm import tqdm
@@ -10,6 +9,8 @@ import select
 import json # to get the results from metrics
 from yaspin import yaspin #fancy loader spinner
 from tabulate import tabulate
+from datetime import datetime #to log file with datetime
+
 
 
 
@@ -17,13 +18,14 @@ FOLDER_DATASET = "datasets"
 FOLDER_TECHNIQUES = "techniques"
 FOLDER_EVALUATION = "evaluation"
 FOLDER_VISUALIZATION = "visualization"
-
+FOLDER_ENVIRONMENTS = "environments"
 
 class DeidShell(cmd.Cmd):
     intro = "Welcome to DeID-ToolKit.   Type help or ? to list commands.\n"
     prompt = "(deid) "
     file = None
     root_dir = None
+    logs_dir = None
     config = None
    
 
@@ -38,11 +40,14 @@ class DeidShell(cmd.Cmd):
         super().__init__()
         self.config = config
         self.root_dir = config.get("settings", "root_dir")
+        self.logs_dir  = config.get("settings", "logs_dir")
         self.datasets_initial_update(os.path.join(self.root_dir,FOLDER_DATASET,"aligned"),
                                 os.path.join(self.root_dir,FOLDER_DATASET,"original"))
         self.techniques_initial_update(os.path.join(self.root_dir,FOLDER_TECHNIQUES))
         self.evaluation_initial_update(os.path.join(self.root_dir,FOLDER_EVALUATION))
-
+        self.environments_initial_update(os.path.join(self.root_dir, FOLDER_ENVIRONMENTS))
+        self.logs_initial_update(os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION)) #can log techniques output later, just add the path separate by ","
+       
 
     def do_exit(self, arg):
         "Exit the shell:  EXIT"
@@ -257,6 +262,7 @@ class DeidShell(cmd.Cmd):
 
         for technique_name in selected_techniques_names:
             try:
+                
                 venv_exists = self.check_and_create_conda_env(technique_name)
                 venv_name = 'toolkit'
                 if venv_exists:
@@ -278,23 +284,35 @@ class DeidShell(cmd.Cmd):
         if not self.config.has_option("selection", "evaluation") or not self.config.has_option("selection", "datasets"):
             print("No datasets or evaluation selected.")
             return
+        #get all the selected items
         selected_datasets_names = self.config.get("selection", "datasets").split()
         selected_techniques_names = self.config.get("selection", "techniques").split()
         selected_evaluation_names = self.config.get("selection", "evaluation").split()
         if not selected_evaluation_names:
             print("No evaluation methods are selected")
             return
-        
-        scores_per_evaluation = {}
+        #Print the available environments
+        self.get_available_environments()
+        #start the pipeline for each evaluation
+        scores_per_evaluation = {} #recolect information to print the table for each evaluation
         for evaluation_name in selected_evaluation_names:
             scores_per_evaluation[evaluation_name]={}
-            dataset_scores = {}
+            dataset_scores = {}#recolect evaluation for techniques for each datasets
             print(f"{evaluation_name} in progress...")
             try:
+                venv_name = self.config.get("Available Environments",evaluation_name, fallback=evaluation_name)
+                venv_exists = self.check_and_create_conda_env(venv_name)
+                if not venv_exists:
+                    venv_name = "toolkit"
+                
                 for dataset_name in selected_datasets_names:
                     dataset_scores[dataset_name] = {}
                     try:
-                        techniques_scores = self._process_dataset_with_evaluation(dataset_name,selected_techniques_names,evaluation_name)
+                        
+                        techniques_scores = self._process_dataset_with_evaluation(evaluation_name=evaluation_name,
+                                                                                  venv_name=venv_name,
+                                                                                  dataset_name=dataset_name,
+                                                                                  techniques_names=selected_techniques_names)
                         dataset_scores[dataset_name]=techniques_scores
                     except (ValueError, IndexError) as e: 
                         print(f"Invalid dataset index: {dataset_name}. Error: {e}")
@@ -471,13 +489,12 @@ class DeidShell(cmd.Cmd):
                 # print(f"env_name_from_list : {env_name_from_list}")
                 env_names.append(env_name_from_list)
 
-
         if env_name in env_names:
             print(f"'{env_name}' environment already exists")
             return True 
         else:
             print(f"'{env_name}' environment does not exist")
-            yaml_file = os.path.join(self.root_dir,"techniques","environments",env_name+".yml")
+            yaml_file = os.path.join(self.root_dir,FOLDER_ENVIRONMENTS,env_name+".yml")
             if os.path.isfile(yaml_file):
                 try:
                     subprocess.check_call(['mamba', 'env', 'create', '-f', yaml_file, "--prefix", f"/opt/conda/envs/{env_name}"])
@@ -515,8 +532,8 @@ class DeidShell(cmd.Cmd):
 
         print(f"Processing dataset: {dataset_name} | Source path: {aligned_dataset_path} | Save path: {dataset_save_path}")
 
-        self.run_script(venv_name, technique_name, aligned_dataset_path, dataset_save_path)
-    def _process_dataset_with_evaluation(self,dataset_name:str, techniques_names:list, evaluation_name:str)->list:
+        self.run_technique_script(venv_name, technique_name, aligned_dataset_path, dataset_save_path)
+    def _process_dataset_with_evaluation(self, evaluation_name:str, venv_name,dataset_name:str, techniques_names:list)->list:
         """This function performs the evaluation method for one dataset (provided in params),
           with the several deidentified methods. If not file exist for the technique, skip to the next one.
           run_evaluation
@@ -526,54 +543,70 @@ class DeidShell(cmd.Cmd):
             select_metrics (list): selected metrics to evaluate
         """
         techniques_scores = {} #will contain the returned values which contains all the scores information for all techniques
+         #prepare the absolutes paths
         aligned_dataset_path = os.path.join(self.root_dir, FOLDER_DATASET,"aligned", dataset_name)
         aligned_dataset_path = os.path.abspath(aligned_dataset_path)
-
         deidentified_paths = [os.path.abspath(os.path.join(self.root_dir, 'datasets', technique, dataset_name)) 
                               for technique in techniques_names] #convert techniques into absolute deidentified paths, needed by the called function from python files
         path_evaluation  = os.path.join(self.root_dir, FOLDER_EVALUATION,f"{evaluation_name}.py" ) #file to call
+        path_evaluation = os.path.abspath(path_evaluation)
 
         #This two lines are for logs for intermediary results
         #output_path  = os.path.join(self.root_dir, FOLDER_EVALUATION, "output", "metrics.log")
         #output_path = os.path.abspath(output_path)
         print(f"Evaluation: {Fore.LIGHTCYAN_EX}{evaluation_name} -> {dataset_name} {Fore.RESET}")
         with yaspin(text=f"Running {Fore.LIGHTMAGENTA_EX}{evaluation_name}{Fore.RESET}  for {Fore.LIGHTMAGENTA_EX}{dataset_name}{Fore.RESET}...", color="cyan") as sp:
-            for i,deidpath in enumerate(deidentified_paths): 
+            import time
+
+            for i,deidpath_abspath in enumerate(deidentified_paths): 
                 techniques_scores[techniques_names[i]]={}
                 sp.text = f"{Fore.GREEN}Running: {Fore.LIGHTMAGENTA_EX}{evaluation_name}{Fore.RESET} for {Fore.LIGHTMAGENTA_EX}{dataset_name}{Fore.RESET} with technique {Fore.LIGHTMAGENTA_EX}{techniques_names[i]}{Fore.RESET}..."
-                if not (os.path.isdir(deidpath)): #skip if cannot find the identified dataset path
+                if not (os.path.isdir(deidpath_abspath)): #skip if cannot find the identified dataset path
                     sp.write(f"\t>{techniques_names[i]}: Cannot find deidentified folder for {techniques_names[i]}/{dataset_name} in datasets - {Fore.LIGHTYELLOW_EX}(Skipped){Fore.RESET}")
                     continue
+                #get the initinal time
+                start_time = time.time()
                 
-                command = ["python", "-u", path_evaluation, aligned_dataset_path, deidpath]   
-                try:
-                    # execute the evaluation
-                    data = subprocess.run(
-                        command,
-                        capture_output=True,
-                        text=True,
-                        check=True
-                    )
-                    #get the output in json format
-                    data:dict = json.loads(data.stdout.replace("\n",""))
-                    #extract the information
-                    results = data.get("result", {})
-                    errors = data.get("errors", [])
-                    output = data.get("output_messages",[])
-                    sp.write(f"\t>{techniques_names[i]}:")
-                    for error in errors:
-                        sp.write(f"\t\t{error}")
-                    sp.write(f"\t\t{Fore.WHITE}{results}{Fore.RESET}")
-                    techniques_scores[techniques_names[i]]= results
-                    #for out in output:
-                    #   sp.write(f"\t{Fore.YELLOW} {out} {Fore.RESET}")
-                    #table_data, headers = self._build_table(result)
-                    #sp.write(tabulate(table_data, headers, tablefmt="fancy_outline"))
+                #Executes the function
+                results, errors, output = self.run_evaluation_script(venv_name=venv_name, 
+                                           path_evaluation=path_evaluation, 
+                                           aligned_dataset_path=aligned_dataset_path,
+                                           deidentified_dataset_path=deidpath_abspath)
+                end_time = time.time()
+                duration = end_time - start_time
 
-                except subprocess.CalledProcessError as e:
-                    print(f"Error occurred while running the script:\n{e.stderr}")
-                except Exception as e:
-                    print(f"Unexpected error: {e}")
+
+                #print(output)
+                #print in terminal
+                sp.write(f"\t>{techniques_names[i]}:")
+                for error in errors:
+                    sp.write(f"\t\t{error}")
+                sp.write(f"\t\t{Fore.WHITE}{results}{Fore.RESET}")
+                techniques_scores[techniques_names[i]]= results
+                # log the results
+                log_file = os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION, "evaluation_results.txt")
+                with open(log_file, 'a') as log:
+                    hours, remainder = divmod(duration, 3600)  # 3600 seconds in one hour
+                    minutes, seconds = divmod(remainder, 60)  # 60 seconds in one minute
+                    log.write("=" * 40 + "\n")
+                    log.write(f"Evaluation metric: {evaluation_name}")
+                    log.write(f" Dataset: {dataset_name}")
+                    log.write(f" technique: {techniques_names[i]}")
+                    log.write(f" Environment: {venv_name}\n")
+                    log.write(f"Hour: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                    log.write(f" Duration: {int(hours)}h {int(minutes)}m {int(seconds)}s\n")
+                    log.write(f"-"*20)
+                    log.write(f"\nResults: \n{results}\n")
+                    log.write(f"-"*20)
+                    log.write(f"\nerrors:\n")
+                    for ms in errors:
+                        log.write(f"{ms}\n")
+                    log.write(f"-"*20)
+                    log.write(f"\noutput:\n")
+                    for ms in output:
+                        log.write(f"{ms}\n")
+                    log.write("=" * 40 + "\n")
+
             else:
                 sp.text = ""
                 sp.ok(f"{evaluation_name} for {dataset_name} done")
@@ -601,8 +634,41 @@ class DeidShell(cmd.Cmd):
         headers += _getHeaders(data)
         rows = _getRows(data, headers)
         return rows, headers
+    def run_evaluation_script(self, venv_name, path_evaluation, aligned_dataset_path, deidentified_dataset_path ):
+        conda_sh_path = os.path.expanduser("/opt/conda/etc/profile.d/conda.sh")
+        results = {}
+        errors = output= []
+        
+        if not os.path.exists(conda_sh_path):
+            print("conda.sh path does'nt exist, please change it in run_script() in deid_toolkit.py")
+        
+        command = (f"source {conda_sh_path} && "
+                   f"conda activate {venv_name} &&" 
+                   f"python -u {path_evaluation} {aligned_dataset_path} {deidentified_dataset_path}")
 
-    def run_script(self, venv_name, technique_name, aligned_dataset_path, dataset_save_path):
+        try:
+            # execute the evaluation
+            data = subprocess.run(
+                command,
+                executable="/bin/bash",
+                capture_output=True,
+                text=True,
+                check=True,
+                shell=True
+                )
+                #get the output in json format
+            data:dict = json.loads(data.stdout.replace("\n",""))
+                #extract the information
+            results = data.get("result", {})
+            errors = data.get("errors", [])
+            output = data.get("output_messages",[])
+        except subprocess.CalledProcessError as e:
+            print(f"Error occurred while running the script:\n{e.stderr}")
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+        return  results, errors,output
+
+    def run_technique_script(self, venv_name, technique_name, aligned_dataset_path, dataset_save_path):
         conda_sh_path = os.path.expanduser("/opt/conda/etc/profile.d/conda.sh")
 
         if not os.path.exists(conda_sh_path):
@@ -725,6 +791,7 @@ class DeidShell(cmd.Cmd):
 
         
         return available_datasets
+    
 
 
     def techniques_initial_update(self, techniques_folder):
@@ -803,12 +870,11 @@ class DeidShell(cmd.Cmd):
             evaluation_names = evaluation_names.strip()
             self.config.set("Available Evaluations", "evaluations", evaluation_names)
         else:
-            print(Fore.RED + 'Evalauation directory not found. Does the ROOT_DIR ({0}) have a folder named "evaluation"?'.format(self.root_dir), Fore.RESET)
+            print(Fore.RED + 'Evaluation directory not found. Does the ROOT_DIR ({0}) have a folder named "evaluation"?'.format(self.root_dir), Fore.RESET)
 
         # Save the configuration to the file
         with open("config.ini", "w") as configfile:
             self.config.write(configfile)
-
 
     def get_available_evaluations(self):
         # Retrieve available techniques from the configuration
@@ -832,7 +898,55 @@ class DeidShell(cmd.Cmd):
             print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + evaluation, Fore.RESET)
 
         return evaluations
+    def environments_initial_update(self, environments_folder):
+        # Check if the config section for techniques exists; if not, create it
+        if not self.config.has_section("Available Environments"):
+            self.config.add_section("Available Environments")
+            self.config.set("Available Environments", "")
+        # Process the evaluation folder
+        if os.path.exists(environments_folder):
+            environments = os.listdir(environments_folder)
+            environments.sort()
+            for env in environments:
+                # Check if it's a file and not a directory
+                if (os.path.isfile(os.path.join(environments_folder,env)) 
+                    and (env.endswith(".yml"))):
+                        # Remove the extension
+                        env_name = env.replace(".yml","")
+                        self.config.set("Available Environments", env_name, env_name)# 2) The .yml file should be the same as well as the technique or evaluation name
+        else:
+            print(Fore.RED + 'Environments directory not found. Does the ROOT_DIR ({0}) have a folder named environments?'.format(self.root_dir), Fore.RESET)
+        # Save the configuration to the file
+        with open("config.ini", "w") as configfile:
+            self.config.write(configfile)
+    def get_available_environments(self)->dict:
+        # Retrieve available environments  from the configuration
+        config_environments = self.config.items("Available Environments")#
+        environments:dict = {} # will return this value with a dicctionary format
+        if not config_environments:
+            print("No custom environments available")
+            return
+        
+        # Check if the root directory is set
+        if self.root_dir is None:
+            print(Fore.RED + "Root directory not set, set it with SET_ROOT", Fore.RESET)
+            return
+        
+        # Print instructions for environments  selection
+        print(Fore.CYAN + "[Available environments]", Fore.RESET)
+
+        # Display available environments
+        for evaluation_name, env_name in config_environments:
+            evaluation_name = evaluation_name.replace(".py","") #remove the extention.py 
+            environments[evaluation_name]= env_name.replace(".yml","")
+            print(Fore.LIGHTBLUE_EX + "\t" + evaluation_name + " : " + environments[evaluation_name], Fore.RESET)
+        return environments
     
+    def logs_initial_update(self, *logs_folders):
+        #if log path, exist, otherwise, create one
+        for log_folder in logs_folders:
+            if not os.path.exists(log_folder):
+                os.makedirs(log_folder)
 
     # arbitrary method to parse all other commands
     def default(self, line):
