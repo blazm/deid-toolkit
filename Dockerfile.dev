@@ -1,0 +1,104 @@
+FROM nvidia/cuda:12.6.1-cudnn-devel-ubuntu20.04
+ENV DEBIAN_FRONTEND=noninteractive
+
+ARG MINIFORGE_NAME=Miniforge3
+ARG MINIFORGE_VERSION=24.7.1-0
+ARG TARGETPLATFORM
+
+ENV CONDA_DIR=/opt/conda
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
+ENV PATH=${CONDA_DIR}/bin:${PATH}
+
+# 1. Install just enough for conda to work
+# 2. Keep $HOME clean (no .wget-hsts file), since HSTS isn't useful in this context
+# 3. Install miniforge from GitHub releases
+# 4. Apply some cleanup tips from https://jcrist.github.io/conda-docker-tips.html
+#    Particularly, we remove pyc and a files. The default install has no js, we can skip that
+# 5. Activate base by default when running as any *non-root* user as well
+#    Good security practice requires running most workloads as non-root
+#    This makes sure any non-root users created also have base activated
+#    for their interactive shells.
+# 6. Activate base by default when running as root as well
+#    The root user is already created, so won't pick up changes to /etc/skel
+RUN apt-get update > /dev/null && \
+    apt-get install --no-install-recommends --yes \
+        wget bzip2 ca-certificates \
+        git \
+        tini \
+        > /dev/null && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    wget --no-hsts --quiet https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/${MINIFORGE_NAME}-${MINIFORGE_VERSION}-Linux-$(uname -m).sh -O /tmp/miniforge.sh && \
+    /bin/bash /tmp/miniforge.sh -b -p ${CONDA_DIR} && \
+    rm /tmp/miniforge.sh && \
+    conda clean --tarballs --index-cache --packages --yes && \
+    find ${CONDA_DIR} -follow -type f -name '*.a' -delete && \
+    find ${CONDA_DIR} -follow -type f -name '*.pyc' -delete && \
+    conda clean --force-pkgs-dirs --all --yes  && \
+    echo ". ${CONDA_DIR}/etc/profile.d/conda.sh && conda activate base" >> /etc/skel/.bashrc && \
+    echo ". ${CONDA_DIR}/etc/profile.d/conda.sh && conda activate base" >> ~/.bashrc
+
+# Set up the working directory and copy environment file
+RUN mkdir -p /home/deidtoolkit
+WORKDIR /home/deidtoolkit
+COPY toolkit.yml .
+
+#Needed dependencies for the correct functionality
+#https://stackoverflow.com/questions/55313610/importerror-libgl-so-1-cannot-open-shared-object-file-no-such-file-or-directo
+RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
+# https://github.com/ultralytics/ultralytics/issues/1270
+RUN apt-get install -y libgl1-mesa-dev 
+RUN apt-get install -y libglib2.0-0
+
+
+# Automatically create and activate the Conda environment
+RUN conda env create -f toolkit.yml && conda clean --all --yes
+ENV PATH /opt/conda/envs/toolkit/bin:$PATH
+RUN echo "conda activate toolkit" >> ~/.bashrc
+RUN apt-get update && apt-get -y install cmake
+
+
+
+# Use tini as the entrypoint to handle process signals properly
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+# Default command to run the toolkit script (change 'run_toolkit.py' to your script)
+
+#RUN conda env create -f toolkit.yml
+#SHELL ["conda", "run", "-n", "toolkit", "/bin/bash", "-c"]
+
+#COPY run_toolkit.py /home/deidtoolkit/
+#CMD ["python", "run_toolkit.py"]
+
+
+#RUN ONLY NEED TO EXECUTE THE FOLLOWING COMMANDS IN YOUR TERMINAL 
+#   docker compose -f docker-compose-dev.yml up -d
+#   docker run --gpus all -it \ --name deidtoolkit \ --shm-size=8g \  --ulimit memlock=-1 --ulimit stack=67108864 \ deidtoolkit
+
+#   conda env create -f toolkit.yml
+#   conda activate toolkit
+#   python3 run_toolkit.py
+
+# docker compose -f docker-compose-dev.yml stop (stop the container without removing to run it later)
+# docker compose -f docker-compose.dev.yml start (when you're ready to start the container again)
+# docker compose -f docker-compose.dev.yml down (stops and remove the container)
+# docker ps or docker ps -a (check containers)
+
+
+
+# Should have nvidia container toolkit to install the necesary packages to run with docker
+# curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
+#&& curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+#sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+#sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+# 
+# sudo apt-get update
+# sudo apt-get install -y nvidia-container-toolkit
+
+#
+#
+#
+#
+#
+#
+#
