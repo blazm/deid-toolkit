@@ -479,7 +479,7 @@ class DeidShell(cmd.Cmd):
             return True 
         else:
             print(f"'{env_name}' environment does not exist")
-            yaml_file = os.path.join(self.root_dir,"techniques",FOLDER_ENVIRONMENTS,env_name+".yml")
+            yaml_file = os.path.join(self.root_dir,FOLDER_ENVIRONMENTS,env_name+".yml")
             if os.path.isfile(yaml_file):
                 try:
                     subprocess.check_call(['mamba', 'env', 'create', '-f', yaml_file, "--prefix", f"/opt/conda/envs/{env_name}"])
