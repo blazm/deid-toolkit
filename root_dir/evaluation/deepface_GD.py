@@ -25,8 +25,7 @@ def main():
 
 
     samples:int = len(files)
-    succeses:int = 0 
-    
+    succeses:int = 0     
     for file in files: 
         aligned_img_path = os.path.join(aligned_dataset_path, file)
         deidentified_img_path = os.path.join(deidentified__dataset_path, file)
@@ -37,16 +36,21 @@ def main():
         pred_deidentified = DeepFace.analyze(img_path = deidentified_img_path, actions = ['gender'],enforce_detection=False)
         #Log the result
         #f.writelines(f"{emotion_aligned}, {emotion_deidentified},{True if emotion_aligned == emotion_deidentified else False}")
-        print(f"{aligned_img_path}: {pred_aligned}, {deidentified_img_path}:{pred_deidentified}")
+        output_score.add_output_message(pred_aligned)
+        output_score.add_output_message(pred_deidentified)
+        gender_aligned = pred_aligned[0].get("dominant_gender", [])#.get("dominant_gender", "-")
+        gender_deidentified = pred_deidentified[0].get("dominant_gender", [])#.get("dominant_gender", "--")
+        
+
         #Increase the succeses if are equal
-        if pred_aligned == pred_deidentified: 
+        if gender_aligned == gender_deidentified: 
             succeses+=1
     f.close()
     accuracy= 0
-    #accuracy = (succeses / samples)*100
+    accuracy = (succeses / samples)*100
     return output_score.add_metric("deepface", "accuracy", "{:1.2f}%".format(accuracy))
 
 if __name__ == "__main__":
-    main()
-    #result, _ , _  =with_no_prints(main)
-    #print(result.build())
+    #main()
+    result, output, _  =with_no_prints(main)
+    print(result.build())
