@@ -164,7 +164,7 @@ class DeidShell(cmd.Cmd):
         }
 
         switcher["*"] = lambda arg: [
-            switcher[option](arg) for option in switcher.keys()
+            switcher[option](arg) for option in switcher.keys() if option != "*" # avoid the recursión
         ]  # run all
 
         # first split by " " and then by "|"
