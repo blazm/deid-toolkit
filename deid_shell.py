@@ -157,10 +157,10 @@ class DeidShell(cmd.Cmd):
 
         switcher = {
             "preprocess": self.run_preprocess,
+            "generate_pairs": self.run_generate_pairs,
             "techniques": self.run_techniques,
             "evaluation": self.run_evaluation,
             "visualize": self.run_visualize,
-            "generate_pairs": self.run_generate_pairs,
         }
 
         switcher["*"] = lambda arg: [
