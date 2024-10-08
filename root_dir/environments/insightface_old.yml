@@ -1,0 +1,10 @@
+name: insightface
+channels:
+  - conda-forge
+dependencies:
+  - opencv==4.5.1
+  - numpy
+  - pip
+  - pip:
+    - insightface
+    - onnxruntime-gpu
