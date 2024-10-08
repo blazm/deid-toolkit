@@ -543,11 +543,21 @@ class DeidShell(cmd.Cmd):
             select_metrics (list): selected metrics to evaluate
         """
         techniques_scores = {} #will contain the returned values which contains all the scores information for all techniques
-         #prepare the absolutes paths
+         #prepare the absolutes paths for the files to evaluate
         aligned_dataset_path = os.path.join(self.root_dir, FOLDER_DATASET,"aligned", dataset_name)
         aligned_dataset_path = os.path.abspath(aligned_dataset_path)
         deidentified_paths = [os.path.abspath(os.path.join(self.root_dir, 'datasets', technique, dataset_name)) 
                               for technique in techniques_names] #convert techniques into absolute deidentified paths, needed by the called function from python files
+        impostor_pairs_file = os.path.abspath(os.path.join(self.root_dir, FOLDER_DATASET, "pairs", f"{dataset_name}_impostor_pairs.txt"))
+        genuine_pairs_file = os.path.abspath(os.path.join(self.root_dir, FOLDER_DATASET, "pairs", f"{dataset_name}_genuine_pairs.txt"))
+        pairs_paths =[] # impostor, genuine 
+        if  os.path.exists(impostor_pairs_file) and os.path.exists(genuine_pairs_file):
+            pairs_paths = (impostor_pairs_file, genuine_pairs_file)
+            #TODO: validate if the current is identity verification tecnique
+        else:
+            issue_path= os.path.join(self.root_dir, FOLDER_DATASET, "pairs")
+            print(f"{Fore.LIGHTRED_EX}No genuine and impostor pairs exist in {issue_path} for {dataset_name}{Fore.RESET}")
+
         path_evaluation  = os.path.join(self.root_dir, FOLDER_EVALUATION,f"{evaluation_name}.py" ) #file to call
         path_evaluation = os.path.abspath(path_evaluation)
 
@@ -566,12 +576,12 @@ class DeidShell(cmd.Cmd):
                     continue
                 #get the initinal time
                 start_time = time.time()
-                
                 #Executes the function
                 results, errors, output = self.run_evaluation_script(venv_name=venv_name, 
                                            path_evaluation=path_evaluation, 
                                            aligned_dataset_path=aligned_dataset_path,
-                                           deidentified_dataset_path=deidpath_abspath)
+                                           deidentified_dataset_path=deidpath_abspath,
+                                           pairs = pairs_paths)
                 end_time = time.time()
                 duration = end_time - start_time
 
@@ -634,7 +644,7 @@ class DeidShell(cmd.Cmd):
         headers += _getHeaders(data)
         rows = _getRows(data, headers)
         return rows, headers
-    def run_evaluation_script(self, venv_name, path_evaluation, aligned_dataset_path, deidentified_dataset_path ):
+    def run_evaluation_script(self, venv_name, path_evaluation, aligned_dataset_path, deidentified_dataset_path, pairs=[] ):
         conda_sh_path = os.path.expanduser("/opt/conda/etc/profile.d/conda.sh")
         results = {}
         errors = output= []
@@ -642,10 +652,13 @@ class DeidShell(cmd.Cmd):
         if not os.path.exists(conda_sh_path):
             print("conda.sh path does'nt exist, please change it in run_script() in deid_toolkit.py")
         
+        
         command = (f"source {conda_sh_path} && "
-                   f"conda activate {venv_name} &&" 
-                   f"python -u {path_evaluation} {aligned_dataset_path} {deidentified_dataset_path}")
-
+                   f"conda activate {venv_name} && " 
+                   f"python -u {path_evaluation} {aligned_dataset_path} {deidentified_dataset_path} ")
+       
+        command += f"--impostor_pairs_filepath {pairs[0]} " # add impostor file to the command
+        command += f"--genuine_pairs_filepath {pairs[1]} " # add genuine file path to the command
         try:
             # execute the evaluation
             data = subprocess.run(
@@ -658,12 +671,12 @@ class DeidShell(cmd.Cmd):
                 )
                 #get the output in json format
             data:dict = json.loads(data.stdout.replace("\n",""))
-                #extract the information
+            #extract the information
             results = data.get("result", {})
             errors = data.get("errors", [])
             output = data.get("output_messages",[])
         except subprocess.CalledProcessError as e:
-            print(f"Error occurred while running the script:\n{e.stderr}")
+            print(f"Error occurred while running the script:\n{e}")
         except Exception as e:
             print(f"Unexpected error: {e}")
         return  results, errors,output
@@ -724,8 +737,8 @@ class DeidShell(cmd.Cmd):
         # Check if the config section for datasets exists; if not, create it
         if not self.config.has_section("Available Datasets"):
             self.config.add_section("Available Datasets")
-            self.config.set("Available Datasets", "Original", "")
-            self.config.set("Available Datasets", "Aligned", "")
+            self.config.set("Available Datasets", "original", "")
+            self.config.set("Available Datasets", "aligned", "")
 
         # Process the original datasets
         if os.path.exists(original_folder):
@@ -736,7 +749,7 @@ class DeidShell(cmd.Cmd):
                     datasets_name += (dataset + " ")
             # Remove the trailing space
             datasets_name = datasets_name.strip()
-            self.config.set("Available Datasets", "Original", datasets_name)
+            self.config.set("Available Datasets", "original", datasets_name)
             datasets_name = ''
         else:
             print(Fore.RED + 'Original datasets directory not found. Does the ROOT_DIR ({0}) have a folder named "datasets"?'.format(self.root_dir), Fore.RESET)
@@ -750,7 +763,7 @@ class DeidShell(cmd.Cmd):
                     datasets_name += (dataset + " ")
             # Remove the trailing space
             datasets_name = datasets_name.strip()
-            self.config.set("Available Datasets", "Aligned", datasets_name)
+            self.config.set("Available Datasets", "aligned", datasets_name)
             datasets_name = ''
         else:
             print(Fore.RED + 'Aligned datasets directory not found. Does the ROOT_DIR ({0}) have a folder named "datasets"?'.format(self.root_dir), Fore.RESET)
