@@ -46,6 +46,8 @@ class DeidShell(cmd.Cmd):
         self.techniques_initial_update(os.path.join(self.root_dir,FOLDER_TECHNIQUES))
         self.evaluation_initial_update(os.path.join(self.root_dir,FOLDER_EVALUATION))
         self.environments_initial_update(os.path.join(self.root_dir, FOLDER_ENVIRONMENTS))
+        self.visualization_initial_update(os.path.join(self.root_dir, FOLDER_VISUALIZATION))
+        print(self.get_available_visualizations())
         self.logs_initial_update(os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION)) #can log techniques output later, just add the path separate by ","
        
 
@@ -329,6 +331,21 @@ class DeidShell(cmd.Cmd):
     def run_visualize(self, arg):
         "Run visualization:  RUN_VISUALIZE"
         print("Running visualization")
+        if not self.config.has_option("selection", "evaluation") or not self.config.has_option("selection", "datasets"):
+            print("No datasets or evaluation selected.")
+            return
+        #get all the selected items
+        selected_datasets_names = self.config.get("selection", "datasets").split()
+        selected_techniques_names = self.config.get("selection", "techniques").split()
+        selected_evaluation_names = self.config.get("selection", "evaluation").split()
+        if not selected_evaluation_names:
+            print("No evaluation methods are selected")
+            return
+        for dataset in selected_datasets_names: 
+            for technique in selected_techniques_names:
+                pass
+                # for evaluation in selected evaluation? 
+
         # TODO: every visualization step must have a python script that can be run and preprocess either a single file or a directory
         # the script should be able to take input and output directories as arguments
 
@@ -954,6 +971,46 @@ class DeidShell(cmd.Cmd):
             environments[evaluation_name]= env_name.replace(".yml","")
             print(Fore.LIGHTBLUE_EX + "\t" + evaluation_name + " : " + environments[evaluation_name], Fore.RESET)
         return environments
+    def visualization_initial_update(self, visualization_folder):
+        if not self.config.has_section("Available Visualizations"):
+            self.config.add_section("Available Visualizations")
+        if os.path.exists(visualization_folder):
+            visualization = os.listdir(visualization_folder)
+            visualization.sort()
+            for visual in visualization:
+                if (os.path.isfile(os.path.join(visualization_folder, visual))
+                    and (visual.endswith(".py"))):
+                        visualization_name = visual.replace(".py","")
+                        exist = self.config.get("Available Visualizations", visualization_name)
+                        if exist == "":
+                            self.config.set("Available Visualizations", visualization_name, "")
+        else:
+            print(Fore.RED + 'Visualization directory not found. Does the ROOT_DIR ({0}) have a folder named visualization?'.format(self.root_dir), Fore.RESET)
+        with open("config.ini", "w") as configfile:
+            self.config.write(configfile)
+    def get_available_visualizations(self):
+        """
+        Will return an dictionary with key (visualization python script name) and values in array corresponding to each evaluation name
+        """
+        config_visualizations = self.config.items("Available Visualizations")#
+        visualization_dict:dict = {} # will return this value with a dicctionary format
+        if not config_visualizations:
+            print("No visualizations available")
+            return
+
+        if self.root_dir is None:
+            print(Fore.RED + "Root directory not set, set it with SET_ROOT", Fore.RESET)
+            return
+        
+        # Print instructions for environments  selection
+        print(Fore.CYAN + "[Available  Visualizations]", Fore.RESET)
+
+        # Display available environments
+        for visualization_name, evaluation_names in config_visualizations:
+            visualization_name = visualization_name.replace(".py","") #remove the extention.py 
+            visualization_dict[visualization_name]= evaluation_names.split(" ")
+            print(f"{Fore.LIGHTBLUE_EX}\t{visualization_name}:{visualization_dict[visualization_name]}", Fore.RESET)
+        return visualization_dict
     
     def logs_initial_update(self, *logs_folders):
         #if log path, exist, otherwise, create one
