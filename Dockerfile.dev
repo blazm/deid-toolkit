@@ -60,7 +60,7 @@ ENTRYPOINT ["/usr/bin/tini", "--"]
 # Use tini as the entrypoint to handle process signals properly
 ########################## START NEW IMAGE: DEBUGGER ###################
 #Because docker works with layers we don't have to create another image to debug
-FROM base as a debug
+FROM base as debug
 RUN pip install debugpy
 #Microsoft python debugger package for visual studio code https://pypi.org/project/debugpy/
 
