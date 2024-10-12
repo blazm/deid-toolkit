@@ -47,6 +47,7 @@ class DeidShell(cmd.Cmd):
         self.evaluation_initial_update(os.path.join(self.root_dir,FOLDER_EVALUATION))
         self.environments_initial_update(os.path.join(self.root_dir, FOLDER_ENVIRONMENTS))
         self.visualization_initial_update(os.path.join(self.root_dir, FOLDER_VISUALIZATION))
+        
         print(self.get_available_visualizations())
         self.logs_initial_update(os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION)) #can log techniques output later, just add the path separate by ","
        
@@ -981,8 +982,7 @@ class DeidShell(cmd.Cmd):
                 if (os.path.isfile(os.path.join(visualization_folder, visual))
                     and (visual.endswith(".py"))):
                         visualization_name = visual.replace(".py","")
-                        exist = self.config.get("Available Visualizations", visualization_name)
-                        if exist == "":
+                        if not self.config.has_option("Available Visualizations", visualization_name):
                             self.config.set("Available Visualizations", visualization_name, "")
         else:
             print(Fore.RED + 'Visualization directory not found. Does the ROOT_DIR ({0}) have a folder named visualization?'.format(self.root_dir), Fore.RESET)
