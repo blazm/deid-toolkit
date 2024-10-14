@@ -30,6 +30,15 @@ def main():
     path_to_deidentified_images = args.deidentified_path
     path_to_genuine_pairs  = args.genuine_pairs_filepath
     path_to_impostor_pairs = args.impostor_pairs_filepath
+
+    path_to_save = args.save_path
+    dataset_name = util.get_dataset_name_from_path(path_to_aligned_images)
+    technique_name = util.get_technique_name_from_path(path_to_deidentified_images)
+    metrics_df= util.Metrics(name_evaluation="adaface", 
+                              name_dataset=dataset_name,
+                              name_technique=technique_name,
+                              name_score="cossim")
+    
     output_file_name = util.get_output_filename("adaface",path_to_aligned_images, path_to_deidentified_images)
 
     if path_to_impostor_pairs is None:
@@ -81,6 +90,10 @@ def main():
 
         predicted_scores.append((cos_sim.item()+1)/2)
 
+        metrics_df.add_score(path_aligned=img_a_path, 
+                             path_deidentified=img_b_path,
+                             metric_result=(cos_sim.item()+1)/2)
+    metrics_df.save_to_csv(path_to_save)
     np.savetxt(output_file_name, predicted_scores )
     return result.add_metric("adaface","min", np.min(predicted_scores)).add_metric("adaface", "max",np.max(predicted_scores))
 

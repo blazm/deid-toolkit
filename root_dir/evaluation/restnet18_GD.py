@@ -1,6 +1,6 @@
 import os
 import argparse
-from utils import *
+import utils as util
 from data_utility.Restnet18.model import Model
 
 #TODO: change the paths
@@ -9,14 +9,22 @@ CHECKPOINT_NAME = "./root_dir/evaluation/data_utility/Restnet18/face_gender_clas
 
 
 def main():
-    output_score = MetricsBuilder()
-    args = read_args()
+    output_score = util.MetricsBuilder()
+    args = util.read_args()
     #get the mandatory args
     #get the only two params
     aligned_dataset_path = args.aligned_path
-    deidentified__dataset_path = args.deidentified_path
+    deidentified_dataset_path = args.deidentified_path
+    path_to_save = args.save_path
+    dataset_name = util.get_dataset_name_from_path(aligned_dataset_path)
+    technique_name = util.get_technique_name_from_path(deidentified_dataset_path)
+    metrics_df= util.Metrics(name_evaluation="resnet18", 
+                              name_dataset=dataset_name,
+                              name_technique=technique_name,
+                              name_score="isMatch")
+    
     files = os.listdir(aligned_dataset_path)
-    output_score_file = get_output_filename("restnet18_GD", aligned_dataset_path, deidentified__dataset_path)
+    output_score_file = util.get_output_filename("restnet18_GD", aligned_dataset_path, deidentified_dataset_path)
     f = open(output_score_file, 'w')
     
     device = 'cuda' if True else 'cpu'
@@ -28,8 +36,8 @@ def main():
     
     for file in files: 
         aligned_img_path = os.path.join(aligned_dataset_path, file)
-        deidentified_img_path = os.path.join(deidentified__dataset_path, file)
-        if not  os.path.exists(aligned_img_path):
+        deidentified_img_path = os.path.join(deidentified_dataset_path, file)
+        if not os.path.exists(aligned_img_path):
             print(f"{aligned_img_path} does not exist")
             continue
         if not  os.path.exists(deidentified_img_path):
@@ -43,14 +51,17 @@ def main():
         #Log the result
         #f.writelines(f"{emotion_aligned}, {emotion_deidentified},{True if emotion_aligned == emotion_deidentified else False}")
         #Increase the succeses if are equal
+        is_math = 1 if label_aligned == label_deidentified else 0
         if label_aligned == label_deidentified: 
             succeses+=1
+        metrics_df.add_score(aligned_img_path, deidentified_img_path,is_math)
     f.close()
+    metrics_df.save_to_csv(path_to_save)
     accuracy= 0
     accuracy = (succeses / samples)*100
     return output_score.add_metric("restnet18", "accuracy", "{:1.2f}%".format(accuracy))
 
 if __name__ == "__main__":
     #main()
-    result, _ , _  =with_no_prints(main)
+    result, _ , _  =util.with_no_prints(main)
     print(result.build())
