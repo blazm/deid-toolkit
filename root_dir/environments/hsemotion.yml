@@ -1,0 +1,15 @@
+name: hsemotion
+channels:
+  - defaults
+  - pytorch
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - pillow
+  - pytorch
+  - torchvision
+  - timm=0.9.7
+  - opencv
+  - pip:
+    - hsemotion
