@@ -1,0 +1,11 @@
+name: vggface  
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - opencv
+  - pip
+  - pip:
+      - torch 
+      - torchvision
+      - torchfile
