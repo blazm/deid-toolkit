@@ -37,6 +37,13 @@ def main():
     path_to_deidentified_images = args.deidentified_path
     path_to_genuine_pairs  = args.genuine_pairs_filepath
     path_to_impostor_pairs = args.impostor_pairs_filepath
+    path_to_save = args.save_path
+    dataset_name = util.get_dataset_name_from_path(path_to_aligned_images)
+    technique_name = util.get_technique_name_from_path(path_to_deidentified_images)
+    metric_df= util.Metrics(name_evaluation="vggface", 
+                              name_dataset=dataset_name,
+                              name_technique=technique_name,
+                              name_score="cossim")
 
     output_file_name = util.get_output_filename("vgg",path_to_aligned_images, path_to_deidentified_images)
 
@@ -91,12 +98,14 @@ def main():
         cos = nn.CosineSimilarity(dim=0, eps=1e-6)
         cos_score = cos(vgg_feat_a.flatten(), vgg_feat_b.flatten()).detach().cpu().numpy() #[0]
         vgg_predicted_scores.append(cos_score)
+        metric_df.add_score(img_a_path, img_b_path, cos_score)
 
     
     vgg_predicted_scores = np.array(vgg_predicted_scores)
     print("MIN:", np.min(vgg_predicted_scores), " MAX: ", np.max(vgg_predicted_scores))
     #TODO: set path to save
     #TODO: Save the file
+    metric_df.save_to_csv(path_to_save)
     np.savetxt(output_file_name, vgg_predicted_scores)
     
     return result.add_metric("vgg","min", np.min(vgg_predicted_scores)).add_metric("vgg", "max",np.max(vgg_predicted_scores))
