@@ -6,7 +6,7 @@ import os
 sys.path.append(os.path.abspath("./root_dir/evaluation/identity_verification/AdaFace"))
 from inference import load_pretrained_model, to_input
 from face_alignment import align
-import torch.nn.functional as F
+import torch.nn as nn
 
 #from identity_verification.AdaFace.inference import load_pretrained_model, to_input
 import utils as util
@@ -30,7 +30,7 @@ def main():
     path_to_deidentified_images = args.deidentified_path
     path_to_genuine_pairs  = args.genuine_pairs_filepath
     path_to_impostor_pairs = args.impostor_pairs_filepath
-    output_file_name = util.get_output_filename("insight_face",path_to_aligned_images, path_to_deidentified_images)
+    output_file_name = util.get_output_filename("adaface",path_to_aligned_images, path_to_deidentified_images)
 
     if path_to_impostor_pairs is None:
         print("No impostor pairs provided")
@@ -62,14 +62,8 @@ def main():
             continue 
         if not os.path.exists(img_b_path): # if any of the pipelines failed to detect faces
             print("Deid Images are not there! ", img_b_path)
-            predicted_scores.append(0.5) # so that the length of the array is equal to GT
             continue
         
-        #img_a = process_image(img_a_path, process_without_context = False)
-        #img_b = process_image(img_b_path, process_without_context = False)
-        #img_a = get_image(img_a_path)
-        #img_b = get_image(img_b_path)
-        #img = Image.open(img_a_path).convert('RGB')
         aligned_rgb_img_a = align.get_aligned_face(img_a_path)
         aligned_rgb_img_b = align.get_aligned_face(img_b_path)
         bgr_input_a = to_input(aligned_rgb_img_a)
@@ -81,31 +75,19 @@ def main():
         feat_a = feat_a.detach()
         feat_b = feat_b.detach()
 
-        # Normalize features
-        feat_a_norm = F.normalize(feat_a, p=2, dim=1)  # Normalizing across the feature dimension
-        feat_b_norm = F.normalize(feat_b, p=2, dim=1)
-
-        # Convert to numpy and squeeze to remove any extra dimensions
-        feat_a_numpy = feat_a_norm.cpu().numpy().squeeze()
-        feat_b_numpy = feat_b_norm.cpu().numpy().squeeze()
-
         # Calculate cosine similarity
-        cos_sim = dot(feat_a_numpy, feat_b_numpy) / (norm(feat_a_numpy) * norm(feat_b_numpy))
+        cosim = nn.CosineSimilarity()
+        cos_sim = cosim(feat_a, feat_b)
 
-        #print(f"{img_a_path}")
-        #feat_a = model.get_feature(img_a)
-        #print(f"{img_b_path}")   
-        #feat_b = model.get_feature(img_b)
-        predicted_scores.append(cos_sim)
-        #cos_sim = dot(a, b)/(norm(a)*norm(b))
-        #cos_sim = dot(feat_a, feat_b)/(norm(feat_a)*norm(feat_b))
-        #sim = np.dot(feat_a, feat_b)
-        #predicted_scores.append(cos_sim)
+        predicted_scores.append((cos_sim.item()+1)/2)
 
-    np.savetxt(output_file_name, predicted_scores)
-    return result.add_metric("adaface","min", np.min(predicted_scores)).add_metric("insightface", "max",np.max(predicted_scores))
+    np.savetxt(output_file_name, predicted_scores )
+    return result.add_metric("adaface","min", np.min(predicted_scores)).add_metric("adaface", "max",np.max(predicted_scores))
 
 
     
 if __name__ == "__main__":
-    main()
+    result, output, errors = util.with_no_prints(main)
+    result.add_output_message(str(output))
+    result.add_error(str(errors))
+    print(result.build())
