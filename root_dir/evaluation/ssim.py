@@ -5,21 +5,18 @@ import torch
 import numpy as np
 from PIL import Image
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
-from utils import compute_mean_std, get_output_filename,resize_if_different, MetricsBuilder, with_no_prints
+from utils import compute_mean_std, get_output_filename,resize_if_different, MetricsBuilder, with_no_prints, read_args
 # Now you can import the functions and classes
 
 # X: (N,3,H,W) a batch of non-negative RGB images (0~255)
 # Y: (N,3,H,W)  
 def main():
     output_result = MetricsBuilder()
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser = argparse.ArgumentParser(description="Evaluate ssim score between aligned and deidentified images")
-    parser.add_argument('path', type=str, nargs=2,
-                        help=('Paths of the aligned and deidentified datasets'))
-    args = parser.parse_args()
+    args = read_args()
+    #get the mandatory args
     #get the only two params
-    aligned_dataset_path = args.path[0]
-    deidentified_path = args.path[1]
+    aligned_dataset_path = args.aligned_path
+    deidentified_path = args.deidentified_path
     #build the ouput files
     ssim_output_scores_file = get_output_filename("ssim", aligned_dataset_path, deidentified_path)
     msssim_output_scores_file = get_output_filename("mssim", aligned_dataset_path, deidentified_path)

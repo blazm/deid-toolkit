@@ -7,7 +7,6 @@ from data_utility.DAN.networks.dan import DAN
 from utils import * 
 
 AFFECT_NET_PATH = './root_dir/evaluation/data_utility/DAN/checkpoints/affecnet8_epoch5_acc0.6209.pth'
-
 class Model():
     def __init__(self):
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -40,23 +39,14 @@ class Model():
             label = self.labels[index]
 
             return index, label
-
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser = argparse.ArgumentParser(description="Evaluate DAN facial expression between aligned and deidentified images")
-    parser.add_argument('path', type=str, nargs=2,
-                        help=('Paths of the aligned and deidentified datasets')) 
-    args = parser.parse_args()
-    assert os.path.exists(args.path[0])
-    assert os.path.exists(args.path[1])
-    return args.path[0], args.path[1]
 def accuracy(attempts, successes): 
     return successes/attempts
 def main():
     output_score = MetricsBuilder()
-    aligned_dataset_path, deidentified__dataset_path = parse_args()
+    args = read_args()
+    aligned_dataset_path = args.aligned_path
+    deidentified__dataset_path  = args.deidentified_path
+    
     output_scores_file = get_output_filename("dan", aligned_dataset_path, deidentified__dataset_path)
     f = open(output_scores_file, 'w')
     files = os.listdir(aligned_dataset_path)
@@ -67,8 +57,12 @@ def main():
     for file in files: 
         aligned_img_path = os.path.join(aligned_dataset_path, file)
         deidentified_img_path = os.path.join(deidentified__dataset_path, file)
-        assert os.path.exists(aligned_img_path)
-        assert os.path.exists(deidentified__dataset_path)
+        if not os.path.exists(aligned_img_path):
+            print(f"{aligned_dataset_path} does not exist")
+            continue
+        if not  os.path.exists(deidentified__dataset_path):
+            print(f"{deidentified__dataset_path} does not exist")
+            continue
         #evaluation
         index_aligned, label_aligned = model.fit(aligned_img_path)
         index_deidentified, label_deidentified  = model.fit(deidentified_img_path)
@@ -83,5 +77,5 @@ def main():
     return output_score.add_metric("dan", "accuracy", "{:1.2f}%".format(accuracy))
 
 if __name__ == "__main__":
-    result, _ , _  =with_no_prints(main)
+    result, output , errors  =with_no_prints(main)
     print(result.build())

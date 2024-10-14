@@ -4,16 +4,16 @@ import lpips
 import torch
 import numpy as np
 from PIL import Image
-from utils import compute_mean_std,resize_if_different,get_output_filename, MetricsBuilder, with_no_prints
+from utils import compute_mean_std,resize_if_different,get_output_filename, MetricsBuilder, with_no_prints, read_args
 def main():
     output_result = MetricsBuilder()
     parser = argparse.ArgumentParser(description="Evaluate lpips score")
     parser.add_argument('path', type=str, nargs=2,
                     help=('Paths of the datasets aligned and deidentified'))
 
-    args = parser.parse_args()
-    aligned_dataset_path = args.path[0]
-    deid_dataset_path  = args.path[1] #deidentified datast
+    args = read_args()
+    aligned_dataset_path = args.aligned_path
+    deid_dataset_path  = args.deidentified_path
     output_scores_file = get_output_filename("lpips", aligned_dataset_path, deid_dataset_path)
     use_gpu = False
     #True if torch.cuda.is_available() else False
