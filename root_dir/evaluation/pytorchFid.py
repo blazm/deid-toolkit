@@ -1,17 +1,16 @@
 import argparse
 import subprocess
 from unittest import result
-from utils import MetricsBuilder, with_no_prints
+from utils import MetricsBuilder, with_no_prints, read_args
 def main():
     output_result = MetricsBuilder()
-    parser = argparse.ArgumentParser(description="Evaluate FID score")
-    parser.add_argument('path', type=str, nargs=2,
-                    help=('Paths of the datasets aligned and deidentified'))
+    args = read_args()
+    path_to_aligned_images = args.aligned_path
+    path_to_deidentified_images = args.deidentified_path
 
-    args = parser.parse_args()
     command = [
         "python", "-u", "image_quality/pytorch_fid/__main__.py", "--batch-size", "8",
-        args.path[0], args.path[1]
+        path_to_aligned_images,path_to_deidentified_images
     ]
     try:
         result = subprocess.run(

@@ -5,17 +5,13 @@ import lpips
 import torch
 import numpy as np
 from PIL import Image
-from utils import MetricsBuilder, compute_mean_std, get_output_filename, resize_if_different, with_no_prints
+from utils import MetricsBuilder, compute_mean_std, get_output_filename, resize_if_different, with_no_prints, read_args
 
 
 def main(output_result: MetricsBuilder):
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser = argparse.ArgumentParser(description="Evaluate MSE score between aligned and deidentified images")
-    parser.add_argument('path', type=str, nargs=2,
-                        help=('Paths of the aligned and deidentified datasets'))
-    args = parser.parse_args()
-    aligned_path = args.path[0]
-    deidentified_path = args.path[1]
+    args = read_args()
+    aligned_path = args.aligned_path
+    deidentified_path = args.deidentified_path
 
     output_scores_file = get_output_filename("mse", aligned_path, deidentified_path)
 
