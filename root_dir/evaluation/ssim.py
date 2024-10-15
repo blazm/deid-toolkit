@@ -66,10 +66,10 @@ def main():
             ms_ssim_val = ms_ssim( img0, img1, data_range=1, size_average=True ) # return scalar
             ssim_df.add_score(path_aligned=aligned_img_path,
                               path_deidentified=deidentified_img_path,
-                              metric_result=ssim_val)
+                              metric_result='%.6f'%(ssim_val))
             msssim_df.add_score(path_aligned=aligned_img_path,
                               path_deidentified=deidentified_img_path,
-                              metric_result=ms_ssim_val)
+                              metric_result='%.6f'%(ms_ssim_val))
             #print('%s: %.3f'%(file,dist01)) # if using spatial, we need .mean()
             #f.writelines('%s: %.6f\n'%(file,dist01)) # original saves image name and score
             f.writelines('%.6f\n'%(ssim_val)) # we need only scores, to compute averages easily

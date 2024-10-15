@@ -62,7 +62,7 @@ def read_args():
     assert os.path.exists(args.aligned_path)
     assert os.path.exists(args.deidentified_path)
     if args.save_path is not None:
-        assert not args.save_path.endswith(".csv")
+        assert args.save_path.endswith(".csv")
     if args.impostor_pairs_filepath is not None: 
         assert os.path.exists(args.impostor_pairs_filepath)
     if args.genuine_pairs_filepath is not None:

@@ -19,6 +19,7 @@ FOLDER_TECHNIQUES = "techniques"
 FOLDER_EVALUATION = "evaluation"
 FOLDER_VISUALIZATION = "visualization"
 FOLDER_ENVIRONMENTS = "environments"
+FOLDER_RESULTS = "scores_output "
 
 class DeidShell(cmd.Cmd):
     intro = "Welcome to DeID-ToolKit.   Type help or ? to list commands.\n"
@@ -47,8 +48,7 @@ class DeidShell(cmd.Cmd):
         self.evaluation_initial_update(os.path.join(self.root_dir,FOLDER_EVALUATION))
         self.environments_initial_update(os.path.join(self.root_dir, FOLDER_ENVIRONMENTS))
         self.visualization_initial_update(os.path.join(self.root_dir, FOLDER_VISUALIZATION))
-        
-        print(self.get_available_visualizations())
+        #print(self.get_available_visualizations())
         self.logs_initial_update(os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION)) #can log techniques output later, just add the path separate by ","
        
 
@@ -161,7 +161,7 @@ class DeidShell(cmd.Cmd):
         switcher = {
             "preprocess": self.run_preprocess,
             "generate_pairs": self.run_generate_pairs,
-            "techniques": self.run_techniques,
+            #"techniques": self.run_techniques,
             "evaluation": self.run_evaluation,
             "visualize": self.run_visualize,
         }
@@ -307,7 +307,6 @@ class DeidShell(cmd.Cmd):
                 venv_exists = self.check_and_create_conda_env(venv_name)
                 if not venv_exists:
                     venv_name = "toolkit"
-                
                 for dataset_name in selected_datasets_names:
                     dataset_scores[dataset_name] = {}
                     try:
@@ -322,6 +321,7 @@ class DeidShell(cmd.Cmd):
                 scores_per_evaluation[evaluation_name]=dataset_scores
             except (ValueError, IndexError) as e:
                 print(f"Invalid eevaluation method index: {evaluation_name}. Error: {e}")
+        #TODO: 
         rows, headers = self._build_table_for_metrics(scores_per_evaluation)
         print(tabulate(rows, headers=headers, tablefmt="grid"))
 
@@ -571,10 +571,12 @@ class DeidShell(cmd.Cmd):
         pairs_paths =[] # impostor, genuine 
         if  os.path.exists(impostor_pairs_file) and os.path.exists(genuine_pairs_file):
             pairs_paths = (impostor_pairs_file, genuine_pairs_file)
+            #TODO: add a return here
             #TODO: validate if the current is identity verification tecnique
         else:
             issue_path= os.path.join(self.root_dir, FOLDER_DATASET, "pairs")
             print(f"{Fore.LIGHTRED_EX}No genuine and impostor pairs exist in {issue_path} for {dataset_name}{Fore.RESET}")
+            
 
         path_evaluation  = os.path.join(self.root_dir, FOLDER_EVALUATION,f"{evaluation_name}.py" ) #file to call
         path_evaluation = os.path.abspath(path_evaluation)
@@ -594,12 +596,14 @@ class DeidShell(cmd.Cmd):
                     continue
                 #get the initinal time
                 start_time = time.time()
+                save_path =os.path.join(self.root_dir,FOLDER_RESULTS, f"{evaluation_name}.csv")
                 #Executes the function
                 results, errors, output = self.run_evaluation_script(venv_name=venv_name, 
                                            path_evaluation=path_evaluation, 
                                            aligned_dataset_path=aligned_dataset_path,
                                            deidentified_dataset_path=deidpath_abspath,
-                                           pairs = pairs_paths)
+                                           pairs = pairs_paths,
+                                           save_path=save_path)
                 end_time = time.time()
                 duration = end_time - start_time
 
@@ -662,7 +666,7 @@ class DeidShell(cmd.Cmd):
         headers += _getHeaders(data)
         rows = _getRows(data, headers)
         return rows, headers
-    def run_evaluation_script(self, venv_name, path_evaluation, aligned_dataset_path, deidentified_dataset_path, pairs=[] ):
+    def run_evaluation_script(self, venv_name, path_evaluation, aligned_dataset_path, deidentified_dataset_path, pairs=[], save_path="./out.csv"):
         conda_sh_path = os.path.expanduser("/opt/conda/etc/profile.d/conda.sh")
         results = {}
         errors = output= []
@@ -677,6 +681,7 @@ class DeidShell(cmd.Cmd):
        
         command += f"--impostor_pairs_filepath {pairs[0]} " # add impostor file to the command
         command += f"--genuine_pairs_filepath {pairs[1]} " # add genuine file path to the command
+        command += f"--save_path {save_path} " # add save path
         try:
             # execute the evaluation
             data = subprocess.run(
@@ -880,6 +885,7 @@ class DeidShell(cmd.Cmd):
 
     def evaluation_initial_update(self, evaluation_folder):
         evaluation_names = ""
+        
 
         # Check if the config section for techniques exists; if not, create it
         if not self.config.has_section("Available Evaluations"):
