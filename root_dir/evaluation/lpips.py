@@ -52,7 +52,7 @@ def main():
             dist01 = loss_fn.forward(img0,img1)
             metrics_df.add_score(path_aligned=aligned_img_path,
                                  path_deidentified=deidentified_img_path,
-                                 metric_result=dist01)
+                                 metric_result='%.6f'%(dist01))
             f.writelines('%.6f\n'%(dist01)) # we need only scores, to compute averages easily
 
     f.close()
