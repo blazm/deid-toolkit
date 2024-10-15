@@ -1,4 +1,3 @@
-from ast import For
 import os  # os module provides a way of using operating system dependent functionality
 import cmd
 from turtle import color  # cmd is a module to create line-oriented command interpreters
@@ -6,10 +5,8 @@ from colorama import Fore  # color text
 from tqdm import tqdm
 import subprocess
 import select
-import json # to get the results from metrics
 from yaspin import yaspin #fancy loader spinner
 from tabulate import tabulate
-from datetime import datetime #to log file with datetime
 
 
 
@@ -19,7 +16,7 @@ FOLDER_TECHNIQUES = "techniques"
 FOLDER_EVALUATION = "evaluation"
 FOLDER_VISUALIZATION = "visualization"
 FOLDER_ENVIRONMENTS = "environments"
-FOLDER_RESULTS = "scores_output "
+FOLDER_RESULTS = "results"
 
 class DeidShell(cmd.Cmd):
     intro = "Welcome to DeID-ToolKit.   Type help or ? to list commands.\n"
@@ -48,7 +45,6 @@ class DeidShell(cmd.Cmd):
         self.evaluation_initial_update(os.path.join(self.root_dir,FOLDER_EVALUATION))
         self.environments_initial_update(os.path.join(self.root_dir, FOLDER_ENVIRONMENTS))
         self.visualization_initial_update(os.path.join(self.root_dir, FOLDER_VISUALIZATION))
-        #print(self.get_available_visualizations())
         self.logs_initial_update(os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION)) #can log techniques output later, just add the path separate by ","
        
 
@@ -159,10 +155,10 @@ class DeidShell(cmd.Cmd):
             # return
 
         switcher = {
-            "preprocess": self.run_preprocess,
-            "generate_pairs": self.run_generate_pairs,
+            #"preprocess": self.run_preprocess,
+            #"generate_pairs": self.run_generate_pairs,
             #"techniques": self.run_techniques,
-            "evaluation": self.run_evaluation,
+            #"evaluation": self.run_evaluation,
             "visualize": self.run_visualize,
         }
 
@@ -297,10 +293,7 @@ class DeidShell(cmd.Cmd):
         #Print the available environments
         self.get_available_environments()
         #start the pipeline for each evaluation
-        scores_per_evaluation = {} #recolect information to print the table for each evaluation
         for evaluation_name in selected_evaluation_names:
-            scores_per_evaluation[evaluation_name]={}
-            dataset_scores = {}#recolect evaluation for techniques for each datasets
             print(f"{evaluation_name} in progress...")
             try:
                 venv_name = self.config.get("Available Environments",evaluation_name, fallback=evaluation_name)
@@ -308,23 +301,19 @@ class DeidShell(cmd.Cmd):
                 if not venv_exists:
                     venv_name = "toolkit"
                 for dataset_name in selected_datasets_names:
-                    dataset_scores[dataset_name] = {}
                     try:
                         
-                        techniques_scores = self._process_dataset_with_evaluation(evaluation_name=evaluation_name,
-                                                                                  venv_name=venv_name,
-                                                                                  dataset_name=dataset_name,
-                                                                                  techniques_names=selected_techniques_names)
-                        dataset_scores[dataset_name]=techniques_scores
+                        self._process_dataset_with_evaluation(evaluation_name=evaluation_name,
+                                                            venv_name=venv_name,
+                                                            dataset_name=dataset_name,
+                                                            techniques_names=selected_techniques_names)
                     except (ValueError, IndexError) as e: 
                         print(f"Invalid dataset index: {dataset_name}. Error: {e}")
-                scores_per_evaluation[evaluation_name]=dataset_scores
             except (ValueError, IndexError) as e:
-                print(f"Invalid eevaluation method index: {evaluation_name}. Error: {e}")
-        #TODO: 
-        rows, headers = self._build_table_for_metrics(scores_per_evaluation)
-        print(tabulate(rows, headers=headers, tablefmt="grid"))
-
+                print(f"Invalid evaluation method index: {evaluation_name}. Error: {e}")
+        return 
+        #rows, headers = self._build_table_for_metrics(scores_per_evaluation)
+        #TODO: print(tabulate(rows, headers=headers, tablefmt="grid"))
         # TODO: every evaluation step must have a python script that can be run and preprocess either a single file or a directory
         # the script should be able to take input and output directories as arguments
 
@@ -342,9 +331,18 @@ class DeidShell(cmd.Cmd):
         if not selected_evaluation_names:
             print("No evaluation methods are selected")
             return
-        for dataset in selected_datasets_names: 
-            for technique in selected_techniques_names:
-                pass
+        print("select evaluation names:", selected_evaluation_names)
+        available_visualization  = self.get_available_visualizations()
+        for visualization, evaluations_list in available_visualization.items():
+            for evaluation in evaluations_list:
+                if evaluation in selected_evaluation_names: #create plot only for selected evaluation names
+                    path_visualization_script =  os.path.abspath(os.path.join(self.root_dir, FOLDER_VISUALIZATION, visualization))
+                    path_to_save =  os.path.abspath(os.path.join(self.root_dir, "visuals", evaluation))
+                    path_to_scores = os.path.abspath(os.path.join(self.root_dir, FOLDER_RESULTS, evaluation))
+                    self.run_visualization_script(path_visualization_script,path_to_scores,path_to_save )
+
+
+        
                 # for evaluation in selected evaluation? 
 
         # TODO: every visualization step must have a python script that can be run and preprocess either a single file or a directory
@@ -515,7 +513,7 @@ class DeidShell(cmd.Cmd):
             yaml_file = os.path.join(self.root_dir,FOLDER_ENVIRONMENTS,env_name+".yml")
             if os.path.isfile(yaml_file):
                 try:
-                    subprocess.check_call(['mamba', 'env', 'create', '-f', yaml_file, "--prefix", f"/opt/conda/envs/{env_name}"])
+                    subprocess.check_call(['mamba', 'env', 'create', '-f', yaml_file, "--prefix", f"~/miniforge3/envs/{env_name}"])
                     print(f"'{env_name}' environment have been created")
                     return True
                 except subprocess.CalledProcessError as e:
@@ -551,7 +549,7 @@ class DeidShell(cmd.Cmd):
         print(f"Processing dataset: {dataset_name} | Source path: {aligned_dataset_path} | Save path: {dataset_save_path}")
 
         self.run_technique_script(venv_name, technique_name, aligned_dataset_path, dataset_save_path)
-    def _process_dataset_with_evaluation(self, evaluation_name:str, venv_name,dataset_name:str, techniques_names:list)->list:
+    def _process_dataset_with_evaluation(self, evaluation_name:str, venv_name:str,dataset_name:str, techniques_names:list)->list:
         """This function performs the evaluation method for one dataset (provided in params),
           with the several deidentified methods. If not file exist for the technique, skip to the next one.
           run_evaluation
@@ -560,89 +558,68 @@ class DeidShell(cmd.Cmd):
             techniques (list): techniques which build the path to access to deidentified folder
             select_metrics (list): selected metrics to evaluate
         """
-        techniques_scores = {} #will contain the returned values which contains all the scores information for all techniques
-         #prepare the absolutes paths for the files to evaluate
+        pairs_paths =[] # impostor, genuine 
+        #prepare the absolutes paths for the files to evaluate
         aligned_dataset_path = os.path.join(self.root_dir, FOLDER_DATASET,"aligned", dataset_name)
         aligned_dataset_path = os.path.abspath(aligned_dataset_path)
         deidentified_paths = [os.path.abspath(os.path.join(self.root_dir, 'datasets', technique, dataset_name)) 
                               for technique in techniques_names] #convert techniques into absolute deidentified paths, needed by the called function from python files
         impostor_pairs_file = os.path.abspath(os.path.join(self.root_dir, FOLDER_DATASET, "pairs", f"{dataset_name}_impostor_pairs.txt"))
         genuine_pairs_file = os.path.abspath(os.path.join(self.root_dir, FOLDER_DATASET, "pairs", f"{dataset_name}_genuine_pairs.txt"))
-        pairs_paths =[] # impostor, genuine 
         if  os.path.exists(impostor_pairs_file) and os.path.exists(genuine_pairs_file):
             pairs_paths = (impostor_pairs_file, genuine_pairs_file)
-            #TODO: add a return here
-            #TODO: validate if the current is identity verification tecnique
         else:
             issue_path= os.path.join(self.root_dir, FOLDER_DATASET, "pairs")
             print(f"{Fore.LIGHTRED_EX}No genuine and impostor pairs exist in {issue_path} for {dataset_name}{Fore.RESET}")
-            
+            return 
 
         path_evaluation  = os.path.join(self.root_dir, FOLDER_EVALUATION,f"{evaluation_name}.py" ) #file to call
         path_evaluation = os.path.abspath(path_evaluation)
 
-        #This two lines are for logs for intermediary results
-        #output_path  = os.path.join(self.root_dir, FOLDER_EVALUATION, "output", "metrics.log")
-        #output_path = os.path.abspath(output_path)
         print(f"Evaluation: {Fore.LIGHTCYAN_EX}{evaluation_name} -> {dataset_name} {Fore.RESET}")
         with yaspin(text=f"Running {Fore.LIGHTMAGENTA_EX}{evaluation_name}{Fore.RESET}  for {Fore.LIGHTMAGENTA_EX}{dataset_name}{Fore.RESET}...", color="cyan") as sp:
-            import time
-
             for i,deidpath_abspath in enumerate(deidentified_paths): 
-                techniques_scores[techniques_names[i]]={}
                 sp.text = f"{Fore.GREEN}Running: {Fore.LIGHTMAGENTA_EX}{evaluation_name}{Fore.RESET} for {Fore.LIGHTMAGENTA_EX}{dataset_name}{Fore.RESET} with technique {Fore.LIGHTMAGENTA_EX}{techniques_names[i]}{Fore.RESET}..."
                 if not (os.path.isdir(deidpath_abspath)): #skip if cannot find the identified dataset path
                     sp.write(f"\t>{techniques_names[i]}: Cannot find deidentified folder for {techniques_names[i]}/{dataset_name} in datasets - {Fore.LIGHTYELLOW_EX}(Skipped){Fore.RESET}")
                     continue
                 #get the initinal time
-                start_time = time.time()
-                save_path =os.path.join(self.root_dir,FOLDER_RESULTS, f"{evaluation_name}.csv")
+                save_path =os.path.abspath(os.path.join(self.root_dir,FOLDER_RESULTS, f"{evaluation_name}.csv"))
                 #Executes the function
-                results, errors, output = self.run_evaluation_script(venv_name=venv_name, 
+                self.run_evaluation_script(venv_name=venv_name, 
                                            path_evaluation=path_evaluation, 
                                            aligned_dataset_path=aligned_dataset_path,
                                            deidentified_dataset_path=deidpath_abspath,
                                            pairs = pairs_paths,
                                            save_path=save_path)
-                end_time = time.time()
-                duration = end_time - start_time
-
-
-                #print(output)
-                #print in terminal
-                sp.write(f"\t>{techniques_names[i]}:")
-                for error in errors:
-                    sp.write(f"\t\t{error}")
-                sp.write(f"\t\t{Fore.WHITE}{results}{Fore.RESET}")
-                techniques_scores[techniques_names[i]]= results
                 # log the results
-                log_file = os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION, "evaluation_results.txt")
-                with open(log_file, 'a') as log:
-                    hours, remainder = divmod(duration, 3600)  # 3600 seconds in one hour
-                    minutes, seconds = divmod(remainder, 60)  # 60 seconds in one minute
-                    log.write("=" * 40 + "\n")
-                    log.write(f"Evaluation metric: {evaluation_name}")
-                    log.write(f" Dataset: {dataset_name}")
-                    log.write(f" technique: {techniques_names[i]}")
-                    log.write(f" Environment: {venv_name}\n")
-                    log.write(f"Hour: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                    log.write(f" Duration: {int(hours)}h {int(minutes)}m {int(seconds)}s\n")
-                    log.write(f"-"*20)
-                    log.write(f"\nResults: \n{results}\n")
-                    log.write(f"-"*20)
-                    log.write(f"\nerrors:\n")
-                    for ms in errors:
-                        log.write(f"{ms}\n")
-                    log.write(f"-"*20)
-                    log.write(f"\noutput:\n")
-                    for ms in output:
-                        log.write(f"{ms}\n")
-                    log.write("=" * 40 + "\n")
+                #log_file = os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION, "evaluation_results.txt")
+                #with open(log_file, 'a') as log:
+                #    hours, remainder = divmod(duration, 3600)  # 3600 seconds in one hour
+                #    minutes, seconds = divmod(remainder, 60)  # 60 seconds in one minute
+                #    log.write("=" * 40 + "\n")
+                #    log.write(f"Evaluation metric: {evaluation_name}")
+                #    log.write(f" Dataset: {dataset_name}")
+                #    log.write(f" technique: {techniques_names[i]}")
+                #    log.write(f" Environment: {venv_name}\n")
+                #    log.write(f"Hour: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                #    log.write(f" Duration: {int(hours)}h {int(minutes)}m {int(seconds)}s\n")
+                #    log.write(f"-"*20)
+                #    log.write(f"\nResults: \n{results}\n")
+                #    log.write(f"-"*20)
+                #    log.write(f"\nerrors:\n")
+                #    for ms in errors:
+                #        log.write(f"{ms}\n")
+                #    log.write(f"-"*20)
+                #    log.write(f"\noutput:\n")
+                #    for ms in output:
+                #        log.write(f"{ms}\n")
+                #    log.write("=" * 40 + "\n")
 
             else:
                 sp.text = ""
-                sp.ok(f"{evaluation_name} for {dataset_name} done")
-        return techniques_scores
+                sp.ok(f"{evaluation_name} for {dataset_name} done ")
+        return 
     def _build_table_for_metrics(self,data):
         def _getHeaders(data):
             all_keys = set()  # Usar un set para evitar duplicados
@@ -667,9 +644,7 @@ class DeidShell(cmd.Cmd):
         rows = _getRows(data, headers)
         return rows, headers
     def run_evaluation_script(self, venv_name, path_evaluation, aligned_dataset_path, deidentified_dataset_path, pairs=[], save_path="./out.csv"):
-        conda_sh_path = os.path.expanduser("/opt/conda/etc/profile.d/conda.sh")
-        results = {}
-        errors = output= []
+        conda_sh_path = os.path.expanduser("~/miniforge3/etc/profile.d/conda.sh")
         
         if not os.path.exists(conda_sh_path):
             print("conda.sh path does'nt exist, please change it in run_script() in deid_toolkit.py")
@@ -684,25 +659,32 @@ class DeidShell(cmd.Cmd):
         command += f"--save_path {save_path} " # add save path
         try:
             # execute the evaluation
-            data = subprocess.run(
-                command,
-                executable="/bin/bash",
-                capture_output=True,
-                text=True,
-                check=True,
-                shell=True
-                )
-                #get the output in json format
-            data:dict = json.loads(data.stdout.replace("\n",""))
-            #extract the information
-            results = data.get("result", {})
-            errors = data.get("errors", [])
-            output = data.get("output_messages",[])
-        except subprocess.CalledProcessError as e:
-            print(f"Error occurred while running the script:\n{e}")
+            process = subprocess.Popen(command, shell=True, 
+                                       executable="/bin/bash",
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE, text=True)
+            while True:
+                reads = [process.stdout.fileno(), process.stderr.fileno()]
+                ret = select.select(reads, [], [])
+                for fd in ret[0]:
+                    if fd == process.stdout.fileno():
+                        output = process.stdout.readline()
+                        if output:
+                            print(output.strip())
+                    if fd == process.stderr.fileno():
+                        error_output = process.stderr.readline()
+                        if error_output:
+                            print(error_output.strip())
+                if process.poll() is not None:
+                    break
+            process.stdout.close()
+            process.stderr.close()
+            process.wait()
+            if process.returncode != 0: 
+                print(f"Script exited with return code {process.returncode}")
         except Exception as e:
-            print(f"Unexpected error: {e}")
-        return  results, errors,output
+            print(f"Error occurred while running the script: {e}")
+        return 
 
     def run_technique_script(self, venv_name, technique_name, aligned_dataset_path, dataset_save_path):
         conda_sh_path = os.path.expanduser("/opt/conda/etc/profile.d/conda.sh")
@@ -752,8 +734,28 @@ class DeidShell(cmd.Cmd):
 
         except Exception as e:
             print(f"Error occurred while running the script: {e}")
+    def run_visualization_script(self, path_visualization_script,path_to_scores,path_to_save ):
         
-
+        command = (f"python -u {path_visualization_script}.py {path_to_scores}.csv {path_to_save}.pdf ")
+        try:
+            # execute the evaluation
+            data = subprocess.run(
+                command,
+                executable="/bin/bash",
+                capture_output=True,
+                text=True,
+                check=True,
+                shell=True
+                )
+                #get the output in json format
+            data = data.stdout.replace("\n","")
+            #extract the information
+            print(data)
+        except subprocess.CalledProcessError as e:
+            print(f"Error occurred while running the script {path_visualization_script}:\n{e}")
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+        
     def datasets_initial_update(self, aligned_folder, original_folder):
         datasets_name = ""
 

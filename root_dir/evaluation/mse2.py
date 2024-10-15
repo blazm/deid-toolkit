@@ -8,7 +8,7 @@ from PIL import Image
 import utils as util
 
 
-def main(output_result: util.MetricsBuilder):
+def main():
     args = util.read_args()
     aligned_path = args.aligned_path
     deidentified_path = args.deidentified_path
@@ -28,7 +28,7 @@ def main(output_result: util.MetricsBuilder):
     if use_gpu:
         loss_fn.cuda()
         
-    f = open(output_scores_file, 'w')
+    #f = open(output_scores_file, 'w')
     files = os.listdir(aligned_path)
 
     for file in files:
@@ -51,20 +51,14 @@ def main(output_result: util.MetricsBuilder):
                                  path_deidentified=deidentified_img_path, 
                                  metric_result='%.6f' % dist01)
             
-            f.writelines('%.6f\n' % dist01)
+            #f.writelines('%.6f\n' % dist01)
     
-    f.close()
+    #f.close()
     # Calculate mean and standard deviation
-    mean, std = util.compute_mean_std(output_scores_file)
-    output_result.add_output_message("Cuda is available" if use_gpu else "Not cuda available")
+    #mean, std = util.compute_mean_std(output_scores_file)
     metrics_df.save_to_csv(path_to_save)
-    return output_result.add_metric("mse", "mean ± std", "{:1.2f} ± {:1.2f}".format(mean, std))
+    print(f"mse scores save in {path_to_save}")
+    return 
 if __name__ == '__main__':
-    output_result = util.MetricsBuilder()
-    try:
-        result, output , _ =util.with_no_prints(main, output_result)
+    main()
         
-    except Exception as e:
-        output_result.add_error(f"Unexpected error: {e}")
-    #    print(output_result.build())
-    print(output_result.build())

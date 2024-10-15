@@ -1,4 +1,3 @@
-from ast import arg
 from PIL import Image
 import numpy as np
 import io
@@ -159,45 +158,6 @@ def with_no_prints(function, *args, **kwargs)->tuple:
     output = f.getvalue()
     error_output = errors.getvalue()
     return result, output, error_output
-
-class MetricsBuilder:
-    """
-    This builder is the easiest way to build a result for every metric, 
-    call the build() function to print the dicctionary if you're ready to print the result
-
-    Usage: 
-        result = MetricsBuilder()
-        result.add_metric("mse", 0.423, mean)
-            .add_metric("mse", 0.03, std)
-            .add_metric("ssim", 0.23, mean)
-            .add_metric("mssim", 0.303, mean)
-            .build()
-    """
-    def __init__(self):
-        self._output_result = {"result": {}, "errors":[], "output_messages": []}
-    def add_metric(self, metric_name:str, score_name="score",value="n/d"):
-        """Adds or update a value"""
-        
-        if metric_name not in self._output_result["result"]:
-            self._output_result["result"][metric_name] = {}
-        if score_name not in self._output_result["result"][metric_name]:
-            self._output_result["result"][metric_name][score_name] = "n/d"
-        self._output_result["result"][metric_name][score_name] =f"{value}"
-        return self
-    def add_error(self, message, error="Unexpected error"): 
-        """If something goes wrong, you can add a error message"""
-        self._output_result['errors'].append(message)
-        return self
-    def add_output_message(self,message):
-        self._output_result["output_messages"].append(message)
-        return self
-    def build(self):
-        """Call this function when you want to print the dictionary in json format"""
-        return json.dumps(self._output_result, indent=4)
-    def reset(self):
-        """restart"""
-        self._output_result = {"result": [], "errors":[], "output_messages": []}
-        return self
 
 
 class Metrics():

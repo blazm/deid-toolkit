@@ -7,7 +7,6 @@ from PIL import Image
 import utils as util
 
 def main():
-    output_result = util.MetricsBuilder()
     parser = argparse.ArgumentParser(description="Evaluate lpips score")
     parser.add_argument('path', type=str, nargs=2,
                     help=('Paths of the datasets aligned and deidentified'))
@@ -23,7 +22,7 @@ def main():
                               name_technique=technique_name,
                               name_score="dist")
 
-    output_scores_file = util.get_output_filename("lpips", aligned_dataset_path, deid_dataset_path)
+    #output_scores_file = util.get_output_filename("lpips", aligned_dataset_path, deid_dataset_path)
     use_gpu = False
     #True if torch.cuda.is_available() else False
     
@@ -32,7 +31,7 @@ def main():
         loss_fn.cuda()
     
     
-    f = open(output_scores_file, 'w')
+    #f = open(output_scores_file, 'w')
     files = os.listdir(aligned_dataset_path)
     for file in files:
         if(os.path.exists(os.path.join(deid_dataset_path,file))):
@@ -53,14 +52,12 @@ def main():
             metrics_df.add_score(path_aligned=aligned_img_path,
                                  path_deidentified=deidentified_img_path,
                                  metric_result='%.6f'%(dist01))
-            f.writelines('%.6f\n'%(dist01)) # we need only scores, to compute averages easily
+            #f.writelines('%.6f\n'%(dist01)) # we need only scores, to compute averages easily
 
-    f.close()
-    output_result.add_output_message("Executed on Cuda" if use_gpu else "Executed on cpu")
-    mean, std = util.compute_mean_std(output_scores_file)
-    output_result.add_metric("lpips", "mean ± std", "{:1.2f} ± {:1.2f}".format(mean, std))
+    #f.close()
+    #mean, std = util.compute_mean_std(output_scores_file)
     metrics_df.save_to_csv(path_to_save)
-    return output_result.build()
+    print(f"lpips saved into {path_to_save}")
+    return
 if __name__ == '__main__':
-    result, output , _ =util.with_no_prints(main)
-    print(result)
+    main()
