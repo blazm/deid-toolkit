@@ -9,7 +9,6 @@ CHECKPOINT_NAME = "./root_dir/evaluation/data_utility/Restnet18/face_gender_clas
 
 
 def main():
-    output_score = util.MetricsBuilder()
     args = util.read_args()
     #get the mandatory args
     #get the only two params
@@ -24,8 +23,8 @@ def main():
                               name_score="isMatch")
     
     files = os.listdir(aligned_dataset_path)
-    output_score_file = util.get_output_filename("restnet18_GD", aligned_dataset_path, deidentified_dataset_path)
-    f = open(output_score_file, 'w')
+    #output_score_file = util.get_output_filename("restnet18_GD", aligned_dataset_path, deidentified_dataset_path)
+    #f = open(output_score_file, 'w')
     
     device = 'cuda' if True else 'cpu'
     model = Model(CHECKPOINT_NAME)
@@ -55,13 +54,13 @@ def main():
         if label_aligned == label_deidentified: 
             succeses+=1
         metrics_df.add_score(aligned_img_path, deidentified_img_path,is_math)
-    f.close()
+    #f.close()
     metrics_df.save_to_csv(path_to_save)
-    accuracy= 0
-    accuracy = (succeses / samples)*100
-    return output_score.add_metric("restnet18", "accuracy", "{:1.2f}%".format(accuracy))
+    print(f"resnet18 scores saved in {path_to_save}")
+    #accuracy= 0
+    #accuracy = (succeses / samples)*100
+    return
 
 if __name__ == "__main__":
     #main()
-    result, _ , _  =util.with_no_prints(main)
-    print(result.build())
+    main()

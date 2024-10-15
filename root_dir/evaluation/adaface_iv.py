@@ -24,7 +24,6 @@ def get_features(emb):
 
 def main(): 
     args = util.read_args()
-    result = util.MetricsBuilder()
     #get the mandatory args
     path_to_aligned_images = args.aligned_path
     path_to_deidentified_images = args.deidentified_path
@@ -39,7 +38,7 @@ def main():
                               name_technique=technique_name,
                               name_score="cossim")
     
-    output_file_name = util.get_output_filename("adaface",path_to_aligned_images, path_to_deidentified_images)
+    #output_file_name = util.get_output_filename("adaface",path_to_aligned_images, path_to_deidentified_images)
 
     if path_to_impostor_pairs is None:
         print("No impostor pairs provided")
@@ -94,13 +93,12 @@ def main():
                              path_deidentified=img_b_path,
                              metric_result=(cos_sim.item()+1)/2)
     metrics_df.save_to_csv(path_to_save)
-    np.savetxt(output_file_name, predicted_scores )
-    return result.add_metric("adaface","min", np.min(predicted_scores)).add_metric("adaface", "max",np.max(predicted_scores))
+    print(f"adaface saved into {path_to_save}")
+
+    #np.savetxt(output_file_name, predicted_scores )
+    return
 
 
     
 if __name__ == "__main__":
-    result, output, errors = util.with_no_prints(main)
-    result.add_output_message(str(output))
-    result.add_error(str(errors))
-    print(result.build())
+    main()

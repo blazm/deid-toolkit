@@ -30,7 +30,6 @@ def process_image(image_path:str, process_without_context=True):
 
 
 def main():
-    result = util.MetricsBuilder()
     args = util.read_args()
     #get the mandatory args
     path_to_aligned_images = args.aligned_path
@@ -45,7 +44,7 @@ def main():
                               name_technique=technique_name,
                               name_score="cossim")
 
-    output_file_name = util.get_output_filename("vgg",path_to_aligned_images, path_to_deidentified_images)
+    #output_file_name = util.get_output_filename("vgg",path_to_aligned_images, path_to_deidentified_images)
 
     if path_to_impostor_pairs is None:
         print("No impostor pairs provided")
@@ -106,12 +105,10 @@ def main():
     #TODO: set path to save
     #TODO: Save the file
     metric_df.save_to_csv(path_to_save)
-    np.savetxt(output_file_name, vgg_predicted_scores)
-    
-    return result.add_metric("vgg","min", np.min(vgg_predicted_scores)).add_metric("vgg", "max",np.max(vgg_predicted_scores))
+    #np.savetxt(output_file_name, vgg_predicted_scores)
+    return
           
 
 
 if __name__ == "__main__":
-    result, _, _ = util.with_no_prints(main)
-    print(result.build())
+    main()

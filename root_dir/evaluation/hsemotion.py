@@ -1,5 +1,7 @@
-from data_utility.hsemotion.hsemotion.facial_emotions import HSEmotionRecognizer 
+import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), './data_utility/hsemotion/hsemotion')))
+from data_utility.hsemotion.hsemotion.facial_emotions import HSEmotionRecognizer 
 import utils as util
 
 import cv2
@@ -10,13 +12,12 @@ MODEL_NAME = 'enet_b0_8_best_afew'
 
 
 def main():
-    output_score = util.MetricsBuilder()
     args = util.read_args()
     aligned_dataset_path = args.aligned_path
     deidentified__dataset_path  = args.deidentified_path
     files = os.listdir(aligned_dataset_path)
-    output_score_file = util.get_output_filename("hsemotion", aligned_dataset_path, deidentified__dataset_path)
-    f = open(output_score_file, 'w')
+    #output_score_file = util.get_output_filename("hsemotion", aligned_dataset_path, deidentified__dataset_path)
+    #f = open(output_score_file, 'w')
 
     path_to_save = args.save_path
     dataset_name = util.get_dataset_name_from_path(aligned_dataset_path)
@@ -50,7 +51,7 @@ def main():
         emotion_deidentified,_=fer.predict_emotions(deid_img,logits=True)
         #Log the result
         is_match = 1 if emotion_aligned == emotion_deidentified else 0
-        f.writelines(f"{emotion_aligned}, {emotion_deidentified},{is_match}")
+        #f.writelines(f"{emotion_aligned}, {emotion_deidentified},{is_match}")
         #Increase the succeses if are equal
         if emotion_aligned == emotion_deidentified: 
             succeses+=1
@@ -58,12 +59,13 @@ def main():
                              path_deidentified=deidentified_img_path,
                              metric_result=is_match)
         
-    f.close()
+    #f.close()
     metrics_df.save_to_csv(path_to_save)
-    accuracy = (succeses / samples)*100
-    return output_score.add_metric("hsemotion", "accuracy", "{:1.2f}%".format(accuracy))
+    print(f"hsemotion saved into {path_to_save}")
+
+    #accuracy = (succeses / samples)*100
+    return
 
 if __name__ == "__main__":
-    result, _ , _  =util.with_no_prints(main)
-    print(result.build())
+    main()
     #main()

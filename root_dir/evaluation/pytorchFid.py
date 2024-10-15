@@ -2,7 +2,6 @@ import argparse
 import subprocess
 import utils as util
 def main():
-    output_result = util.MetricsBuilder()
     args = util.read_args()
     path_to_aligned_images = args.aligned_path
     path_to_deidentified_images = args.deidentified_path
@@ -27,14 +26,13 @@ def main():
             check=True
         )
         fidscore =  result.stdout.split(" ")[-1].replace("\n","")
-        output_result.add_metric("pytorchFid", "score",fidscore)
         metrics_df.add_score(path_to_aligned_images, path_to_deidentified_images,fidscore )
         metrics_df.save_to_csv(path_to_save)
+        print(f"fid scores saved in {path_to_save}")
     except subprocess.CalledProcessError as e:
-        output_result.add_error(f"Error occurred while running the script:\n{e.stderr}")
+        print(f"Error occurred while running the script:\n{e.stderr}")
     except Exception as e:
-        output_result.add_error(f"Unexpected error: {e}")
-    return output_result.build()
+        print(f"Unexpected error: {e}")
+    return
 if __name__ == '__main__':
-    result, _, _ =util.with_no_prints(main)
-    print(result)
+    main()
