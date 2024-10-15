@@ -11,7 +11,6 @@ import utils as util
 # X: (N,3,H,W) a batch of non-negative RGB images (0~255)
 # Y: (N,3,H,W)  
 def main():
-    output_result = util.MetricsBuilder()
     args = util.read_args()
     #get the mandatory args
     #get the only two params
@@ -31,8 +30,8 @@ def main():
                               name_score="dist")
     
     #build the ouput files
-    ssim_output_scores_file = util.get_output_filename("ssim", aligned_dataset_path, deidentified_path)
-    msssim_output_scores_file = util.get_output_filename("mssim", aligned_dataset_path, deidentified_path)
+    #ssim_output_scores_file = util.get_output_filename("ssim", aligned_dataset_path, deidentified_path)
+    #msssim_output_scores_file = util.get_output_filename("mssim", aligned_dataset_path, deidentified_path)
 
     use_gpu = True if torch.cuda.is_available() else False
 
@@ -42,8 +41,8 @@ def main():
         loss_fn.cuda()
  
     
-    f = open(ssim_output_scores_file, 'w')
-    f_ms = open(msssim_output_scores_file,'w')
+    #f = open(ssim_output_scores_file, 'w')
+    #f_ms = open(msssim_output_scores_file,'w')
     files = os.listdir(aligned_dataset_path)
 
     for file in files:
@@ -72,23 +71,18 @@ def main():
                               metric_result='%.6f'%(ms_ssim_val))
             #print('%s: %.3f'%(file,dist01)) # if using spatial, we need .mean()
             #f.writelines('%s: %.6f\n'%(file,dist01)) # original saves image name and score
-            f.writelines('%.6f\n'%(ssim_val)) # we need only scores, to compute averages easily
-            f_ms.writelines('%.6f\n'%(ms_ssim_val)) # we need only scores, to compute averages easily
+            #f.writelines('%.6f\n'%(ssim_val)) # we need only scores, to compute averages easily
+            #f_ms.writelines('%.6f\n'%(ms_ssim_val)) # we need only scores, to compute averages easily
 
-    f.close()
-    f_ms.close()
+    #f.close()
+    #f_ms.close()
     ssim_df.save_to_csv(path_to_save)
     msssim_df.save_to_csv(path_to_save.replace("ssim.csv", "msssim.csv"))
-    ssim_mean, ssim_std = util.compute_mean_std(ssim_output_scores_file)
-    mssim_mean, mssim_std = util.compute_mean_std(msssim_output_scores_file)
+    print(f"mssim and ssim scores save in {path_to_save} ")
+    #ssim_mean, ssim_std = util.compute_mean_std(ssim_output_scores_file)
+    #mssim_mean, mssim_std = util.compute_mean_std(msssim_output_scores_file)
    
-    print(output_result
-          .add_metric("ssim", "mean ± std", "{:1.2f} ± {:1.2f}".format(ssim_mean, ssim_std))
-          .add_metric("mssim", "mean ± std", "{:1.2f} ± {:1.2f}".format(mssim_mean, mssim_std))
-          .add_output_message("Executed on cuda" if use_gpu else "Cuda not available, executed in cpu")
-          .build() # don't forget to build at the end
-    )
+    
 
 if __name__ == "__main__":
-    _, result, _ = util.with_no_prints(main)
-    print(result)
+    main()
