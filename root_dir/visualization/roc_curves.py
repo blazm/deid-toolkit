@@ -52,46 +52,62 @@ def compute_eer(fpr,tpr,thresholds):
     eer = np.mean((fpr[min_index], fnr[min_index]))
     return eer, thresholds[min_index]
 
+
+
+
 def main(args):
-    dataset = args.dataset
-    evaluation = args.evaluation
-    technique = args.technique
+    datasets = args.datasets
+    evaluations = args.evaluations
+    techniques = args.techniques
     path_to_save = args.path_save
 
-    path_to_csv =  os.path.abspath(os.path.join(util.RESULTS_DIR, f"{evaluation}_{dataset}_{technique}.csv"))
-    df = pd.read_csv(path_to_csv)
+    for evaluation in evaluations:
+        # Crear un PDF por evaluación
+        num_plots = len(datasets)  # Número total de gráficos (uno por dataset)
+        rows = int(np.sqrt(num_plots))  # Filas de la cuadrícula
+        cols = int(np.ceil(num_plots / rows))  # Columnas de la cuadrícula
 
-    plt.figure(0)
-    plt.title(f"Receiver Operating Characteristic ({evaluation}) ")
-    ax_markers = []
-    eps_symbols = []
-    
- 
-    colors = ['#2D58DA', '#2D3CDA', '#2817E7', '#7213CC', '#B90FB9', '#E732C6', '#ED4E9B', '#F26A6F', '#F88B72', '#FD9F7A']
-    markers = ['.', '+', '*', 'x', 'o', 's', 'p', 'D']
-    plt.rc('legend', fontsize=3) 
+        fig, axes = plt.subplots(rows, cols, figsize=(15, 10))
 
+        # Asegurarse de que axes sea un array, incluso si solo hay un gráfico
+        axes = np.atleast_1d(axes).ravel()  # Aplanar para iterar fácilmente
 
-    label ='{} - {}'.format(dataset, technique)
-    ground_truth_binary_labels = df["ground_truth"].to_numpy()
-    predicted_scores = df["cossim"].to_numpy()
-    fpr, tpr, threshold = metrics.roc_curve(ground_truth_binary_labels, predicted_scores)
-    roc_auc = metrics.auc(fpr, tpr)
-    roc_eer, _ = compute_eer(fpr, tpr, threshold)
-    plt.plot(fpr, tpr, 'b', label = label + "; AUC=%0.2f, EER=%0.2f" % (roc_auc, roc_eer),
-        color=colors[0],
-        linewidth=0.75,
-        markersize=1)
+        #mean_fpr = np.linspace(0, 1, 100)
 
-    plt.legend(loc = 'lower right')
-    plt.plot([0, 1], [0, 1],'r--')
-    plt.xlim([0, 1])
-    plt.ylim([0, 1])
-    plt.ylabel('True Positive Rate')
-    plt.xlabel('False Positive Rate')
-    #plt.show()
-    plt.savefig(path_to_save, dpi=600)
-    plt.close()
+        for i, dataset in enumerate(datasets):
+            ax = axes[i]  # Selecciona el subplot correspondiente al dataset
+            ax.set_title(f"ROC ({evaluation}): {dataset}")
+            
+            # Graficar una línea por cada técnica en el mismo gráfico
+            for j, technique in enumerate(techniques):
+                path_to_csv = os.path.abspath(os.path.join(util.RESULTS_DIR, f"{evaluation}_{dataset}_{technique}.csv"))
+                
+                if not os.path.exists(path_to_csv):
+                    continue  # Si el archivo no existe, pasar a la siguiente técnica
+                
+                df = pd.read_csv(path_to_csv)
+                ground_truth_binary_labels = df["ground_truth"].to_numpy()
+                predicted_scores = df["cossim"].to_numpy()
+                fpr, tpr, threshold = metrics.roc_curve(ground_truth_binary_labels, predicted_scores)
+                roc_auc = metrics.auc(fpr, tpr)
+                roc_eer, _ = compute_eer(fpr, tpr, threshold)
+                
+                label = f'{technique} (AUC={roc_auc:.2f}, EER={roc_eer:.2f})'
+                color = plt.cm.get_cmap('tab10')(j)  # Usar un color diferente para cada técnica
+                
+                ax.plot(fpr, tpr, label=label, color=color, linewidth=0.75)
+                ax.plot([0, 1], [0, 1], 'r--')  # Línea diagonal (aleatorio)
+
+            # Configurar límites, etiquetas y leyenda
+            ax.set_xlim([0, 1])
+            ax.set_ylim([0, 1])
+            ax.set_ylabel('True Positive Rate')
+            ax.set_xlabel('False Positive Rate')
+            ax.legend(loc='lower right', fontsize=12)
+
+        plt.tight_layout()
+        plt.savefig(os.path.join(path_to_save, f"{evaluation}_roc_curves.pdf"), dpi=600)
+        plt.close()
 
 if __name__ == "__main__":
     args = util.read_args()
