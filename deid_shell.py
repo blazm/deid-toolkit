@@ -5,8 +5,10 @@ from colorama import Fore  # color text
 from tqdm import tqdm
 import subprocess
 import select
-from yaspin import yaspin #fancy loader spinner
-from tabulate import tabulate
+import itertools
+
+#from yaspin import yaspin #fancy loader spinner
+#from tabulate import tabulate
 
 
 
@@ -158,7 +160,7 @@ class DeidShell(cmd.Cmd):
             #"preprocess": self.run_preprocess,
             #"generate_pairs": self.run_generate_pairs,
             #"techniques": self.run_techniques,
-            #"evaluation": self.run_evaluation,
+            "evaluation": self.run_evaluation,
             "visualize": self.run_visualize,
         }
 
@@ -321,30 +323,33 @@ class DeidShell(cmd.Cmd):
     def run_visualize(self, arg):
         "Run visualization:  RUN_VISUALIZE"
         print("Running visualization")
-        if not self.config.has_option("selection", "evaluation") or not self.config.has_option("selection", "datasets"):
-            print("No datasets or evaluation selected.")
+        if (not self.config.has_option("selection", "evaluation") 
+            or not self.config.has_option("selection", "datasets")
+            or not self.config.has_option("selection","techniques")):
+            print("No datasets or evaluation or techniques selected. Please, check your selected options")
             return
         #get all the selected items
+        selected_evaluation_names = self.config.get("selection", "evaluation").split()
         selected_datasets_names = self.config.get("selection", "datasets").split()
         selected_techniques_names = self.config.get("selection", "techniques").split()
-        selected_evaluation_names = self.config.get("selection", "evaluation").split()
+
         if not selected_evaluation_names:
             print("No evaluation methods are selected")
             return
         print("select evaluation names:", selected_evaluation_names)
         available_visualization  = self.get_available_visualizations()
         for visualization, evaluations_list in available_visualization.items():
-            for evaluation in evaluations_list:
-                if evaluation in selected_evaluation_names: #create plot only for selected evaluation names
-                    path_visualization_script =  os.path.abspath(os.path.join(self.root_dir, FOLDER_VISUALIZATION, visualization))
-                    path_to_save =  os.path.abspath(os.path.join(self.root_dir, "visuals", evaluation))
-                    path_to_scores = os.path.abspath(os.path.join(self.root_dir, FOLDER_RESULTS, evaluation))
-                    self.run_visualization_script(path_visualization_script,path_to_scores,path_to_save )
-
-
-        
+            #filter only the selected evaluatios in the configurarion list
+            selected_evaluations = [evaluation for evaluation in evaluations_list if evaluation in selected_evaluation_names]
+            #generate combinations avoid cycles within cycles
+            combinations = itertools.product(selected_evaluations, selected_datasets_names, selected_techniques_names)
+            for evaluation, dataset, technique in combinations:
+                path_visualization_script =  os.path.abspath(os.path.join(self.root_dir, FOLDER_VISUALIZATION, visualization))
+                path_to_save =  os.path.abspath(os.path.join(self.root_dir, "visuals", evaluation))
+                #path_to_scores = os.path.abspath(os.path.join(self.root_dir, FOLDER_RESULTS, f"{evaluation}_{dataset}_{technique}.csv"))
+                #TODO: Pass all the dataset and techniques 
+                self.run_visualization_script(path_visualization_script,dataset, technique,path_to_save )
                 # for evaluation in selected evaluation? 
-
         # TODO: every visualization step must have a python script that can be run and preprocess either a single file or a directory
         # the script should be able to take input and output directories as arguments
 
@@ -577,48 +582,47 @@ class DeidShell(cmd.Cmd):
         path_evaluation = os.path.abspath(path_evaluation)
 
         print(f"Evaluation: {Fore.LIGHTCYAN_EX}{evaluation_name} -> {dataset_name} {Fore.RESET}")
-        with yaspin(text=f"Running {Fore.LIGHTMAGENTA_EX}{evaluation_name}{Fore.RESET}  for {Fore.LIGHTMAGENTA_EX}{dataset_name}{Fore.RESET}...", color="cyan") as sp:
-            for i,deidpath_abspath in enumerate(deidentified_paths): 
-                sp.text = f"{Fore.GREEN}Running: {Fore.LIGHTMAGENTA_EX}{evaluation_name}{Fore.RESET} for {Fore.LIGHTMAGENTA_EX}{dataset_name}{Fore.RESET} with technique {Fore.LIGHTMAGENTA_EX}{techniques_names[i]}{Fore.RESET}..."
-                if not (os.path.isdir(deidpath_abspath)): #skip if cannot find the identified dataset path
-                    sp.write(f"\t>{techniques_names[i]}: Cannot find deidentified folder for {techniques_names[i]}/{dataset_name} in datasets - {Fore.LIGHTYELLOW_EX}(Skipped){Fore.RESET}")
-                    continue
-                #get the initinal time
-                save_path =os.path.abspath(os.path.join(self.root_dir,FOLDER_RESULTS, f"{evaluation_name}.csv"))
-                #Executes the function
-                self.run_evaluation_script(venv_name=venv_name, 
-                                           path_evaluation=path_evaluation, 
-                                           aligned_dataset_path=aligned_dataset_path,
-                                           deidentified_dataset_path=deidpath_abspath,
-                                           pairs = pairs_paths,
-                                           save_path=save_path)
-                # log the results
-                #log_file = os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION, "evaluation_results.txt")
-                #with open(log_file, 'a') as log:
-                #    hours, remainder = divmod(duration, 3600)  # 3600 seconds in one hour
-                #    minutes, seconds = divmod(remainder, 60)  # 60 seconds in one minute
-                #    log.write("=" * 40 + "\n")
-                #    log.write(f"Evaluation metric: {evaluation_name}")
-                #    log.write(f" Dataset: {dataset_name}")
-                #    log.write(f" technique: {techniques_names[i]}")
-                #    log.write(f" Environment: {venv_name}\n")
-                #    log.write(f"Hour: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                #    log.write(f" Duration: {int(hours)}h {int(minutes)}m {int(seconds)}s\n")
-                #    log.write(f"-"*20)
-                #    log.write(f"\nResults: \n{results}\n")
-                #    log.write(f"-"*20)
-                #    log.write(f"\nerrors:\n")
-                #    for ms in errors:
-                #        log.write(f"{ms}\n")
-                #    log.write(f"-"*20)
-                #    log.write(f"\noutput:\n")
-                #    for ms in output:
-                #        log.write(f"{ms}\n")
-                #    log.write("=" * 40 + "\n")
+        for i,deidpath_abspath in enumerate(deidentified_paths): 
+            
+            print(f"{Fore.GREEN}Running: {Fore.LIGHTMAGENTA_EX}{evaluation_name}{Fore.RESET} for {Fore.LIGHTMAGENTA_EX}{dataset_name}{Fore.RESET} with technique {Fore.LIGHTMAGENTA_EX}{techniques_names[i]}{Fore.RESET}...")
+            if not (os.path.isdir(deidpath_abspath)): #skip if cannot find the identified dataset path
+                print(f"\t>{techniques_names[i]}: Cannot find deidentified folder for {techniques_names[i]}/{dataset_name} in datasets - {Fore.LIGHTYELLOW_EX}(Skipped){Fore.RESET}")
+                continue
+            #get the initinal time
+            save_path =os.path.abspath(os.path.join(self.root_dir,FOLDER_RESULTS, f"{evaluation_name}_{dataset_name}_{techniques_names[i]}.csv"))
+            #Executes the function
+            self.run_evaluation_script(venv_name=venv_name, 
+                                        path_evaluation=path_evaluation, 
+                                        aligned_dataset_path=aligned_dataset_path,
+                                        deidentified_dataset_path=deidpath_abspath,
+                                        pairs = pairs_paths,
+                                        save_path=save_path)
+            # log the results
+            #log_file = os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION, "evaluation_results.txt")
+            #with open(log_file, 'a') as log:
+            #    hours, remainder = divmod(duration, 3600)  # 3600 seconds in one hour
+            #    minutes, seconds = divmod(remainder, 60)  # 60 seconds in one minute
+            #    log.write("=" * 40 + "\n")
+            #    log.write(f"Evaluation metric: {evaluation_name}")
+            #    log.write(f" Dataset: {dataset_name}")
+            #    log.write(f" technique: {techniques_names[i]}")
+            #    log.write(f" Environment: {venv_name}\n")
+            #    log.write(f"Hour: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            #    log.write(f" Duration: {int(hours)}h {int(minutes)}m {int(seconds)}s\n")
+            #    log.write(f"-"*20)
+            #    log.write(f"\nResults: \n{results}\n")
+            #    log.write(f"-"*20)
+            #    log.write(f"\nerrors:\n")
+            #    for ms in errors:
+            #        log.write(f"{ms}\n")
+            #    log.write(f"-"*20)
+            #    log.write(f"\noutput:\n")
+            #    for ms in output:
+            #        log.write(f"{ms}\n")
+            #    log.write("=" * 40 + "\n")
 
-            else:
-                sp.text = ""
-                sp.ok(f"{evaluation_name} for {dataset_name} done ")
+        else:
+            print(f"{evaluation_name} for {dataset_name} done ")
         return 
     def _build_table_for_metrics(self,data):
         def _getHeaders(data):
@@ -734,27 +738,40 @@ class DeidShell(cmd.Cmd):
 
         except Exception as e:
             print(f"Error occurred while running the script: {e}")
-    def run_visualization_script(self, path_visualization_script,path_to_scores,path_to_save ):
         
-        command = (f"python -u {path_visualization_script}.py {path_to_scores}.csv {path_to_save}.pdf ")
+    def run_visualization_script(self, path_visualization_script,dataset, technique,path_to_save  ):
+        
+        command = (f"python -u {path_visualization_script}.py {dataset} {technique} {path_to_save}.pdf ")
         try:
-            # execute the evaluation
-            data = subprocess.run(
-                command,
-                executable="/bin/bash",
-                capture_output=True,
-                text=True,
-                check=True,
-                shell=True
-                )
-                #get the output in json format
-            data = data.stdout.replace("\n","")
-            #extract the information
-            print(data)
-        except subprocess.CalledProcessError as e:
-            print(f"Error occurred while running the script {path_visualization_script}:\n{e}")
+            process = subprocess.Popen(command, shell=True,
+                                        executable="/bin/bash",
+                                        stdout=subprocess.PIPE, 
+                                        stderr=subprocess.PIPE, text=True)
+            
+            while True:
+                reads = [process.stdout.fileno(), process.stderr.fileno()]
+                ret = select.select(reads, [], [])
+                for fd in ret[0]:
+                    if fd == process.stdout.fileno():
+                        output = process.stdout.readline()
+                        if output:
+                            print(output.strip())
+                    if fd == process.stderr.fileno():
+                        error_output = process.stderr.readline()
+                        if error_output:
+                            print(error_output.strip())
+                
+                if process.poll() is not None:
+                    break
+            
+            process.stdout.close()
+            process.stderr.close()
+            process.wait()
+
+            if process.returncode != 0:
+                print(f"Script exited with return code {process.returncode}")
         except Exception as e:
-            print(f"Unexpected error: {e}")
+            print(f"Error occurred while running the script: {e}")
         
     def datasets_initial_update(self, aligned_folder, original_folder):
         datasets_name = ""
@@ -910,7 +927,7 @@ class DeidShell(cmd.Cmd):
             self.config.set("Available Evaluations", "evaluations", evaluation_names)
         else:
             print(Fore.RED + 'Evaluation directory not found. Does the ROOT_DIR ({0}) have a folder named "evaluation"?'.format(self.root_dir), Fore.RESET)
-
+        
         # Save the configuration to the file
         with open("config.ini", "w") as configfile:
             self.config.write(configfile)

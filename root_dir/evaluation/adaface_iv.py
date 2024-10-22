@@ -2,6 +2,8 @@
 
 import sys
 import os
+from tqdm import tqdm
+import warnings
 
 sys.path.append(os.path.abspath("./root_dir/evaluation/identity_verification/AdaFace"))
 from inference import load_pretrained_model, to_input
@@ -25,18 +27,18 @@ def get_features(emb):
 def main(): 
     args = util.read_args()
     #get the mandatory args
+    warnings.filterwarnings('ignore', category=FutureWarning)
+
     path_to_aligned_images = args.aligned_path
     path_to_deidentified_images = args.deidentified_path
     path_to_genuine_pairs  = args.genuine_pairs_filepath
     path_to_impostor_pairs = args.impostor_pairs_filepath
+    path_to_log = args.dir_to_log
 
     path_to_save = args.save_path
     dataset_name = util.get_dataset_name_from_path(path_to_aligned_images)
     technique_name = util.get_technique_name_from_path(path_to_deidentified_images)
-    metrics_df= util.Metrics(name_evaluation="adaface", 
-                              name_dataset=dataset_name,
-                              name_technique=technique_name,
-                              name_score="cossim")
+    metrics_df= util.Metrics(name_score="cossim")
     
     #output_file_name = util.get_output_filename("adaface",path_to_aligned_images, path_to_deidentified_images)
 
@@ -60,15 +62,22 @@ def main():
     ids_b = genu_ids_b + impo_ids_b
     
     ground_truth_binary_labels = np.array([int(id_a == id_b) for id_a, id_b in zip(ids_a, ids_b)])
+    #new_path = os.path.join(os.path.dirname(path_to_save), f"ground_truth_{dataset_name}.csv")
+    #np.savetxt(new_path, ground_truth_binary_labels)
+
     predicted_scores = []
 
-    for name_a, name_b, gt_label in zip(names_a, names_b, ground_truth_binary_labels): 
+    for name_a, name_b, gt_label in tqdm(zip(names_a, names_b, ground_truth_binary_labels), total=len(names_a), desc=f"adaface | {dataset_name}-{technique_name}"): 
         img_a_path = os.path.abspath(os.path.join(path_to_aligned_images, name_a)) #the the aligned image file path
         img_b_path = os.path.abspath(os.path.join(path_to_deidentified_images, name_b)) #the deidentified image file path
         if not os.path.exists(img_a_path):
+            util.log(os.path.join(path_to_log,"adaface.txt"), 
+                     f"({dataset_name}) The source images are not in {img_a_path} ")
             print("Source Images are not there!")
             continue 
         if not os.path.exists(img_b_path): # if any of the pipelines failed to detect faces
+            util.log(os.path.join(path_to_log,"adaface.txt"), 
+                     f"({technique_name}) The deidentified images are not in {img_b_path} ")
             print("Deid Images are not there! ", img_b_path)
             continue
         
@@ -89,13 +98,11 @@ def main():
 
         predicted_scores.append((cos_sim.item()+1)/2)
 
-        metrics_df.add_score(path_aligned=img_a_path, 
-                             path_deidentified=img_b_path,
+        metrics_df.add_score(img=name_a, 
                              metric_result=(cos_sim.item()+1)/2)
+        metrics_df.add_column_value("ground_truth", gt_label)
     metrics_df.save_to_csv(path_to_save)
-    print(f"adaface saved into {path_to_save}")
-
-    #np.savetxt(output_file_name, predicted_scores )
+    print(f"Adaface scores saved into {path_to_save}")
     return
 
 

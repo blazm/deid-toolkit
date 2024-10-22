@@ -13,12 +13,11 @@ def main():
     aligned_path = args.aligned_path
     deidentified_path = args.deidentified_path
     path_to_save = args.save_path
+    path_to_log = args.dir_to_log
+
     dataset_name = util.get_dataset_name_from_path(aligned_path)
     technique_name = util.get_technique_name_from_path(deidentified_path)
-    metrics_df= util.Metrics(name_evaluation="mse", 
-                              name_dataset=dataset_name,
-                              name_technique=technique_name,
-                              name_score="dist")
+    metrics_df= util.Metrics( name_score="mse")
 
     output_scores_file = util.get_output_filename("mse", aligned_path, deidentified_path)
 
@@ -37,6 +36,16 @@ def main():
         
         if os.path.exists(deidentified_img_path): # check if the deidentified image exist
             # Load images
+            if not os.path.exists(aligned_img_path):
+                util.log(os.path.join(path_to_log,"mse.txt"), 
+                        f"({dataset_name}) The source images are not in {aligned_img_path} ")
+                print(f"{aligned_img_path} does not exist")
+                continue
+            if not  os.path.exists(deidentified_img_path):
+                util.log(os.path.join(path_to_log,"mse.txt"), 
+                        f"({technique_name}) The deidentified images are not in {deidentified_img_path} ")
+                print(f"{deidentified_img_path} does not exist")
+                continue
             img1 = Image.open(deidentified_img_path) # deidentified one
             img0 = util.resize_if_different(Image.open(aligned_img_path), img1) #the aligned image
             # Convert to tensors
@@ -47,8 +56,7 @@ def main():
             img1.cuda() if use_gpu else img1.cpu()
             # Compute MSE distance
             dist01 = loss_fn(img0, img1)
-            metrics_df.add_score(path_aligned=aligned_img_path,
-                                 path_deidentified=deidentified_img_path, 
+            metrics_df.add_score(img=file,
                                  metric_result='%.6f' % dist01)
             
             #f.writelines('%.6f\n' % dist01)

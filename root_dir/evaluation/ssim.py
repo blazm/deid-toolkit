@@ -17,17 +17,13 @@ def main():
     aligned_dataset_path = args.aligned_path
     deidentified_path = args.deidentified_path
     path_to_save = args.save_path
+    path_to_log = args.dir_to_log
+
     dataset_name = util.get_dataset_name_from_path(aligned_dataset_path)
     technique_name = util.get_technique_name_from_path(deidentified_path)
-    ssim_df= util.Metrics(name_evaluation="ssim", 
-                              name_dataset=dataset_name,
-                              name_technique=technique_name,
-                              name_score="dist")
-    
-    msssim_df= util.Metrics(name_evaluation="msssim", 
-                              name_dataset=dataset_name,
-                              name_technique=technique_name,
-                              name_score="dist")
+
+    ssim_df= util.Metrics(name_score="ssim")
+    msssim_df= util.Metrics(name_score="msssim")
     
     #build the ouput files
     #ssim_output_scores_file = util.get_output_filename("ssim", aligned_dataset_path, deidentified_path)
@@ -50,6 +46,17 @@ def main():
             # Load images
             aligned_img_path = os.path.join(aligned_dataset_path, file)
             deidentified_img_path = os.path.join(deidentified_path, file)
+            if not os.path.exists(aligned_img_path):
+                util.log(os.path.join(path_to_log,"ssim.txt"), 
+                        f"({dataset_name}) The source images are not in {aligned_img_path} ")
+                print(f"{aligned_dataset_path} does not exist")
+                continue
+            if not  os.path.exists(deidentified_img_path):
+                util.log(os.path.join(path_to_log,"ssim.txt"), 
+                        f"({technique_name}) The deidentified images are not in {deidentified_img_path} ")
+                print(f"{deidentified_img_path} does not exist")
+                continue
+
             img1 = Image.open(deidentified_img_path)
             img0 = util.resize_if_different(Image.open(aligned_img_path), img1)
             #convert to tensor
@@ -63,26 +70,14 @@ def main():
             img1 = (img1 + 1.) / 2. 
             ssim_val = ssim(img0, img1, data_range=1, size_average=True) # return scalar
             ms_ssim_val = ms_ssim( img0, img1, data_range=1, size_average=True ) # return scalar
-            ssim_df.add_score(path_aligned=aligned_img_path,
-                              path_deidentified=deidentified_img_path,
-                              metric_result='%.6f'%(ssim_val))
-            msssim_df.add_score(path_aligned=aligned_img_path,
-                              path_deidentified=deidentified_img_path,
-                              metric_result='%.6f'%(ms_ssim_val))
-            #print('%s: %.3f'%(file,dist01)) # if using spatial, we need .mean()
-            #f.writelines('%s: %.6f\n'%(file,dist01)) # original saves image name and score
-            #f.writelines('%.6f\n'%(ssim_val)) # we need only scores, to compute averages easily
-            #f_ms.writelines('%.6f\n'%(ms_ssim_val)) # we need only scores, to compute averages easily
+            ssim_df.add_score(img=file,metric_result='%.6f'%(ssim_val))
+            msssim_df.add_score(img=file, metric_result='%.6f'%(ms_ssim_val))
 
-    #f.close()
-    #f_ms.close()
     ssim_df.save_to_csv(path_to_save)
-    msssim_df.save_to_csv(path_to_save.replace("ssim.csv", "msssim.csv"))
-    print(f"mssim and ssim scores save in {path_to_save} ")
-    #ssim_mean, ssim_std = util.compute_mean_std(ssim_output_scores_file)
-    #mssim_mean, mssim_std = util.compute_mean_std(msssim_output_scores_file)
-   
-    
+    mssim_path = path_to_save.replace("ssim.csv", "msssim.csv")
+    msssim_df.save_to_csv(mssim_path)
+    print(f"ssim scores saved in {path_to_save}")
+    print(f"mssim scores saved in {mssim_path}")
 
 if __name__ == "__main__":
     main()

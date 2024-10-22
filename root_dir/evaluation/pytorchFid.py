@@ -1,17 +1,19 @@
 import argparse
 import subprocess
 import utils as util
+import os
 def main():
     args = util.read_args()
     path_to_aligned_images = args.aligned_path
     path_to_deidentified_images = args.deidentified_path
     path_to_save = args.save_path
+    path_to_log = args.dir_to_log
+
     dataset_name = util.get_dataset_name_from_path(path_to_aligned_images)
     technique_name = util.get_technique_name_from_path(path_to_deidentified_images)
-    metrics_df= util.Metrics(name_evaluation="fid", 
-                              name_dataset=dataset_name,
-                              name_technique=technique_name,
-                              name_score="dist")
+    metrics_df= util.Metrics(name_score="fidscore")
+    path_to_aligned_images = os.path.abspath(path_to_aligned_images)
+    path_to_deidentified_images = os.path.abspath(path_to_deidentified_images)
 
     command = [
         "python", "-u", "image_quality/pytorch_fid/__main__.py", "--batch-size", "8",
@@ -26,7 +28,7 @@ def main():
             check=True
         )
         fidscore =  result.stdout.split(" ")[-1].replace("\n","")
-        metrics_df.add_score(path_to_aligned_images, path_to_deidentified_images,fidscore )
+        metrics_df.add_score(path_to_aligned_images,fidscore )
         metrics_df.save_to_csv(path_to_save)
         print(f"fid scores saved in {path_to_save}")
     except subprocess.CalledProcessError as e:
