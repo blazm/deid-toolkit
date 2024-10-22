@@ -37,12 +37,11 @@ def main():
     path_to_genuine_pairs  = args.genuine_pairs_filepath
     path_to_impostor_pairs = args.impostor_pairs_filepath
     path_to_save = args.save_path
+    path_to_log = args.dir_to_log
+
     dataset_name = util.get_dataset_name_from_path(path_to_aligned_images)
     technique_name = util.get_technique_name_from_path(path_to_deidentified_images)
-    metric_df= util.Metrics(name_evaluation="vggface", 
-                              name_dataset=dataset_name,
-                              name_technique=technique_name,
-                              name_score="cossim")
+    metric_df= util.Metrics(name_score="cossim")
 
     #output_file_name = util.get_output_filename("vgg",path_to_aligned_images, path_to_deidentified_images)
 
@@ -69,8 +68,6 @@ def main():
     ids_b = genu_ids_b + impo_ids_b
 
     ground_truth_binary_labels = np.array([int(id_a == id_b) for id_a, id_b in zip(ids_a, ids_b)])
-
-    files = os.listdir(path_to_aligned_images)
     #TODO: Create the dirs to save the folder
     #initialize variable
     predicted_scores = []
@@ -80,11 +77,14 @@ def main():
         img_a_path = os.path.join(path_to_aligned_images, name_a) #the the aligned image file path
         img_b_path = os.path.join(path_to_deidentified_images, name_b) #the deidentified image file path
         if not os.path.exists(img_a_path):
-            print("Source Images are not there!")
-            continue 
-        if not os.path.exists(img_b_path): # if any of the pipelines failed to detect faces
-            print("Deid Images are not there! ", img_b_path)
-            vgg_predicted_scores.append(0.5) # so that the length of the array is equal to GT
+            util.log(os.path.join(path_to_log,"vggface.txt"), 
+                    f"({dataset_name}) The source images are not in {img_a_path} ")
+            print(f"{img_a_path} does not exist")
+            continue
+        if not  os.path.exists(img_b_path):
+            util.log(os.path.join(path_to_log,"vggface.txt"), 
+                    f"({technique_name}) The deidentified images are not in {img_b_path} ")
+            print(f"{img_b_path} does not exist")
             continue
         img_a = process_image(img_a_path, process_without_context = True)
         img_b = process_image(img_b_path, process_without_context = True)
@@ -96,15 +96,15 @@ def main():
         vgg_feat_b = vgg_model.forward_features_fc7(vgg_img_b - vgg_normalization_tensor).flatten()
         cos = nn.CosineSimilarity(dim=0, eps=1e-6)
         cos_score = cos(vgg_feat_a.flatten(), vgg_feat_b.flatten()).detach().cpu().numpy() #[0]
+        #store results in a variable
         vgg_predicted_scores.append(cos_score)
-        metric_df.add_score(img_a_path, img_b_path, cos_score)
+        metric_df.add_score(name_a, cos_score)
 
     
     vgg_predicted_scores = np.array(vgg_predicted_scores)
     print("MIN:", np.min(vgg_predicted_scores), " MAX: ", np.max(vgg_predicted_scores))
-    #TODO: set path to save
-    #TODO: Save the file
     metric_df.save_to_csv(path_to_save)
+    print(f"vggface saved in {path_to_save}")
     #np.savetxt(output_file_name, vgg_predicted_scores)
     return
           

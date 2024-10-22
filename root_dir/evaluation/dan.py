@@ -40,55 +40,47 @@ class Model():
             label = self.labels[index]
 
             return index, label
-def accuracy(attempts, successes): 
-    return successes/attempts
+
 def main():
     args = util.read_args()
     aligned_dataset_path = args.aligned_path
     deidentified__dataset_path  = args.deidentified_path
+    path_to_log = args.dir_to_log
 
     path_to_save = args.save_path
     dataset_name = util.get_dataset_name_from_path(aligned_dataset_path)
     technique_name = util.get_technique_name_from_path(deidentified__dataset_path)
-    metrics_df= util.Metrics(name_evaluation="dan", 
-                              name_dataset=dataset_name,
-                              name_technique=technique_name,
-                              name_score="isMatch")
+    metrics_df= util.Metrics(name_score="isMatch")
     
-    #output_scores_file = util.get_output_filename("dan", aligned_dataset_path, deidentified__dataset_path)
-    #f = open(output_scores_file, 'w')
     files = os.listdir(aligned_dataset_path)
 
     model = Model() #initialize the model
-    samples:int = len(files)
-    succeses:int = 0 
     for file in files: 
         aligned_img_path = os.path.join(aligned_dataset_path, file)
         deidentified_img_path = os.path.join(deidentified__dataset_path, file)
         if not os.path.exists(aligned_img_path):
+            util.log(os.path.join(path_to_log,"dan.txt"), 
+                     f"({dataset_name}) The source images are not in {aligned_img_path} ")
             print(f"{aligned_dataset_path} does not exist")
             continue
-        if not  os.path.exists(deidentified__dataset_path):
-            print(f"{deidentified__dataset_path} does not exist")
+        if not  os.path.exists(deidentified_img_path):
+            util.log(os.path.join(path_to_log,"dan.txt"), 
+                     f"({technique_name}) The deidentified images are not in {deidentified_img_path} ")
+            print(f"{deidentified_img_path} does not exist")
             continue
         #evaluation
         index_aligned, label_aligned = model.fit(aligned_img_path)
         index_deidentified, label_deidentified  = model.fit(deidentified_img_path)
-        #log the result
-        is_match = 1 if index_aligned == index_deidentified else 0
-        #f.writelines(f"{label_aligned}, {label_deidentified},{is_match}")
         #increase the accuracy
-        if index_aligned == index_deidentified: 
-            succeses+=1
-        metrics_df.add_score(path_aligned=aligned_img_path, 
-                             path_deidentified=deidentified_img_path,
+        is_match = 1 if index_aligned == index_deidentified else 0
+        
+        metrics_df.add_score(img=file, 
                              metric_result=(is_match))
+        metrics_df.add_column_value("aligned_predictions", index_aligned)
+        metrics_df.add_column_value("deidentified_predictions", index_deidentified)
 
     metrics_df.save_to_csv(path_to_save)
     print(f"dan saved into {path_to_save}")
-
-    #f.close()
-    #accuracy = (succeses / samples)*100
 
 if __name__ == "__main__":
     main()

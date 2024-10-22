@@ -7,20 +7,16 @@ from PIL import Image
 import utils as util
 
 def main():
-    parser = argparse.ArgumentParser(description="Evaluate lpips score")
-    parser.add_argument('path', type=str, nargs=2,
-                    help=('Paths of the datasets aligned and deidentified'))
 
     args = util.read_args()
     aligned_dataset_path = args.aligned_path
     deid_dataset_path  = args.deidentified_path
+    path_to_log = args.dir_to_log
+
     path_to_save = args.save_path
     dataset_name = util.get_dataset_name_from_path(aligned_dataset_path)
     technique_name = util.get_technique_name_from_path(deid_dataset_path)
-    metrics_df= util.Metrics(name_evaluation="lpips", 
-                              name_dataset=dataset_name,
-                              name_technique=technique_name,
-                              name_score="dist")
+    metrics_df= util.Metrics(name_score="lpips")
 
     #output_scores_file = util.get_output_filename("lpips", aligned_dataset_path, deid_dataset_path)
     use_gpu = False
@@ -38,6 +34,16 @@ def main():
             # Load images
             aligned_img_path = os.path.join(aligned_dataset_path, file)
             deidentified_img_path = os.path.join(deid_dataset_path, file)
+            if not os.path.exists(aligned_img_path):
+                util.log(os.path.join(path_to_log,"lpips.txt"), 
+                        f"({dataset_name}) The source images are not in {aligned_img_path} ")
+                print(f"{aligned_dataset_path} does not exist")
+                continue
+            if not  os.path.exists(deidentified_img_path):
+                util.log(os.path.join(path_to_log,"lpips.txt"), 
+                        f"({technique_name}) The deidentified images are not in {deidentified_img_path} ")
+                print(f"{deidentified_img_path} does not exist")
+                continue
             img1 = Image.open(deidentified_img_path) #deidentified image
             img0 = util.resize_if_different(Image.open(aligned_img_path), img1) #aligned image
             #convert to tensors
@@ -49,11 +55,9 @@ def main():
 
             # Compute distance
             dist01 = loss_fn.forward(img0,img1)
-            metrics_df.add_score(path_aligned=aligned_img_path,
-                                 path_deidentified=deidentified_img_path,
+            metrics_df.add_score(img=file,
                                  metric_result='%.6f'%(dist01))
             #f.writelines('%.6f\n'%(dist01)) # we need only scores, to compute averages easily
-
     #f.close()
     #mean, std = util.compute_mean_std(output_scores_file)
     metrics_df.save_to_csv(path_to_save)
