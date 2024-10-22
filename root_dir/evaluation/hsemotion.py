@@ -16,29 +16,30 @@ def main():
     aligned_dataset_path = args.aligned_path
     deidentified__dataset_path  = args.deidentified_path
     files = os.listdir(aligned_dataset_path)
+    path_to_log = args.dir_to_log
+
     #output_score_file = util.get_output_filename("hsemotion", aligned_dataset_path, deidentified__dataset_path)
     #f = open(output_score_file, 'w')
 
     path_to_save = args.save_path
     dataset_name = util.get_dataset_name_from_path(aligned_dataset_path)
     technique_name = util.get_technique_name_from_path(deidentified__dataset_path)
-    metrics_df= util.Metrics(name_evaluation="hsemotion", 
-                              name_dataset=dataset_name,
-                              name_technique=technique_name,
-                              name_score="isMatch")
+    metrics_df= util.Metrics( name_score="isMatch")
     
     
     device = 'cuda' if True else 'cpu'
     fer=HSEmotionRecognizer(model_name=MODEL_NAME,device=device) # device is cpu or gpu
-    samples:int = len(files)
-    succeses:int = 0 
     for file in files: 
         aligned_img_path = os.path.join(aligned_dataset_path, file)
         deidentified_img_path = os.path.join(deidentified__dataset_path, file)
         if not os.path.exists(aligned_img_path):
-            print(f"{aligned_img_path} does not exist")
+            util.log(os.path.join(path_to_log,"hsemotion.txt"), 
+                     f"({dataset_name}) The source images are not in {aligned_img_path} ")
+            print(f"{aligned_dataset_path} does not exist")
             continue
-        if not os.path.exists(deidentified_img_path):
+        if not  os.path.exists(deidentified_img_path):
+            util.log(os.path.join(path_to_log,"hsemotion.txt"), 
+                     f"({technique_name}) The deidentified images are not in {deidentified_img_path} ")
             print(f"{deidentified_img_path} does not exist")
             continue
         #convert images
@@ -51,19 +52,14 @@ def main():
         emotion_deidentified,_=fer.predict_emotions(deid_img,logits=True)
         #Log the result
         is_match = 1 if emotion_aligned == emotion_deidentified else 0
-        #f.writelines(f"{emotion_aligned}, {emotion_deidentified},{is_match}")
         #Increase the succeses if are equal
-        if emotion_aligned == emotion_deidentified: 
-            succeses+=1
-        metrics_df.add_score(path_aligned=aligned_img_path,
-                             path_deidentified=deidentified_img_path,
-                             metric_result=is_match)
+        metrics_df.add_score(img=file,metric_result=is_match)
+        metrics_df.add_column_value("aligned_predictions", emotion_aligned)
+        metrics_df.add_column_value("deidentified_predictions", emotion_deidentified)
         
-    #f.close()
     metrics_df.save_to_csv(path_to_save)
     print(f"hsemotion saved into {path_to_save}")
 
-    #accuracy = (succeses / samples)*100
     return
 
 if __name__ == "__main__":
