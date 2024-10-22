@@ -25,5 +25,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args =util.read_args()
-    main(args)
+    #args =util.read_args()
+    #main(args)
+    pass

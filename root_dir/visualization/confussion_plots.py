@@ -35,5 +35,6 @@ def main(args):
     plt.title(f"Receiver Operating Characteristic ({evaluation_name}) ")
     
 if __name__ == "__main__":
-    args = util.read_args()
-    main(args)    
+    #args = util.read_args()
+    #main(args)    
+    pass
