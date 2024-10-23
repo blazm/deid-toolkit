@@ -8,6 +8,7 @@ from torch import nn
 import os
 from torchvision import transforms
 import cv2
+from tqdm import tqdm
 
 PATH_TO_MODEL_WEIGHTS  = './root_dir/evaluation/identity_verification/vgg-face.pytorch/pretrained/vgg_face_torch/VGG_FACE.t7'
 
@@ -73,7 +74,7 @@ def main():
     predicted_scores = []
     vgg_predicted_scores = []
     detection_utility = []
-    for name_a, name_b, gt_label in zip(names_a, names_b, ground_truth_binary_labels):
+    for name_a, name_b, gt_label in tqdm(zip(names_a, names_b, ground_truth_binary_labels), total=len(names_a), desc=f"vggface | {dataset_name}-{technique_name}"):
         img_a_path = os.path.join(path_to_aligned_images, name_a) #the the aligned image file path
         img_b_path = os.path.join(path_to_deidentified_images, name_b) #the deidentified image file path
         if not os.path.exists(img_a_path):
@@ -99,6 +100,8 @@ def main():
         #store results in a variable
         vgg_predicted_scores.append(cos_score)
         metric_df.add_score(name_a, cos_score)
+        metric_df.add_column_value("ground_truth", gt_label)
+
 
     
     vgg_predicted_scores = np.array(vgg_predicted_scores)

@@ -2,6 +2,8 @@ import os
 import argparse
 import utils as util
 from data_utility.Restnet18.model import Model
+from tqdm import tqdm
+
 
 #TODO: change the paths
 CHECKPOINT_NAME = "./root_dir/evaluation/data_utility/Restnet18/face_gender_classification_transfer_learning_with_ResNet18.pth"
@@ -28,7 +30,7 @@ def main():
     device = 'cuda' if True else 'cpu'
     model = Model(CHECKPOINT_NAME)
     
-    for file in files: 
+    for file in tqdm(files, total=len(files), desc=f"restnet18 | {dataset_name}-{technique_name} "): 
         aligned_img_path = os.path.join(aligned_dataset_path, file)
         deidentified_img_path = os.path.join(deidentified_dataset_path, file)
         if not os.path.exists(aligned_img_path):

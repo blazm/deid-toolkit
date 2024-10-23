@@ -1,7 +1,10 @@
+import tqdm
 from deepface import DeepFace
 import os
 import argparse
 import utils as util
+from tqdm import tqdm
+
 #import warnings
 #warnings.filterwarnings('ignore', category=FutureWarning)
 
@@ -26,7 +29,7 @@ def main():
     device = 'cuda' if True else 'cpu'
 
 
-    for file in files: 
+    for file in tqdm(files, total =len(files), desc=f"deepface | {dataset_name}-{technique_name} "): 
         aligned_img_path = os.path.join(aligned_dataset_path, file)
         deidentified_img_path = os.path.join(deidentified__dataset_path, file)
         if not os.path.exists(aligned_img_path):

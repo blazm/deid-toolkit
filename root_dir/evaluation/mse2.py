@@ -6,10 +6,11 @@ import torch
 import numpy as np
 from PIL import Image
 import utils as util
-
+from tqdm import tqdm
 
 def main():
     args = util.read_args()
+    
     aligned_path = args.aligned_path
     deidentified_path = args.deidentified_path
     path_to_save = args.save_path
@@ -30,7 +31,7 @@ def main():
     #f = open(output_scores_file, 'w')
     files = os.listdir(aligned_path)
 
-    for file in files:
+    for file in tqdm(files, total=len(files),  desc=f"mse | {dataset_name}-{technique_name}"):
         aligned_img_path = os.path.join(aligned_path, file)
         deidentified_img_path = os.path.join(deidentified_path, file)
         

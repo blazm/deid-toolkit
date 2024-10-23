@@ -7,14 +7,17 @@ def read_args():
     """
     Function to parse command-line arguments for visualization metrics.
     """
+    def list_of_strings(arg):#custom argument
+        return arg.split(' ')
+    
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description="Args to graphic metrics")
     
     # Positional arguments
-    parser.add_argument('evaluation', type=str, help='Paths of the scores ')
-    parser.add_argument("dataset", type=str)
-    parser.add_argument("technique", type=str)
-    parser.add_argument('path_save', type=str, help='Paths of save pdf')
+    parser.add_argument('--evaluations', type=list_of_strings,required=True,  help='List of datasets')
+    parser.add_argument("--datasets",  type=list_of_strings, required=True, help='List of datasets')
+    parser.add_argument("--techniques", type=list_of_strings, required=True, help='List of techniques')
+    parser.add_argument('--path_save', type=str,required=True , help='Paths of save pdf')
     #TODO check if the path to save contains extension
     #TODO: check if the path of the scores is a csv
 
