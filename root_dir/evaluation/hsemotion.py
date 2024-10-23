@@ -3,7 +3,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), './data_utility/hsemotion/hsemotion')))
 from data_utility.hsemotion.hsemotion.facial_emotions import HSEmotionRecognizer 
 import utils as util
-
+from tqdm import tqdm
 import cv2
 
 
@@ -29,7 +29,7 @@ def main():
     
     device = 'cuda' if True else 'cpu'
     fer=HSEmotionRecognizer(model_name=MODEL_NAME,device=device) # device is cpu or gpu
-    for file in files: 
+    for file in tqdm(files, total=len(files), desc=f"hsemotion | {dataset_name}-{technique_name}"): 
         aligned_img_path = os.path.join(aligned_dataset_path, file)
         deidentified_img_path = os.path.join(deidentified__dataset_path, file)
         if not os.path.exists(aligned_img_path):

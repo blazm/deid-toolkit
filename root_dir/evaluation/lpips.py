@@ -5,6 +5,7 @@ import torch
 import numpy as np
 from PIL import Image
 import utils as util
+from tqdm import tqdm
 
 def main():
 
@@ -29,7 +30,7 @@ def main():
     
     #f = open(output_scores_file, 'w')
     files = os.listdir(aligned_dataset_path)
-    for file in files:
+    for file in tqdm(files, total=len(files),  desc=f"lpips | {dataset_name}-{technique_name}"):
         if(os.path.exists(os.path.join(deid_dataset_path,file))):
             # Load images
             aligned_img_path = os.path.join(aligned_dataset_path, file)
