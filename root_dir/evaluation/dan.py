@@ -3,6 +3,8 @@ import argparse
 from PIL import Image
 import torch
 from torchvision import transforms
+from tqdm import tqdm
+
 from data_utility.DAN.networks.dan import DAN
 #from utils import * 
 import utils as util
@@ -55,7 +57,7 @@ def main():
     files = os.listdir(aligned_dataset_path)
 
     model = Model() #initialize the model
-    for file in files: 
+    for file in tqdm(files,total= len(files),  desc=f"dan | {dataset_name}-{technique_name}"): 
         aligned_img_path = os.path.join(aligned_dataset_path, file)
         deidentified_img_path = os.path.join(deidentified__dataset_path, file)
         if not os.path.exists(aligned_img_path):
