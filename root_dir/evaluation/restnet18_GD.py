@@ -8,7 +8,7 @@ from tqdm import tqdm
 #TODO: change the paths
 CHECKPOINT_NAME = "./root_dir/evaluation/data_utility/Restnet18/face_gender_classification_transfer_learning_with_ResNet18.pth"
 #python ./root_dir/evaluation/hsemotion.py ./root_dir/datasets/aligned/fri/ ./root_dir/datasets/pixelize/fri/
-
+labels_map = {"male":1, "female":-1}
 
 def main():
     args = util.read_args()
@@ -52,8 +52,8 @@ def main():
         #Increase the succeses if are equal
         is_math = 1 if label_aligned == label_deidentified else 0
         metrics_df.add_score(file,is_math)
-        metrics_df.add_column_value("aligned_predictions", index_aligned)
-        metrics_df.add_column_value("deidentified_predictions", index_deidentified)
+        metrics_df.add_column_value("aligned_predictions", labels_map[label_aligned])
+        metrics_df.add_column_value("deidentified_predictions", label_deidentified[label_deidentified])
     #f.close()
     metrics_df.save_to_csv(path_to_save)
     print(f"resnet18 scores saved in {path_to_save}")

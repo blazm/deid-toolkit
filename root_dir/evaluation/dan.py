@@ -9,6 +9,10 @@ from data_utility.DAN.networks.dan import DAN
 #from utils import * 
 import utils as util
 
+#Emotion_code: 0 = Neutral, 1 = Anger, 2 = Scream, 3 = Contempt, 4 = Disgust, 5 = Fear, 6 = Happy, 7 = Sadness, 8 = Surprise
+#this is important to keep consistence with the toolkit
+labels_map= {"neutral":0, "happy":6, "sad":7,"surprise":8, "fear":5, "disgust":4,"anger":1,"contempt":3}
+
 AFFECT_NET_PATH = './root_dir/evaluation/data_utility/DAN/checkpoints/affecnet8_epoch5_acc0.6209.pth'
 class Model():
     def __init__(self):
@@ -19,7 +23,6 @@ class Model():
                                     transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                     std=[0.229, 0.224, 0.225])
                                 ])
-        #TODO: ask blaz about what should I do with the missmatch of the classes
         self.labels = ['neutral', 'happy', 'sad', 'surprise', 'fear', 'disgust', 'anger', 'contempt']
         self.model = DAN(num_head=4, num_class=8)
         #checkpoint = torch.load('./checkpoints/affecnet8_epoch6_acc0.6326.pth',
@@ -78,8 +81,8 @@ def main():
         
         metrics_df.add_score(img=file, 
                              metric_result=(is_match))
-        metrics_df.add_column_value("aligned_predictions", index_aligned)
-        metrics_df.add_column_value("deidentified_predictions", index_deidentified)
+        metrics_df.add_column_value("aligned_predictions", labels_map[label_aligned.lower()])
+        metrics_df.add_column_value("deidentified_predictions", labels_map[label_deidentified.lower()])
 
     metrics_df.save_to_csv(path_to_save)
     print(f"dan saved into {path_to_save}")

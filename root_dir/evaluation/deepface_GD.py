@@ -9,7 +9,7 @@ from tqdm import tqdm
 #warnings.filterwarnings('ignore', category=FutureWarning)
 
 
-
+labels_map = {"Man": 0, "Woman":-1}
 
 def main():
     args = util.read_args()
@@ -54,8 +54,8 @@ def main():
         
         is_match = 1 if gender_aligned == gender_deidentified else 0
         metrics_df.add_score(img=file,metric_result=is_match)
-        metrics_df.add_column_value("aligned_predictions", gender_aligned)
-        metrics_df.add_column_value("deidentified_predictions", gender_deidentified)
+        metrics_df.add_column_value("aligned_predictions", labels_map[gender_aligned])
+        metrics_df.add_column_value("deidentified_predictions", labels_map[gender_deidentified])
     #f.close()
     metrics_df.save_to_csv(path_to_save)
     print(f"deepface saved into {path_to_save}")
