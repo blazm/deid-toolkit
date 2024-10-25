@@ -2,13 +2,14 @@ import argparse
 import pandas as pd
 
 RESULTS_DIR = "./root_dir/results"
+LABELS_DIR = "./root_dir/datasets/labels"
 
 def read_args():
     """
     Function to parse command-line arguments for visualization metrics.
     """
     def list_of_strings(arg):#custom argument
-        return arg.split(' ')
+        return arg.split(',')
     
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description="Args to graphic metrics")

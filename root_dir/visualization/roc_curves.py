@@ -34,7 +34,7 @@ def main(args):
 
     #the numbers of fold performs a robust and accurate curve
     n_folds = 10
-    perm = None
+    
 
     colors:list = create_colors(datasets, techniques)
 
@@ -58,15 +58,14 @@ def main(args):
             ax = axes[i]
             ax.set_title(f"ROC ({evaluation}): {dataset}")
             
-            
             for j, (technique, color) in enumerate(zip(techniques, colors)):
-                
+                perm = None
                 path_to_csv = os.path.abspath(os.path.join(util.RESULTS_DIR, f"{evaluation}_{dataset}_{technique}.csv"))
                 if not os.path.exists(path_to_csv):
                     continue  # Skip if the file doesn't exis
-                
-                #read information from dataset                
+
                 df = pd.read_csv(path_to_csv)
+                #read information from dataset                
                 ground_truth_binary_labels = df["ground_truth"].to_numpy()
                 predicted_scores = df["cossim"].to_numpy()
 
@@ -138,7 +137,9 @@ def main(args):
             ax.legend(loc = 'lower right', fontsize=12)
 
         plt.tight_layout()
-        plt.savefig(os.path.join(path_to_save, f"{evaluation}_roc_curves.pdf"), dpi=600)
+        to_save_pdf = os.path.join(path_to_save, f"{evaluation}_roc_curves.pdf")
+        print(f"Plot for {evaluation} saved in: {to_save_pdf}")
+        plt.savefig(to_save_pdf, dpi=600)
         plt.close()
 
 if __name__ == "__main__":

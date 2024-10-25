@@ -10,6 +10,10 @@ import cv2
 MODEL_NAME = 'enet_b0_8_best_afew'
 #python ./root_dir/evaluation/hsemotion.py ./root_dir/datasets/aligned/fri/ ./root_dir/datasets/pixelize/fri/
 
+#Emotion_code: 0 = Neutral, 1 = Anger, 2 = Scream, 3 = Contempt, 4 = Disgust, 5 = Fear, 6 = Happy, 7 = Sadness, 8 = Surprise
+#Anger, Contempt, Disgust, Fear, Happiness, Neutral, Sadness, or Surprise
+#this is important to keep consistence with the toolkit
+labels_map= {"Neutral":0, "Happiness":6, "Sadness":7,"Surprise":8, "Fear":5, "Disgust":4,"Anger":1,"Contempt":3}
 
 def main():
     args = util.read_args()
@@ -54,8 +58,8 @@ def main():
         is_match = 1 if emotion_aligned == emotion_deidentified else 0
         #Increase the succeses if are equal
         metrics_df.add_score(img=file,metric_result=is_match)
-        metrics_df.add_column_value("aligned_predictions", emotion_aligned)
-        metrics_df.add_column_value("deidentified_predictions", emotion_deidentified)
+        metrics_df.add_column_value("aligned_predictions", labels_map[emotion_aligned])
+        metrics_df.add_column_value("deidentified_predictions", labels_map[emotion_deidentified])
         
     metrics_df.save_to_csv(path_to_save)
     print(f"hsemotion saved into {path_to_save}")
