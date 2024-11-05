@@ -9,7 +9,7 @@ from tqdm import tqdm
 #warnings.filterwarnings('ignore', category=FutureWarning)
 
 
-labels_map = {"Man": 0, "Woman":-1}
+labels_map = {"Man": 1, "Woman":-1}
 
 def main():
     args = util.read_args()
