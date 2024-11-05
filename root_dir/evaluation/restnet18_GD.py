@@ -53,7 +53,7 @@ def main():
         is_math = 1 if label_aligned == label_deidentified else 0
         metrics_df.add_score(file,is_math)
         metrics_df.add_column_value("aligned_predictions", labels_map[label_aligned])
-        metrics_df.add_column_value("deidentified_predictions", label_deidentified[label_deidentified])
+        metrics_df.add_column_value("deidentified_predictions", labels_map[label_deidentified])
     #f.close()
     metrics_df.save_to_csv(path_to_save)
     print(f"resnet18 scores saved in {path_to_save}")
