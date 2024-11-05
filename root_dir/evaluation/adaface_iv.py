@@ -24,6 +24,7 @@ def get_features(emb):
     emb /= norm
     return emb
 
+
 def main(): 
     args = util.read_args()
     #get the mandatory args
@@ -80,27 +81,31 @@ def main():
                      f"({technique_name}) The deidentified images are not in {img_b_path} ")
             print("Deid Images are not there! ", img_b_path)
             continue
-        
-        aligned_rgb_img_a = align.get_aligned_face(img_a_path)
-        aligned_rgb_img_b = align.get_aligned_face(img_b_path)
-        bgr_input_a = to_input(aligned_rgb_img_a)
-        bgr_input_b = to_input(aligned_rgb_img_b)
-        feat_a, _ = model(bgr_input_a)
-        feat_b, _ = model(bgr_input_b)
+        try:
+            aligned_rgb_img_a = align.get_aligned_face(img_a_path)
+            aligned_rgb_img_b = align.get_aligned_face(img_b_path)
+            bgr_input_a = to_input(aligned_rgb_img_a)
+            bgr_input_b = to_input(aligned_rgb_img_b)
+            feat_a, _ = model(bgr_input_a)
+            feat_b, _ = model(bgr_input_b)
        
-        # Detach features from the computation graph
-        feat_a = feat_a.detach()
-        feat_b = feat_b.detach()
+            # Detach features from the computation graph
+            feat_a = feat_a.detach()
+            feat_b = feat_b.detach()
 
-        # Calculate cosine similarity
-        cosim = nn.CosineSimilarity()
-        cos_sim = cosim(feat_a, feat_b)
+            # Calculate cosine similarity
+            cosim = nn.CosineSimilarity()
+            cos_sim = cosim(feat_a, feat_b)
 
-        predicted_scores.append((cos_sim.item()+1)/2)
+            predicted_scores.append((cos_sim.item()+1)/2)
 
-        metrics_df.add_score(img=name_a, 
-                             metric_result=(cos_sim.item()+1)/2)
-        metrics_df.add_column_value("ground_truth", gt_label)
+            metrics_df.add_score(img=name_a, 
+                                metric_result=(cos_sim.item()+1)/2)
+            metrics_df.add_column_value("img_b", name_b)
+            metrics_df.add_column_value("ground_truth", gt_label)
+        except Exception as e: 
+            print(f"Adaface Couldn't find the face for image {name_a}")
+            continue
     metrics_df.save_to_csv(path_to_save)
     print(f"Adaface scores saved into {path_to_save}")
     return

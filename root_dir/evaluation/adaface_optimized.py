@@ -97,15 +97,14 @@ def main():
     for name_a, name_b, gt_label in tqdm(zip(names_a, names_b, ground_truth_binary_labels), total=len(names_a), desc=f"adaface | {dataset_name}-{technique_name}"):
         img_a_path = os.path.abspath(os.path.join(path_to_aligned_images, name_a)) #the the aligned image file path
         img_b_path = os.path.abspath(os.path.join(path_to_deidentified_images, name_b)) #the deidentified image file path
-        #TODO: remove this line
 
         if not os.path.exists(img_a_path):
-            util.log(os.path.join(path_to_log,"adaface.txt"), 
+            util.log(os.path.join(path_to_log,"adaface_optimized.txt"), 
                      f"({dataset_name}) The source images are not in {img_a_path} ")
             print(f"Source Images are not there! {img_a_path} ")
             continue 
         if not os.path.exists(img_b_path): # if any of the pipelines failed to detect faces
-            util.log(os.path.join(path_to_log,"adaface.txt"), 
+            util.log(os.path.join(path_to_log,"adaface_optimized.txt"), 
                      f"({technique_name}) The deidentified images are not in {img_b_path} ")
             print("Deid Images are not there! ", img_b_path)
             continue
@@ -121,6 +120,7 @@ def main():
         similarity_score = compute_similarity(feature_deid, feature_original)
         metrics_df.add_score(img=name_a, 
                              metric_result=similarity_score)
+        metrics_df.add_column_value("img_b", name_b)
         metrics_df.add_column_value("ground_truth", gt_label)
     metrics_df.save_to_csv(path_to_save)
     print(f"Adaface scores saved into {path_to_save}")
