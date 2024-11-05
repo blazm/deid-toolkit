@@ -36,7 +36,7 @@ def main(args):
                 df = pd.read_csv(path_to_csv)
                 total_values = len(df["isMatch"]) # should be the second colum
                 successes = df["isMatch"].sum()                
-                accuracy = successes / total_values
+                accuracy = (successes / total_values) *100 
                 accuracy_columns.append(f"{accuracy:.2f}")
             rows.append(accuracy_columns)
         #Create a Dataframe with the collected rows
