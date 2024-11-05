@@ -159,7 +159,7 @@ class DeidShell(cmd.Cmd):
         switcher = {
             #"preprocess": self.run_preprocess,
             #"generate_pairs": self.run_generate_pairs,
-            #"techniques": self.run_techniques,
+            "techniques": self.run_techniques,
             "evaluation": self.run_evaluation,
             "visualize": self.run_visualize,
         }
@@ -499,7 +499,8 @@ class DeidShell(cmd.Cmd):
 
 
     def check_and_create_conda_env(self, env_name):
-        envs_list = subprocess.check_output(['mamba', 'env', 'list']).decode('utf-8').split('\n')
+        #envs_list = subprocess.check_output(['mamba', 'env', 'list']).decode('utf-8').split('\n')
+        envs_list = subprocess.check_output(['conda', 'env', 'list']).decode('utf-8').split('\n')
         # print(f"env list : {envs_list}")
         # print(f"env_name: {env_name}")
         env_name_from_list =''
@@ -518,7 +519,8 @@ class DeidShell(cmd.Cmd):
             yaml_file = os.path.join(self.root_dir,FOLDER_ENVIRONMENTS,env_name+".yml")
             if os.path.isfile(yaml_file):
                 try:
-                    subprocess.check_call(['mamba', 'env', 'create', '-f', yaml_file, "--prefix", f"~/miniforge3/envs/{env_name}"])
+                   #subprocess.check_call(['mamba', 'env', 'create', '-f', yaml_file, "--prefix", f"~/miniforge3/envs/{env_name}"])
+                    subprocess.check_call(['conda', 'env', 'create', '-f', yaml_file, "--prefix", f"~/anaconda3/envs/{env_name}"])
                     print(f"'{env_name}' environment have been created")
                     return True
                 except subprocess.CalledProcessError as e:
@@ -648,7 +650,10 @@ class DeidShell(cmd.Cmd):
         rows = _getRows(data, headers)
         return rows, headers
     def run_evaluation_script(self, venv_name, path_evaluation, aligned_dataset_path, deidentified_dataset_path, pairs=[], save_path="./out.csv"):
-        conda_sh_path = os.path.expanduser("~/miniforge3/etc/profile.d/conda.sh")
+        if os.path.exists("~/miniforge3/etc/profile.d/conda.sh"):
+            conda_sh_path = os.path.expanduser("~/miniforge3/etc/profile.d/conda.sh")
+        else:
+            conda_sh_path = os.path.expanduser("~/anaconda3/etc/profile.d/conda.sh")
         
         if not os.path.exists(conda_sh_path):
             print("conda.sh path does'nt exist, please change it in run_script() in deid_toolkit.py")
@@ -691,8 +696,10 @@ class DeidShell(cmd.Cmd):
         return 
 
     def run_technique_script(self, venv_name, technique_name, aligned_dataset_path, dataset_save_path):
-        conda_sh_path = os.path.expanduser("/opt/conda/etc/profile.d/conda.sh")
-
+        if os.path.exists("~/miniforge3/etc/profile.d/conda.sh"):
+            conda_sh_path = os.path.expanduser("~/miniforge3/etc/profile.d/conda.sh")
+        else:
+            conda_sh_path = os.path.expanduser("~/anaconda3/etc/profile.d/conda.sh")
         if not os.path.exists(conda_sh_path):
             print("conda.sh path does'nt exist, please change it in run_script() in deid_toolkit.py")
 

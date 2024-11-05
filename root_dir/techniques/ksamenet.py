@@ -44,6 +44,7 @@ def main(dataset_path,dataset_save, dataset_filetype = 'jpg',dataset_newtype = '
     labels_path = os.path.join("..","datasets","labels",dataset_name+"_labels.csv")
     emotion_code = 0
     emotion_dict = {'0': "neutral", "1":"anger", "3": "contempt", "4": "disgust", "5":"fear","6":"happy","7":"sad","8":"surprise"}
+    #emotion_dict = {'Neutral':0,'Anger':1,'Scream':2,'Contempt':3,'Disgust':4,'Fear':5,'Happy':6,'Sadness':7,'Surprise':8}
     def ensure_dir(d):
         #dd = os.path.dirname(f)
         if not os.path.exists(d):
@@ -64,7 +65,17 @@ def main(dataset_path,dataset_save, dataset_filetype = 'jpg',dataset_newtype = '
             for row in reader:
                 if row['Name']==img_name and row['Emotion_code']!='':
                     emotion_code = row['Emotion_code']
-                    emo = emotion_dict[emotion_code]
+                    try:
+                        if dataset_name == 'arface' and emotion_code=='2':
+                            emo = emotion_dict['5']
+                        else:
+                            emo = emotion_dict[emotion_code]
+                    except:
+                        print("ERRO####################################")
+                        print(dataset_name)
+                        print(emotion_code)
+                        print("ERRO####################################")
+                        raise Exception("Something went wrong!")
                     #print("Emotion : ", emo )
                     break
         if emo=='':

@@ -4,8 +4,9 @@ channels:
   - conda-forge
 dependencies:
   - opencv
+  - pandas
+  - torchfile
   - pip
   - pip:
       - torch 
       - torchvision
-      - torchfile

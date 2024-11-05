@@ -10,6 +10,8 @@ dependencies:
   - pytorch==1.8.0
   - opencv
   - pip
+  - pandas
+  - tqdm
   - pip:
     - pytorch-lightning==1.8.6
     - tqdm

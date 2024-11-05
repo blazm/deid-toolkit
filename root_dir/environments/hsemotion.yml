@@ -11,5 +11,6 @@ dependencies:
   - torchvision
   - timm=0.9.7
   - opencv
+  - pandas
   - pip:
     - hsemotion
