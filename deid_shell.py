@@ -157,9 +157,9 @@ class DeidShell(cmd.Cmd):
             # return
 
         switcher = {
-            #"preprocess": self.run_preprocess,
-            #"generate_pairs": self.run_generate_pairs,
-            #"techniques": self.run_techniques,
+            "preprocess": self.run_preprocess,
+            "generate_pairs": self.run_generate_pairs,
+            "techniques": self.run_techniques,
             "evaluation": self.run_evaluation,
             "visualize": self.run_visualize,
         }
@@ -340,16 +340,18 @@ class DeidShell(cmd.Cmd):
         available_visualization  = self.get_available_visualizations()
         for visualization, evaluations_list in available_visualization.items():
             #filter only the selected evaluatios in the configurarion list
+            evaluations_list = [e for e in evaluations_list if e != '']
+            if len(evaluations_list) == 0:
+                print(f"No evaluation list in config.ini: {visualization}=")
+                continue
             selected_evaluations = [evaluation for evaluation in evaluations_list if evaluation in selected_evaluation_names]
-            #generate combinations avoid cycles within cycles
-            combinations = itertools.product(selected_evaluations, selected_datasets_names, selected_techniques_names)
-            for evaluation, dataset, technique in combinations:
-                path_visualization_script =  os.path.abspath(os.path.join(self.root_dir, FOLDER_VISUALIZATION, visualization))
-                path_to_save =  os.path.abspath(os.path.join(self.root_dir, "visuals", evaluation))
-                #path_to_scores = os.path.abspath(os.path.join(self.root_dir, FOLDER_RESULTS, f"{evaluation}_{dataset}_{technique}.csv"))
-                #TODO: Pass all the dataset and techniques 
-                self.run_visualization_script(path_visualization_script,dataset, technique,path_to_save )
-                # for evaluation in selected evaluation? 
+            path_visualization_script =  os.path.abspath(os.path.join(self.root_dir, FOLDER_VISUALIZATION, visualization))
+            path_to_save =  os.path.abspath(os.path.join(self.root_dir, "visuals"))
+            if len(selected_evaluations) > 0: 
+                #we need at least one evaluation, otherwise, will be skipped
+                self.run_visualization_script(path_visualization_script, selected_evaluations,selected_datasets_names, selected_techniques_names ,path_to_save )
+        
+        
         # TODO: every visualization step must have a python script that can be run and preprocess either a single file or a directory
         # the script should be able to take input and output directories as arguments
 
@@ -691,7 +693,7 @@ class DeidShell(cmd.Cmd):
         return 
 
     def run_technique_script(self, venv_name, technique_name, aligned_dataset_path, dataset_save_path):
-        conda_sh_path = os.path.expanduser("/opt/conda/etc/profile.d/conda.sh")
+        conda_sh_path = os.path.expanduser("~/miniforge3/etc/profile.d/conda.sh")
 
         if not os.path.exists(conda_sh_path):
             print("conda.sh path does'nt exist, please change it in run_script() in deid_toolkit.py")
@@ -739,9 +741,15 @@ class DeidShell(cmd.Cmd):
         except Exception as e:
             print(f"Error occurred while running the script: {e}")
         
-    def run_visualization_script(self, path_visualization_script,dataset, technique,path_to_save  ):
-        
-        command = (f"python -u {path_visualization_script}.py {dataset} {technique} {path_to_save}.pdf ")
+    def run_visualization_script(self, path_visualization_script,evaluations:list, datasets:list, techniques:list, path_to_save  ):
+        evaluations_args = ",".join(evaluations)
+        datasets_args = ",".join(datasets)
+        techniques_args = ",".join(techniques)
+        command = (f"python -u {path_visualization_script}.py ")
+        command += f"--evaluations {evaluations_args} "
+        command += f"--datasets {datasets_args} "
+        command += f"--techniques {techniques_args} "
+        command += f"--path_save {path_to_save} "
         try:
             process = subprocess.Popen(command, shell=True,
                                         executable="/bin/bash",
