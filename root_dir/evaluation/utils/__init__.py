@@ -1,10 +1,8 @@
 from PIL import Image
 import numpy as np
-import io
-from contextlib import redirect_stdout, redirect_stderr
-import json
 import os
 import argparse
+import shutil 
 
 import pandas as pd
 
@@ -13,8 +11,14 @@ import pandas as pd
 """
 This file will provide usefull functions for the scripts that performs evaluation techniques.
 """
-OUTPUT_FOLDER = "./deidtoolkit/root_dir/evaluation/output"
+OUTPUT_FOLDER = "./root_dir/evaluation/output"
 ROOT_FOLDER = "./root_dir/evaluation/"
+TEMP_DIR = "./root_dir/evaluation/tmp"
+
+
+os.makedirs(os.path.abspath(TEMP_DIR), exist_ok=True)
+
+
 #/evaluation/output"
 def read_pairs_file(filepath:str):
     """
@@ -54,6 +58,7 @@ def read_args():
     parser.add_argument('--save_path', type=str, help="Path file to save the results. If not exist, it will be created.")
     parser.add_argument('--impostor_pairs_filepath', type=str, help="Path to impostor files")
     parser.add_argument('--genuine_pairs_filepath', type=str, help="Path to genuine files")
+    parser.add_argument('--dir_to_log', type=str, help="Path to directory to log", default="./root_dir/logs/evaluation/")
     
     
     # Parse arguments
@@ -114,7 +119,9 @@ def get_output_filename(metric_name:str,aligned_path:str, deidentified_path:str)
     absolute_output_path = os.path.abspath(relative_path)
     return absolute_output_path
 def get_dataset_name_from_path(aligned_path:str):
-    return aligned_path.split("/")[-1]
+    aligned_path = aligned_path.split("/")
+    aligned_path.remove('')
+    return aligned_path[-1]
 def get_technique_name_from_path(deidentified_path:str):
     """
     Args:
@@ -124,7 +131,13 @@ def get_technique_name_from_path(deidentified_path:str):
     Returns:
         str: name of the technique
     """
-    return deidentified_path.split("/")[-2]
+    deidentified_path = deidentified_path.split("/")
+    deidentified_path.remove('')
+    return deidentified_path[-2]
+def log_image_in_output(src_img, destination):
+    if not os.path.exists(destination):
+        os.makedirs(destination)
+    shutil.move(src_img, destination)
 
 def compute_mean_std(output_scores_file:str)-> tuple:
     """
@@ -137,68 +150,47 @@ def compute_mean_std(output_scores_file:str)-> tuple:
     arr = np.loadtxt(output_scores_file)
     return arr.mean() , arr.std()
 
-
-def with_no_prints(function, *args, **kwargs)->tuple:
-    """
-    This function will redirect the undesired prints to the returned variables, 
-    to control the flow of the outputs from other three parties scripts
-
-    Arguments: 
-        function: the function to execte without undesired prints, 
-        *args: the arguments of the function
-    Returns:
-        result: the returned value of the funcion
-        output: the prints, without errors
-        error: the error prints. 
-    """
-    f = io.StringIO()
-    errors = io.StringIO()
-    with redirect_stdout(f), redirect_stderr(errors):
-        result = function(*args, **kwargs)
-    output = f.getvalue()
-    error_output = errors.getvalue()
-    return result, output, error_output
-
+def log(log_filename, text):
+    with open(log_filename, 'a') as log_file:
+        log_file.write(text + '\n') 
 
 class Metrics():
     metric_df = None
-    def __init__(self, name_evaluation:str, name_dataset:str, name_technique:str, name_score:str):
+    def __init__(self, name_score:str):
         # Call the parent constructor (for DataFrame functionality)
-        self.columns = ['aligned_path', 'deidentified_path', 'dataset', 'technique', 'score_name', 'metric_result']
-        
+        self.columns = ['img', f'{name_score}']
         # Store the required parameters as class attributes
-        self.name_dataset = name_dataset
-        self.name_evaluation = name_evaluation
-        self.name_technique = name_technique
         self.name_score = name_score
-
         self.metric_df = pd.DataFrame(columns=self.columns)
 
-   
-
-    def add_score(self, path_aligned: str, path_deidentified: str, metric_result):
+    def add_score(self, img: str, metric_result):
         """
         Add a new row to the DataFrame with the given parameters.
         """
         new_row = {
-            'dataset': self.name_dataset,
-            'technique': self.name_technique,
-            'aligned_path': path_aligned,
-            'deidentified_path': path_deidentified,
-            'score_name': self.name_score,
-            'metric_result': metric_result
+            'img': img,
+            f'{self.name_score}': metric_result,
         }
         # Append new row and reassign to self
         self.metric_df.loc[len(self.metric_df)] = new_row
+    def add_column_value(self, column_name: str, value):
+        """
+        Adds a new column (if not present) and fills the next empty row with the given value.
+        """
+        # Check if the column exists, if not, create it
+        if column_name not in self.metric_df.columns:
+            self.metric_df[column_name] = pd.NA  # Initialize with empty values
+        # Find the first empty row in the specified column
+        empty_row_idx = self.metric_df[self.metric_df[column_name].isna()].index
+        if len(empty_row_idx) > 0:
+            # Assign the value to the first empty row in the specified column
+            self.metric_df.at[empty_row_idx[0], column_name] = value
+        else:
+            raise  Exception(f"you must add the scores row before, The file cannot have more rows for the extra column than scores  len(rows)>=len({column_name})")
+        
     def save_to_csv(self, file_to_save):
         """
         Save the DataFrame to a CSV file. Append to the file if it exists.
         """
-        # Check if the file exists
-        filepath = file_to_save
-        if os.path.isfile(filepath):
-            # Append without writing the header if the file already exists
-            self.metric_df.to_csv(filepath, mode='a', header=False, index=False)
-        else:
-            # Write the file with the header if it doesn't exist
-            self.metric_df.to_csv(filepath,header=True, mode='w', index=False)
+        # Save the DataFrame, overriding the file if it already exists
+        self.metric_df.to_csv(file_to_save, mode='w', header=True, index=False)
