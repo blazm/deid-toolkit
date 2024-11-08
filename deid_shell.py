@@ -5,13 +5,10 @@ from colorama import Fore  # color text
 from tqdm import tqdm
 import subprocess
 import select
-import itertools
-
-#from yaspin import yaspin #fancy loader spinner
-#from tabulate import tabulate
 
 
 
+CONDA_DOT_SH_PATH = "~/miniforge3/etc/profile.d/conda.sh"
 
 FOLDER_DATASET = "datasets"
 FOLDER_TECHNIQUES = "techniques"
@@ -650,7 +647,7 @@ class DeidShell(cmd.Cmd):
         rows = _getRows(data, headers)
         return rows, headers
     def run_evaluation_script(self, venv_name, path_evaluation, aligned_dataset_path, deidentified_dataset_path, pairs=[], save_path="./out.csv"):
-        conda_sh_path = os.path.expanduser("~/miniforge3/etc/profile.d/conda.sh")
+        conda_sh_path = os.path.expanduser(CONDA_DOT_SH_PATH)
         
         if not os.path.exists(conda_sh_path):
             print("conda.sh path does'nt exist, please change it in run_script() in deid_toolkit.py")
@@ -693,7 +690,7 @@ class DeidShell(cmd.Cmd):
         return 
 
     def run_technique_script(self, venv_name, technique_name, aligned_dataset_path, dataset_save_path):
-        conda_sh_path = os.path.expanduser("~/miniforge3/etc/profile.d/conda.sh")
+        conda_sh_path = os.path.expanduser(CONDA_DOT_SH_PATH)
 
         if not os.path.exists(conda_sh_path):
             print("conda.sh path does'nt exist, please change it in run_script() in deid_toolkit.py")
