@@ -1,64 +1,68 @@
 import argparse
-import subprocess
-import torch
 import os
 import lpips
+import torch
 import numpy as np
+from PIL import Image
+import utils as util
+from tqdm import tqdm
 
 def main():
-    parser = argparse.ArgumentParser(description="Evaluate FID score")
-    parser.add_argument('path', type=str, nargs=2,
-                    help=('Paths of the datasets aligned and deidentified'))
 
-    args = parser.parse_args()
-    aligned_dataset_path = args.path[0]
-    deid_dataset_path  = args.path[1] #deidentified datast
-    dataset_name = aligned_dataset_path.split("/")[-1]
-    technique_name = deid_dataset_path.split("/")[-2]
+    args = util.read_args()
+    aligned_dataset_path = args.aligned_path
+    deid_dataset_path  = args.deidentified_path
+    path_to_log = args.dir_to_log
 
-    output_scores_file = f"./root/evaluation/output/lpips_{dataset_name}_{technique_name}.txt" #TODO: fix this to absolute path
-    use_gpu = True if torch.cuda.is_available() else False
+    path_to_save = args.save_path
+    dataset_name = util.get_dataset_name_from_path(aligned_dataset_path)
+    technique_name = util.get_technique_name_from_path(deid_dataset_path)
+    metrics_df= util.Metrics(name_score="lpips")
+
+    #output_scores_file = util.get_output_filename("lpips", aligned_dataset_path, deid_dataset_path)
+    use_gpu = False
+    #True if torch.cuda.is_available() else False
     
-    from torch import nn
     loss_fn = lpips.LPIPS(net='alex', version="0.1") # alex
     if use_gpu:
-        print("\nCUDA is available")
-    else: 
-        print("\nNot CUDA available")
+        loss_fn.cuda()
     
-    f = open(output_scores_file, 'w')
+    
+    #f = open(output_scores_file, 'w')
     files = os.listdir(aligned_dataset_path)
-    for file in files:
+    for file in tqdm(files, total=len(files),  desc=f"lpips | {dataset_name}-{technique_name}"):
         if(os.path.exists(os.path.join(deid_dataset_path,file))):
             # Load images
-            img0 = lpips.im2tensor(lpips.load_image(os.path.join(aligned_dataset_path,file))) # RGB image from [-1,1]
-            img1 = lpips.im2tensor(lpips.load_image(os.path.join(deid_dataset_path,file)))
-
-            #if img1.shape[2] == 128: # CIAGAN images need to be resized
-            #	#from torchvision import transforms
-            #	#trans = transforms.Compose([transforms.Resize(1024, 1024)])
-            #	img1 = lpips.upsample(img1, (1024, 1024))
-            #TODO: check if the images needs to be reized
-            #print(img0.min(), img0.max(), img1.min(), img1.max())
-
-            if use_gpu:
-                img0 = img0.cuda()
-                img1 = img1.cuda()
-            else: 
-                img0 = img0.cpu()
-                img1 = img1.cpu()
-
-            #print("Shapes: ", img0.shape, " ", img1.shape)
-            # Compute distance
-            #dist01 = loss_fn(img0, img1)
-            dist01 = loss_fn.forward(img0,img1)
+            aligned_img_path = os.path.join(aligned_dataset_path, file)
+            deidentified_img_path = os.path.join(deid_dataset_path, file)
+            if not os.path.exists(aligned_img_path):
+                util.log(os.path.join(path_to_log,"lpips.txt"), 
+                        f"({dataset_name}) The source images are not in {aligned_img_path} ")
+                print(f"{aligned_dataset_path} does not exist")
+                continue
+            if not  os.path.exists(deidentified_img_path):
+                util.log(os.path.join(path_to_log,"lpips.txt"), 
+                        f"({technique_name}) The deidentified images are not in {deidentified_img_path} ")
+                print(f"{deidentified_img_path} does not exist")
+                continue
+            img1 = Image.open(deidentified_img_path) #deidentified image
+            img0 = util.resize_if_different(Image.open(aligned_img_path), img1) #aligned image
+            #convert to tensors
+            img0 = lpips.im2tensor(np.array(img0))  # RGB image from [-1,1]
+            img1 = lpips.im2tensor(np.array(img1))  # RGB image from [-1,1]
             
-            #print('%s: %.3f'%(file,dist01)) # if using spatial, we need .mean()
-            #f.writelines('%s: %.6f\n'%(file,dist01)) # original saves image name and score
-            f.writelines('%.6f\n'%(dist01)) # we need only scores, to compute averages easily
+            img0.cuda() if use_gpu else img0.cpu()
+            img1.cuda() if use_gpu else img1.cpu()
 
-    f.close()
-    arr = np.loadtxt(output_scores_file)
-    print("lpips | mean & std: " + "{:1.2f}".format(arr.mean()) + " ± " + "{:1.2f}".format(arr.std()))
+            # Compute distance
+            dist01 = loss_fn.forward(img0,img1)
+            metrics_df.add_score(img=file,
+                                 metric_result='%.6f'%(dist01))
+            #f.writelines('%.6f\n'%(dist01)) # we need only scores, to compute averages easily
+    #f.close()
+    #mean, std = util.compute_mean_std(output_scores_file)
+    metrics_df.save_to_csv(path_to_save)
+    print(f"lpips saved into {path_to_save}")
+    return
 if __name__ == '__main__':
     main()
