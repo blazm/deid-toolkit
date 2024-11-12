@@ -1,10 +1,14 @@
-name: deepface
+name: deepface  
 channels:
+  - conda-forge  
   - defaults
 dependencies:
+  - numpy==1.22.3
+  - pandas==2.0.3
+  - Pillow==9.0.0
   - pip
-  - pip: 
-    - deepface
-    - tensorflow>=1.9.0
-    - keras>=2.2.0
-    - tf-keras
+  - pip:
+      - deepface  
+      - tensorflow==2.9.0
+      - opencv-python==4.9.0.80
+      - keras==2.9.0

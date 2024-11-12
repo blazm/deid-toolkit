@@ -1,0 +1,21 @@
+name: adaface
+channels:
+  - conda-forge
+dependencies:
+  - scikit-image
+  - matplotlib
+  - pandas
+  - scikit-learn
+  - torchvision==0.9.0
+  - pytorch==1.8.0
+  - opencv
+  - pip
+  - pandas
+  - tqdm
+  - pip:
+    - pytorch-lightning==1.8.6
+    - tqdm
+    - bcolz-zipline
+    - prettytable
+    - menpo
+    - mxnet
