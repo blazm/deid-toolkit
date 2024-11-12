@@ -747,6 +747,9 @@ class DeidShell(cmd.Cmd):
         command += f"--datasets {datasets_args} "
         command += f"--techniques {techniques_args} "
         command += f"--path_save {path_to_save} "
+        print(f"{Fore.LIGHTCYAN_EX}{'-' * 40}{Fore.RESET}")
+        print(f"{Fore.LIGHTYELLOW_EX}{os.path.basename(path_visualization_script)}{Fore.RESET}")
+        print(f"{Fore.LIGHTCYAN_EX}{'-' * 40}{Fore.RESET}")
         try:
             process = subprocess.Popen(command, shell=True,
                                         executable="/bin/bash",

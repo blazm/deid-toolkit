@@ -97,6 +97,7 @@ def main():
     for name_a, name_b, gt_label in tqdm(zip(names_a, names_b, ground_truth_binary_labels), total=len(names_a), desc=f"adaface | {dataset_name}-{technique_name}"):
         img_a_path = os.path.abspath(os.path.join(path_to_aligned_images, name_a)) #the the aligned image file path
         img_b_path = os.path.abspath(os.path.join(path_to_deidentified_images, name_b)) #the deidentified image file path
+        img_c_path = os.path.abspath(os.path.join(path_to_aligned_images, name_b)) #the same image b but in aligned version
 
         if not os.path.exists(img_a_path):
             util.log(os.path.join(path_to_log,"adaface_optimized.txt"), 
@@ -108,20 +109,29 @@ def main():
                      f"({technique_name}) The deidentified images are not in {img_b_path} ")
             print("Deid Images are not there! ", img_b_path)
             continue
+        if not os.path.exists(img_c_path): # if any of the pipelines failed to detect faces
+            util.log(os.path.join(path_to_log,"adaface_optimized.txt"), 
+                     f"({technique_name}) The aligned image are not in {img_c_path} ")
+            print("source Image are not there! ", img_c_path)
+            continue
         similarity_score = 0
         try:
             feature_original = get_features(img_a_path, temp_features_original_dir)
             feature_deid = get_features(img_b_path, temp_features_deid_dir)
+            feature_both_original = get_features(img_c_path, temp_features_original_dir)
+
         except ValueError as e:
             print(f"(Warning) {e} - Skip")
             continue
         
         # Compute similarity and add to the list
         similarity_score = compute_similarity(feature_deid, feature_original)
+        similarity_score_for_originals = compute_similarity(feature_original, feature_both_original)
         metrics_df.add_score(img=name_a, 
                              metric_result=similarity_score)
         metrics_df.add_column_value("img_b", name_b)
         metrics_df.add_column_value("ground_truth", gt_label)
+        metrics_df.add_column_value("cossim_originals", similarity_score_for_originals)
     metrics_df.save_to_csv(path_to_save)
     print(f"Adaface scores saved into {path_to_save}")
     return
