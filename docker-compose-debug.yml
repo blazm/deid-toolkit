@@ -1,0 +1,33 @@
+services:
+  deidtoolkit:
+    platform: linux/amd64  # Specify the target platform
+    build:
+      context: .  # Where the application is located
+      target: debug
+      dockerfile: Dockerfile.dev  # The Dockerfile you want to use
+    container_name: deidtoolkit  # Name of the container
+    runtime: nvidia  # Use NVIDIA runtime for GPU support
+    tty: true  # Provides a TTY terminal
+    stdin_open: true  # Interactive mode
+    environment:
+      - DEBIAN_FRONTEND=noninteractive  # Prevents interactive prompts during apt-get
+    volumes:
+      - .:/home/deidtoolkit  # Mounts the local directory inside the container
+    shm_size: '12g'  # Increases shared memory size to 8 GB
+    ports: 
+      - 5678:5678
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]  # Enable GPU usage
+    command: bash -c "while true; do sleep 10; done"  # #prevent stops 
+
+#docker compose -f docker-compose-dev.yml up -d                                                                
+#docker compose -f docker-compose-dev.yml up -d --build   
+#docker exec -it deidtoolkit /bin/bash
+                                                  
+# debug
+#python -m debugpy --listen 0.0.0.0:5678 --wait-for-client file.py params
