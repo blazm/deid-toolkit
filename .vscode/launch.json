@@ -1,0 +1,99 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: deid_shell",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        }, 
+        {
+            "name": "Python Debugger: deepprivacy",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "-s",
+                "./root_dir/datasets/aligned/${input:datasetName}/${input:imgName}.jpg",
+                "-t",
+                "./root_dir/datasets/deepprivacy/${input:datasetName}/"
+            ]
+        }, {
+            "name": "Python Debugger: Technique baseline",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "./root_dir/datasets/aligned/${input:datasetName}/",
+                "./root_dir/datasets/test_debug/${input:datasetName}/"
+            ]
+        },
+        {
+            "name": "Python Debugger: Evaluation technique",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "./root_dir/datasets/aligned/${input:datasetName}/",
+                "./root_dir/datasets/${input:techniqueName}/${input:datasetName}/",
+                "--impostor_pairs_filepath",
+                "./root_dir/datasets/pairs/${input:datasetName}_impostor_pairs.txt",
+                "--genuine_pairs_filepath",
+                "./root_dir/datasets/pairs/${input:datasetName}_genuine_pairs.txt",
+                "--save_path",
+                "./root_dir/results/test_${input:datasetName}_${input:techniqueName}.csv",
+            ]
+        },
+        {
+            "name": "Python Debugger: Visualization technique",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--evaluations",
+                "${input:evaluationName}",
+                "--datasets",
+                "mug-still,ck+_fix",
+                "--techniques",
+                "AMT-GAN,LeeCroft,blur,cleanir,cpp-deid,ksamenet,pixelize",
+                "--path_save",
+                "./root_dir/visuals/",
+            ]
+        },
+    ],
+    "inputs": [
+        {
+            "id": "datasetName",
+            "type": "promptString",
+            "description": "Please enter the dataset name",
+            "default": "mug-still"
+        },
+        {
+            "id": "evaluationName",
+            "type": "promptString",
+            "description": "Please enter the evaluation name",
+            "default": "adaface_iv"
+        },
+        {
+            "id": "techniqueName",
+            "type": "promptString",
+            "description": "Please enter the evaluation name",
+            "default": "ksamenet"
+        }
+        ,
+        {
+            "id": "imgName",
+            "type": "promptString",
+            "description": "Please enter the evaluation name",
+            "default": "001_ang_take000_img_0034"
+        }
+    ]
+}
+// Use IntelliSense to learn about possible attributes.
+// Hover to view descriptions of existing attributes.
+// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
