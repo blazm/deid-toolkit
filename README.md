@@ -1,77 +1,63 @@
 # deid-toolkit
 An attempt to develop a toolkit for running and evaluating privacy preserving techniques in facial biometrics
 
-## Toolkit Overview
-
-- Command-line interface (something like https://docs.python.org/3.8/library/cmd.html):
-  - easy to use (simple commands + names to run experiments)
-  - easy to generate results
-  - good look & feel
-  - responsive logging (showing % of performed actions)
-  - helpful tips (where results are saved, how can be visualised, etc)
-- Handling of multiple separated virtual environments
-  - running the models in subshells, while reporting progress to main interface
-- Configuration parameters in text format via .ini file (loading & saving of different configurations within command line)
-- Checking and handling of datasets
-  - Raw datasets path (simple names)
-  - Cropped & Aligned path (dataset preparation/standardization)
-- Saving intermediate results for each phase (for each dataset, for each of the models)
-- Saving final results (final deidentified images and dataset evaluation scores / plots)
-- Handling and storing models / binary files for existing techniques
-  - Pretrained models directory
-
-## Toolkit Components
-
-- Preprocess
-  - Detect & Align (save transformation)
-  - Image normalization
-  - Video to frame conversion (for video-based datasets)
-  - Annotation preparation (dataset specific scripts)
-    - Identity labels parsing
-    - Attribute labels parsing
-    - Verification pairs generation
-        - Impostor pairs
-        - Genuine pairs
-- Run
-  - Technique 1 (separate virtual environment 1)
-  - Technique 2 (separate virtual environment 2)
-  - Technique 3 (separate virtual environment 3)
-  - ...
-- Evaluate
-  - Verification
-    - Model 1
-    - Model 2
-    - ...
-  - Data utility
-    - Gender
-    - Age
-    - Expression
-    - Ethnicity
-    - Attributes
-  - Image quality metrics
-    - MSE
-    - FID
-    - LPIPS
-    - SSIM, MS-SSIM
-  - Latent space analysis
-- Visualise
-  - Plot results (verification)
-  - Prepare image grid
-  - Webserver + interactive web interface to show generated results
-- Postprocess
-  - Reverse alignment
-- Extras
+## Toolkit description
 
 
-## Set up 
-1. Clone the project:
+
+![Architecture](https://github.com/blazm/deid-toolkit/blob/main/assets/architecture.png?raw=true)
+
+## Table of Contents
+1. [Features](#features)
+2. [Prerequisites](#prerequisites)
+3. [Installation](#installation)
+4. [Configuration](#configuration)
+5. [Usage](#usage)
+6. [Examples](#examples)
+7. [Project Structure](#project-structure)
+8. [Contributing](#contributing)
+9. [License](#license)
+10. [Contact](#contact)
+
+-- 
+## Features
+* Command-line interface (something like https://docs.python.org/3.8/library/cmd.html):
+    *   easy to use (simple commands + names to run experiments)
+    * easy to generate results
+    * good look & feel
+    * responsive logging (showing % of performed actions)
+    * helpful tips (where results are saved, how can be visualised, etc)
+* Handling of multiple separated virtual environments
+    * running the models in subshells, while reporting progress to main interface
+* Configuration parameters in text format via .ini file (loading & saving of different configurations within command line)
+* Checking and handling of datasets
+    * Raw datasets path (simple names)
+    * Cropped & Aligned path (dataset preparation/standardization)
+* Saving intermediate results for each phase (for each dataset, for each of the models)
+* Saving final results (final deidentified images and dataset evaluation scores / plots)
+* Handling and storing models / binary files for existing techniques
+<!-- TO DO: look and check remove needed -->
+    *   Pretrained models directory 
+
+--
+
+## Prerequisites
+- **Operating System:** Linux ? 
+- **Python:** 3.9+
+- **Additional Dependencies:**  Conda, Mamba 
+
+## Installation
+
+1. Clone the project: 
    ```sh
    git clone https://github.com/blazm/deid-toolkit
    ```
-
+<!-- TODO: Where to download this zips-->
 2. Get `techniques.zip` and `aligned.zip` (and `original.zip` if wanted) and extract them with unzip:
    ```sh
    unzip techniques.zip -d root_dir
+   unzip evaluation.zip -d root_dir
+   unzip visualization.zip -d root_dir
    unzip aligned.zip -d root_dir/datasets
    unzip original.zip -d root_dir/datasets
    ```
@@ -80,54 +66,9 @@ An attempt to develop a toolkit for running and evaluating privacy preserving te
    ```sh
    conda env create -f toolkit.yml
    ```
-4. In `deid_shell.py`, change the `conda_sh_path` variable with the correct path to the conda.sh file on your machine
+4. In `deid_shell.py`, change the `conda_sh_path` constant with the correct path to the conda.sh file on your machine.
 
-## How to add a dataset
-If the dataset is already aligned, put all images according to this structure:
-```
-deid-toolkit
-├── root_dir
-    ├── datasets
-        ├── aligned
-            ├── img1.jpg
-            ├── img2.jpg
-            ├── ...
-```
-If the dataset has not been preprocessed, put all images as follows:
-```
-deid-toolkit
-├── root_dir
-    ├── datasets
-        ├── original
-            ├── img
-                ├── img1.jpg
-                ├── img2.jpg
-                ├── ...
-```
-
-## Labels 
-Each dataset has a corresponding `.csv` file in `root_dir/datasets/labels` containing all the labels.
-For each file, the headers are as follows:
-```
-Name,Path,Identity,Gender_code,Gender,Age,Race_code,Race,date_of_birth,Emotion_code,Neutral,Anger,Scream,Contempt,Disgust,Fear,Happy,Sadness,Surprise,Sun_glasses,Scarf,Eyeglasses,Beard,Hat,Angle
-```
-- `Gender_code`: Male = 1 and Female = -1
-- `Emotion_code`: 0 = Neutral, 1 = Anger, 2 = Scream, 3 = Contempt, 4 = Disgust, 5 = Fear, 6 = Happy, 7 = Sadness, 8 = Surprise
-- `Race_code` is not defined for now
-- `Angle` :  90 = Rigth profile, 45 = 45° to the left,  0 = Frontal, -45 = 45° to the right,
- -90 = Left profile
-
-If one of the labels isn't available for the images, leave an empty string.
-
-## How to add a technique
-Add a Python script `technique_name.py` in `root_dir/techniques`. This script must be callable with:
-```sh
-python technique_name.py dataset_path dataset_save_path
-```
-If the new technique needs an environment different from the toolkit, put a file `technique_name.yml` in the directory `techniques/environment`
-
-## ToolKit Command
-
+## Usage
 ### General commands
 - `root` - see currently set root directory
 - `set root` - set root directory
@@ -155,5 +96,31 @@ If the new technique needs an environment different from the toolkit, put a file
 - `run preprocess`
 - `run techniques`
 - `run evaluation`
+- `run visualize`
 - `run *`
-```
+
+<!-- TODO: add link for visualizations-->
+> [!NOTE]
+> There is no selection for visualization methods, please refer to [visualization]() to discover more details.
+
+> [!TIP]
+> Your selection is stored in config.ini file: Which means you don't have to select again _dataset|technique|evaluation|_ if you want to run the same selected _dataset|technique|evaluation|_
+
+--
+
+## Toolkit components
+### Datasets
+<!-- TODO: add link in the word "integrate" to learn how-->
+This module manages the datasets required for de-identification. It’s the first part of the pipeline. The toolkit is able to integrate (<-----) additional facial images datasets. Moreover, the datasets won’t be included in the toolkit because some of them have different licensing constraints.
+
+<!-- TODO: add link to more details in README_DATASETS-->
+
+
+### Preprocess
+### Environments
+### Techniques
+### Evaluation
+### Visualization
+
+
+
