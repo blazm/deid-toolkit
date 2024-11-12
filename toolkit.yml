@@ -13,6 +13,8 @@ dependencies:
   - scipy==1.13.0
   - pip
   - pytorch
+  - pandas
+  - scikit-learn
   - torchvision
   - torchaudio
   - pytorch-cuda=12.1
@@ -27,3 +29,8 @@ dependencies:
     - yaspin
     - tabulate
     - lpips
+    - pytorch-msssim
+    - Jinja2 
+    
+
+
