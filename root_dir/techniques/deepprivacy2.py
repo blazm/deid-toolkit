@@ -65,7 +65,7 @@ def main(dataset_path, dataset_save, dataset_filetype='jpg', dataset_newtype='jp
     iteration_count = 0
 
     for img_path, save_path in zip(img_paths, save_paths):
-        p = subprocess.Popen(['python', anonymize_path, '-s', img_path, '-t', save_path],
+        p = subprocess.Popen(['python', anonymize_path, '-s', img_path, '-t', dataset_save],
                              bufsize=2048, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         while True:

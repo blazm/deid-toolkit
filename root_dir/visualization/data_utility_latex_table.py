@@ -35,9 +35,12 @@ def main(args):
                     continue 
                 df = pd.read_csv(path_to_csv)
                 total_values = len(df["isMatch"]) # should be the second colum
-                successes = df["isMatch"].sum()                
-                accuracy = (successes / total_values) *100 
-                accuracy_columns.append(f"{accuracy:.2f}")
+                if total_values > 0: 
+                    successes = df["isMatch"].sum()                
+                    accuracy = (successes / total_values) *100 
+                    accuracy_columns.append(f"{accuracy:.2f}")
+                else: 
+                    accuracy_columns.append(f"Nan")
             rows.append(accuracy_columns)
         #Create a Dataframe with the collected rows
         columns_headers = [ev.replace("_", "\_") for ev in evaluations]
