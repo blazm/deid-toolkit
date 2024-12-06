@@ -6,6 +6,10 @@ from tqdm import tqdm
 import subprocess
 import select
 
+#this is new import from branch "modules" to manage modules.yml
+import yaml
+from easydict import EasyDict as edict
+
 
 
 CONDA_DOT_SH_PATH = "~/miniforge3/etc/profile.d/conda.sh"
@@ -16,6 +20,7 @@ FOLDER_EVALUATION = "evaluation"
 FOLDER_VISUALIZATION = "visualization"
 FOLDER_ENVIRONMENTS = "environments"
 FOLDER_RESULTS = "results"
+
 
 class DeidShell(cmd.Cmd):
     intro = "Welcome to DeID-ToolKit.   Type help or ? to list commands.\n"
@@ -38,6 +43,8 @@ class DeidShell(cmd.Cmd):
         self.config = config
         self.root_dir = config.get("settings", "root_dir")
         self.logs_dir  = config.get("settings", "logs_dir")
+        self.modules_settings = config.get("settings", "modules_file")
+
         self.datasets_initial_update(os.path.join(self.root_dir,FOLDER_DATASET,"aligned"),
                                 os.path.join(self.root_dir,FOLDER_DATASET,"original"))
         self.techniques_initial_update(os.path.join(self.root_dir,FOLDER_TECHNIQUES))
@@ -45,7 +52,7 @@ class DeidShell(cmd.Cmd):
         self.environments_initial_update(os.path.join(self.root_dir, FOLDER_ENVIRONMENTS))
         self.visualization_initial_update(os.path.join(self.root_dir, FOLDER_VISUALIZATION))
         self.logs_initial_update(os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION)) #can log techniques output later, just add the path separate by ","
-       
+        
 
     def do_exit(self, arg):
         "Exit the shell:  EXIT"

@@ -15,7 +15,7 @@ def main(args):
     cols = 1
     rows = int(np.ceil(num_plots/ cols))
 
-    fix, axes = plt.subplots(rows, cols, figsize=(15,10))
+    fix, axes = plt.subplots(rows, cols, figsize=(4,10))
     axes = np.atleast_1d(axes).ravel()
 
     for i, dataset in enumerate(datasets): 
@@ -31,7 +31,7 @@ def main(args):
                 path_to_csv = os.path.abspath(os.path.join(util.RESULTS_DIR, f"{evaluation}_{dataset}_{technique}.csv"))
                 if not os.path.exists(path_to_csv):
                     #skip because couldn't find the metrics to compute accuracy
-                    accuracy_columns.append("Nan")
+                    accuracy_columns.append("--")
                     continue 
                 df = pd.read_csv(path_to_csv)
                 total_values = len(df["isMatch"]) # should be the second colum
@@ -40,7 +40,7 @@ def main(args):
                     accuracy = (successes / total_values) *100 
                     accuracy_columns.append(f"{accuracy:.2f}")
                 else: 
-                    accuracy_columns.append(f"Nan")
+                    accuracy_columns.append(f"--")
             rows.append(accuracy_columns)
         #Create a Dataframe with the collected rows
         columns_headers = [ev.replace("_", "\_") for ev in evaluations]
