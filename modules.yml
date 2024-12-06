@@ -1,0 +1,28 @@
+datasets:
+  arface: 
+    rename: "AR Face"
+  celeba-test_aligned: 
+    rename: "CelebA"
+  ck+_fix: 
+    rename: "CK+"
+  mug-still: 
+    rename: "MUG (still images)"
+  rafd-frontal_aligned: 
+    rename: "RaFD"
+  xm2vts_aligned: 
+    rename: "XM2VTS"
+environments:
+evaluation:
+techniques:
+    ksamenet: 
+      rename: "k-Same-Net"
+      args: "--postprocessing_alignment yes"
+    deepprivacy2:
+      rename: "DeepPrivacy"
+    LeeCroft:
+      rename: "Croft et al"
+    pixelize:
+      rename: "Pixelize"
+    cpp-deid: 
+      rename: "CPP-DeID"
+visualization:

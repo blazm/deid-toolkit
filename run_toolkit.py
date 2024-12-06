@@ -4,7 +4,7 @@ from deid_shell import DeidShell
 
 '''
 DeID ToolKit main file
-Contributors: Blaž Meden, Manfred Gonzalez, ...
+Contributors: Blaž Meden, Manfred Gonzalez, Esteban Leiva
 '''
 
 valid_hex = '0123456789ABCDEF'.__contains__
