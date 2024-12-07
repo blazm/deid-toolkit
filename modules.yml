@@ -10,8 +10,7 @@ datasets:
   rafd-frontal_aligned: 
     rename: "RaFD"
   xm2vts_aligned: 
-    rename: "XM2VTS"
-  asdfaf:
+    args:
 environments:
 evaluation:
 techniques:

@@ -856,7 +856,7 @@ class DeidShell(cmd.Cmd):
 
         # Display available datasets with appropriate colors
         for i, dataset in enumerate(available_datasets):
-            dataset_rename = self.modules_settings.datasets.get(dataset, {"rename": dataset})["rename"]
+            dataset_rename = self.modules_settings.datasets.get(dataset, {"rename": dataset}).get("rename", dataset) 
             if dataset in aligned_datasets:
                 print(Fore.LIGHTGREEN_EX + "\t" + str(i) + ". " + dataset + Fore.LIGHTBLACK_EX+  " ("+dataset_rename+")", Fore.RESET)
             else:
@@ -912,10 +912,11 @@ class DeidShell(cmd.Cmd):
 
         # Print instructions for technique selection
         print(Fore.CYAN + "[Techniques]", Fore.RESET)
-
+        print(Fore.LIGHTBLACK_EX + "Gray name = technique name on display", Fore.RESET)
         # Display available techniques
         for i, technique in enumerate(techniques):
-            print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + technique, Fore.RESET)
+            techniques_rename = self.modules_settings.techniques.get(technique, {"rename": technique}).get("rename", technique) 
+            print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + technique+Fore.LIGHTBLACK_EX +" ("+techniques_rename+")", Fore.RESET)
 
         return techniques
 
