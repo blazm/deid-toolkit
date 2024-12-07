@@ -9,8 +9,6 @@ datasets:
     rename: "MUG (still images)"
   rafd-frontal_aligned: 
     rename: "RaFD"
-  xm2vts_aligned: 
-    args:
 techniques:
     ksamenet: 
       rename: "k-Same-Net"
@@ -49,4 +47,7 @@ evaluations:
     swinface: 
       rename: "SwinFace"
 visualization:
-  a:
+  a: ""
+
+# The renaming does not modify the saving evaluation .csv filename to keep consistence
+# The args does not change the original ones like, --path to save, evaluation:rename evaluation:rename

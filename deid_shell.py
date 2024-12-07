@@ -5,10 +5,9 @@ from colorama import Fore  # color text
 from tqdm import tqdm
 import subprocess
 import select
+import shutil
 
-#this is new import from branch "modules" to manage modules.yml
-import yaml
-from easydict import EasyDict as edict
+
 from utils import DeidtoolkitError
 
 
@@ -50,7 +49,11 @@ class DeidShell(cmd.Cmd):
         self.evaluation_initial_update(os.path.join(self.root_dir,FOLDER_EVALUATION))
         self.environments_initial_update(os.path.join(self.root_dir, FOLDER_ENVIRONMENTS))
         self.visualization_initial_update(os.path.join(self.root_dir, FOLDER_VISUALIZATION))
-        self.logs_initial_update(os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION)) #can log techniques output later, just add the path separate by ","
+        self.logs_initial_update(
+            os.path.join(self.root_dir,self.logs_dir, "preprocessing"),
+            os.path.join(self.root_dir,self.logs_dir, FOLDER_TECHNIQUES),
+            os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION),
+            os.path.join(self.root_dir,self.logs_dir, FOLDER_VISUALIZATION)) #can log output, just add the path separate by ","
         #loads modules.yml
         module_settings_file = config.get("settings", "modules_file") #get the modules settings filename from config.ini
         self.modules_settings = self.get_modules_settings(module_settings_file)
@@ -707,6 +710,7 @@ class DeidShell(cmd.Cmd):
         dataset_save_path = os.path.abspath(dataset_save_path)
         path_technique_folder = os.path.join(self.root_dir,FOLDER_TECHNIQUES)
         
+
         command = (
             f"source {conda_sh_path} && "
             f"conda activate {venv_name} && "
@@ -1065,15 +1069,31 @@ class DeidShell(cmd.Cmd):
             data_edict = edict(data) #loads with easy dict
        
         for key in required_keys:
-            if key not in data or data[key] is None:
-                raise DeidtoolkitError(f"Error loading {module_settings_file}: Missing values for '{key}' key ", module="loading module settings file", details=f"Please go to {module_settings_file} and  add {key} with one or more {key}")
+            # Verify if the key is in required keys which is mandatory
+            if key not in data or not data[key]:
+                raise DeidtoolkitError(
+                    f"Error loading {module_settings_file}: Missing values for '{key}' key.",
+                    module="loading module settings file",
+                    details=f"Please go to {module_settings_file} and add {key} with one or more entries."
+                )
+
+            # Verify if some of the methods is None
+            for method, settings in data[key].items():
+                if settings is None:
+                    raise DeidtoolkitError(
+                        f"Error loading {module_settings_file}: '{method}' in '{key}' is None.",
+                        module="loading module settings file",
+                        details=f"Please update or remove '{method}' from '{key}' in {module_settings_file}."
+            )
         return data_edict #return the yml in a json format
     
     def logs_initial_update(self, *logs_folders):
         #if log path, exist, otherwise, create one
         for log_folder in logs_folders:
-            if not os.path.exists(log_folder):
-                os.makedirs(log_folder)
+            if os.path.exists(log_folder):
+                shutil.rmtree(log_folder)
+            os.makedirs(log_folder, exist_ok=True)
+            
 
     # arbitrary method to parse all other commands
     def default(self, line):
