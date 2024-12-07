@@ -43,7 +43,6 @@ class DeidShell(cmd.Cmd):
         self.config = config
         self.root_dir = config.get("settings", "root_dir")
         self.logs_dir  = config.get("settings", "logs_dir")
-        self.modules_settings = config.get("settings", "modules_file")
 
         self.datasets_initial_update(os.path.join(self.root_dir,FOLDER_DATASET,"aligned"),
                                 os.path.join(self.root_dir,FOLDER_DATASET,"original"))
@@ -52,7 +51,9 @@ class DeidShell(cmd.Cmd):
         self.environments_initial_update(os.path.join(self.root_dir, FOLDER_ENVIRONMENTS))
         self.visualization_initial_update(os.path.join(self.root_dir, FOLDER_VISUALIZATION))
         self.logs_initial_update(os.path.join(self.root_dir,self.logs_dir, FOLDER_EVALUATION)) #can log techniques output later, just add the path separate by ","
-        
+        #loads modules.yml
+        module_settings_file = config.get("settings", "modules_file") #get the modules settings filename from config.ini
+        self.modules_settings = self.get_modules_settings(module_settings_file)
 
     def do_exit(self, arg):
         "Exit the shell:  EXIT"
@@ -850,14 +851,16 @@ class DeidShell(cmd.Cmd):
         # Print instructions and legend for dataset selection
         print(Fore.GREEN + "Green name = aligned version available", Fore.RESET)
         print(Fore.YELLOW + "Yellow name = only non-aligned version available", Fore.RESET)
+        print(Fore.LIGHTBLACK_EX + "Gray name = dataset name on display", Fore.RESET)
         print(Fore.CYAN + "[Datasets]", Fore.RESET)
 
         # Display available datasets with appropriate colors
         for i, dataset in enumerate(available_datasets):
+            dataset_rename = self.modules_settings.datasets.get(dataset, {"rename": dataset})["rename"]
             if dataset in aligned_datasets:
-                print(Fore.LIGHTGREEN_EX + "\t" + str(i) + ". " + dataset, Fore.RESET)
+                print(Fore.LIGHTGREEN_EX + "\t" + str(i) + ". " + dataset + Fore.LIGHTBLACK_EX+  " ("+dataset_rename+")", Fore.RESET)
             else:
-                print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + dataset, Fore.RESET)
+                print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + dataset + Fore.LIGHTBLACK_EX+  " ("+dataset_rename+")", Fore.RESET)
 
         
         return available_datasets
@@ -1051,6 +1054,11 @@ class DeidShell(cmd.Cmd):
             visualization_dict[visualization_name]= evaluation_names.split(" ")
             print(f"{Fore.LIGHTBLUE_EX}\t{visualization_name}:{visualization_dict[visualization_name]}", Fore.RESET)
         return visualization_dict
+    def get_modules_settings(self, module_settings_file):
+        with open(module_settings_file, 'r') as file:
+            data = yaml.safe_load(file) #avoid executing malicious code
+            data_edict = edict(data) #loads with easy dict
+        return data_edict #return the yml in a json format
     
     def logs_initial_update(self, *logs_folders):
         #if log path, exist, otherwise, create one
