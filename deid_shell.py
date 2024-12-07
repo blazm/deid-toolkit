@@ -9,14 +9,14 @@ import select
 #this is new import from branch "modules" to manage modules.yml
 import yaml
 from easydict import EasyDict as edict
-
+from utils import DeidtoolkitError
 
 
 CONDA_DOT_SH_PATH = "~/miniforge3/etc/profile.d/conda.sh"
 
 FOLDER_DATASET = "datasets"
 FOLDER_TECHNIQUES = "techniques"
-FOLDER_EVALUATION = "evaluation"
+FOLDER_EVALUATION = "evaluations"
 FOLDER_VISUALIZATION = "visualization"
 FOLDER_ENVIRONMENTS = "environments"
 FOLDER_RESULTS = "results"
@@ -967,10 +967,12 @@ class DeidShell(cmd.Cmd):
 
         # Print instructions for technique selection
         print(Fore.CYAN + "[Evaluation methods]", Fore.RESET)
-
-        # Display available techniques
+        print(Fore.LIGHTBLACK_EX + "Gray name = evaluation name on display", Fore.RESET)
+        # Display available evaluation
         for i, evaluation in enumerate(evaluations):
-            print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + evaluation, Fore.RESET)
+            evaluation_rename = self.modules_settings.evaluations.get(evaluation, {"rename": evaluation}).get("rename", evaluation) 
+
+            print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + evaluation+ Fore.LIGHTBLACK_EX +" ("+evaluation_rename+") ", Fore.RESET)
 
         return evaluations
     def environments_initial_update(self, environments_folder):
@@ -1056,9 +1058,15 @@ class DeidShell(cmd.Cmd):
             print(f"{Fore.LIGHTBLUE_EX}\t{visualization_name}:{visualization_dict[visualization_name]}", Fore.RESET)
         return visualization_dict
     def get_modules_settings(self, module_settings_file):
+        required_keys = ["techniques", "evaluations", "visualization", "datasets"]  
+
         with open(module_settings_file, 'r') as file:
             data = yaml.safe_load(file) #avoid executing malicious code
             data_edict = edict(data) #loads with easy dict
+       
+        for key in required_keys:
+            if key not in data or data[key] is None:
+                raise DeidtoolkitError(f"Error loading {module_settings_file}: Missing values for '{key}' key ", module="loading module settings file", details=f"Please go to {module_settings_file} and  add {key} with one or more {key}")
         return data_edict #return the yml in a json format
     
     def logs_initial_update(self, *logs_folders):

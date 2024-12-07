@@ -11,8 +11,6 @@ datasets:
     rename: "RaFD"
   xm2vts_aligned: 
     args:
-environments:
-evaluation:
 techniques:
     ksamenet: 
       rename: "k-Same-Net"
@@ -25,4 +23,30 @@ techniques:
       rename: "Pixelize"
     cpp-deid: 
       rename: "CPP-DeID"
+evaluations:
+    adaface_iv: 
+      rename: "AdaFace"
+    adaface_optimized:
+      rename: "AdaFace"
+    dan: 
+      rename: "DAN"
+    deepface_GD:
+      rename: "DeepFace" 
+    hsemotion:
+      rename: "HSEmotion"
+    lpips: 
+      rename: "LPIPS"
+    mse:
+      rename: "MSE"
+    resnet18:
+      rename: "RestNet18"
+    ssim:
+      rename: "SSIM"
+    vggface_optimized: 
+      rename: "VGGFace"
+    vggface:
+      rename: "VGGFace"
+    swinface: 
+      rename: "SwinFace"
 visualization:
+  a:
