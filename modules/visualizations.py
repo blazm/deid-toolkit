@@ -1,14 +1,16 @@
+from modules.utils.ErrorHandler import DeidtoolkitError
 from modules.utils.PipelineStage import IPipelineStage
+from modules.utils import ConfigManager  
 import subprocess
 import os
-
+import select
 from colorama import Fore  # color text
-from modules.utils import ConfigManager  
 
 
 class Visualization(IPipelineStage):
     def __init__(self, stage_name):
         super().__init__(stage_name)
+        self.__FOLDER_VISUALIZATION = ConfigManager.get_instance().FOLDER_VISUALIZATION
     def initial_update(self, visualization_folder):
         if not self.config.has_section("Available Visualizations"):
             self.config.add_section("Available Visualizations")
@@ -26,7 +28,7 @@ class Visualization(IPipelineStage):
         configini_filename = ConfigManager.get_instance().filename_config_toolkit
         with open(configini_filename, "w") as configfile:
             self.config.write(configfile)
-    def do_list(self):
+    def do_list(self, *arg):
         """
         Will return an dictionary with key (visualization python script name) and values in array corresponding to each evaluation name
         """
@@ -50,9 +52,9 @@ class Visualization(IPipelineStage):
             print(f"{Fore.LIGHTBLUE_EX}\t{visualization_name}:{visualization_dict[visualization_name]}", Fore.RESET)
         return visualization_dict
     def do_select(self, arg):
-        return super().do_select(arg)
+        raise DeidtoolkitError("do_select() method for visulizations have not been implemented")
     def get_selection(self):
-        return super().get_selection()
+        raise DeidtoolkitError("get_select() method for visulizations have not been implemented")
     def do_run(self):
         "Run visualization:  RUN_VISUALIZE"
         print("Running visualization")
@@ -78,7 +80,7 @@ class Visualization(IPipelineStage):
                 print(f"No evaluation list in config.ini: {visualization}=")
                 continue
             selected_evaluations = [evaluation for evaluation in evaluations_list if evaluation in selected_evaluation_names]
-            path_visualization_script =  os.path.abspath(os.path.join(self.root_dir, FOLDER_VISUALIZATION, visualization))
+            path_visualization_script =  os.path.abspath(os.path.join(self.root_dir, self.__FOLDER_VISUALIZATION, visualization))
             path_to_save =  os.path.abspath(os.path.join(self.root_dir, "visuals"))
             if len(selected_evaluations) > 0: 
                 #we need at least one evaluation, otherwise, will be skipped
