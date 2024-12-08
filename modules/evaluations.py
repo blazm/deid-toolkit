@@ -4,6 +4,8 @@ import os
 import select 
 from colorama import Fore  # color text
 from modules.utils import ConfigManager  
+from modules.environments import Environments
+
 
 class Evaluations(IPipelineStage):
     def __init__(self, stage_name):
@@ -120,7 +122,7 @@ class Evaluations(IPipelineStage):
             print(f"{evaluation_name} in progress...")
             try:
                 venv_name = self.config.get("Available Environments",evaluation_name, fallback=evaluation_name)
-                venv_exists = self.check_and_create_conda_env(venv_name)
+                venv_exists =Environments.isEnvironmentExist(venv_name)
                 if not venv_exists:
                     venv_name = "toolkit"
                 for dataset_name in selected_datasets_names:
