@@ -63,7 +63,6 @@ class Evaluations(IPipelineStage):
         # Display available evaluation
         for i, evaluation in enumerate(evaluations):
             evaluation_rename = self.module_settings.evaluations.get(evaluation, {"rename": evaluation}).get("rename", evaluation) 
-
             print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + evaluation+ Fore.LIGHTBLACK_EX +" ("+evaluation_rename+") ", Fore.RESET)
 
         return evaluations

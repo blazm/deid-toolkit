@@ -6,7 +6,7 @@ import modules.utils.align_face_mtcnn as align_face_mtcnn
 
 import subprocess
 import os
-from colorama import Fore  # color text
+from colorama import Fore, Back  # color text
 
 class Preprocessing(IPipelineStage):
     def __init__(self, stage_name):
@@ -22,14 +22,14 @@ class Preprocessing(IPipelineStage):
         raise DeidtoolkitError("get_selection() have not been implemented yet for Preprocessing")
     def do_run(self , *arg):
         "Run preprocessing:  RUN_PREPROCESS"
-        print("Running preprocessing")
+        print(Back.GREEN, Fore.WHITE,"Running preprocessing",Back.RESET, Fore.RESET)
         if not arg:
             arg = "*"
-        preprocess_order = ["alignment"]
+        preprocess_order = ["alignment", "generate_image_pairs"]
 
         switcher = {
             "alignment": self.run_preprocess_alignment,
-            "generate image pairs": self.run_generate_pairs
+            "generate_image_pairs": self.run_generate_pairs
             #'normalization': self.run_preprocess_normalization,
         }
         switcher["*"] = lambda arg: [
@@ -44,7 +44,7 @@ class Preprocessing(IPipelineStage):
         return
     def run_preprocess_alignment(self, *arg):
         "Run alignment:  RUN_PREPROCESS_ALIGNMENT"
-        print("Running alignment")
+        print(Fore.GREEN,"--> Running alignment", Fore.RESET)
         aligned_datasets = self.config.get("Available Datasets","aligned").split()
         selected_datasets_names = self.config.get("selection", "datasets").split()
         datasets_path = os.path.join(self.root_dir,
@@ -65,14 +65,14 @@ class Preprocessing(IPipelineStage):
 
             if os.path.exists(os.path.join(self.root_dir,self.__FOLDER_DATASET,"mirrored", dataset_name)):
                 dataset_path = os.path.join(self.root_dir,self.__FOLDER_DATASET,"mirrored", dataset_name)
-
-            print(f"Aligning dataset: {dataset_name}")
-            print(f"Source path: {dataset_path}")
-            print(f"Save path: {dataset_save_path}")
+            
+            print(Fore.LIGHTWHITE_EX,f"Aligning dataset:", Fore.LIGHTCYAN_EX, dataset_name, Fore.RESET)
+            print(Fore.LIGHTWHITE_EX,f"Source path: ",Fore.LIGHTCYAN_EX, dataset_path)
+            print(Fore.LIGHTWHITE_EX,f"Save path: ", Fore.LIGHTCYAN_EX,dataset_save_path,  Fore.RESET)
 
             try:
                 align_face_mtcnn.main(dataset_path=dataset_path, dataset_save_path=dataset_save_path,dataset_name=dataset_name)
-                print(f"Successfully aligned dataset: {dataset_name}")
+                print(Fore.GREEN, f"Successfully aligned dataset: {dataset_name}",  Fore.RESET)
                 if dataset_name not in aligned_datasets:
                     aligned_datasets.append(dataset_name)
                     aligned_datasets.sort()
@@ -84,13 +84,14 @@ class Preprocessing(IPipelineStage):
                         self.config.write(configfile)   
             except Exception as e:
                 print(f"Error aligning dataset {dataset_name}: {e}")
+    
     def run_generate_pairs(self, *arg):
-        print("Generation of pairs on selected datasets")
+        print(Fore.GREEN,"--> Generation of pairs on selected datasets", Fore.RESET)
         if self.config.has_section("selection"):
             selected_datasets_names = self.config.get("selection", "datasets").split()
             FOLDER_LABELS = os.path.join(self.root_dir,self.__FOLDER_DATASET,"labels")
             PAIRS_FOLDER = os.path.join(self.root_dir,self.__FOLDER_DATASET,"pairs")
             generate_img_pairs_all.main(selected_datasets_names, FOLDER_LABELS,PAIRS_FOLDER)
         else:
-            print("No datasets selected.")
+            print(Fore.YELLOW,"No datasets selected.", Fore.RESET)
 

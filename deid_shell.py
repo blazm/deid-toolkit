@@ -15,6 +15,26 @@ from modules import Techniques #4)
 from modules import Evaluations # 5)
 from modules import Visualization #6
 
+"""
+1) TODO: Improve printings
+    TODO: Solve the printing tqdm to one line
+    TODO: Use logs as a "module"? 
+    TODO: logs information in stages such as: quantity of aligned images vs total images in preprocess, 
+2) TODO: Improve pipeline.yml
+    TODO: Send args to called script from pipeline.yml
+    TODO: Send renaming to called scripts
+3) TODO: Improve evaluation
+    TODO: solve the evaluation tmp directory (they are storing the values outside) ????? Check this by removing the evaluetion/tmp folder 
+    TODO: Integrate swinface for age recognition and other features
+4) TODO: fix and improve visualization
+    TODO: Integrate fix visualization conf_matrix
+    TODO: Create bar plots to graph the age with various tolerance 
+5) TODO: Improve performance
+    TODO: use alignment one time, the rest only crop images
+    TODO: Store the original features per evaluation, not per technique and evaluation ({evaluation} /deid and /original)
+
+"""
+
 class DeidShell(cmd.Cmd):
     intro = "Welcome to DeID-ToolKit.   Type help or ? to list commands.\n"
     prompt = "(deid) "
