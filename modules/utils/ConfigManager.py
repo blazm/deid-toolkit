@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from configparser import ConfigParser
+
 import os
 #this is new import from branch "modules" to manage modules.yml
 import yaml
@@ -24,7 +25,7 @@ class ConfigManager():
     @staticmethod
     def get_instance():
         if ConfigManager.__instance == None: 
-            ConfigManager("root_dir", "logs_dir") #TODO add values
+            ConfigManager("config.ini") #TODO add values
         return ConfigManager.__instance
     def __init__(self, config_toolkit_filename):
         if ConfigManager.__instance != None: 
@@ -45,7 +46,7 @@ class ConfigManager():
             self.config_toolkit = self._read_config_toolkit(filename=config_toolkit_filename)
             #2) load pipeline .yml configuration
             config_module_filename= self.config_toolkit.get("settings", "modules_file")
-            self.config_modules = self._read_module_settings(config_module_filename)
+            self.config_modules = self._read_config_modules(config_module_filename)
             ConfigManager.__instance = self
     def _read_config_toolkit(self,filename):
         config = ConfigParser()
