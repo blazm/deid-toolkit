@@ -115,8 +115,6 @@ class Evaluations(IPipelineStage):
         if not selected_evaluation_names:
             print("No evaluation methods are selected")
             return
-        #Print the available environments
-        self.get_available_environments()
         #start the pipeline for each evaluation
         for evaluation_name in selected_evaluation_names:
             print(f"{evaluation_name} in progress...")
