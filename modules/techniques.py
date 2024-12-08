@@ -71,7 +71,7 @@ class Techniques(IPipelineStage):
             return
         print(Fore.CYAN + "Select techniques by entering their numbers separated by space", Fore.RESET)
         # Prompt the user to select techniques
-        selected_techniques_indices = input("Selection: ").split()
+        selected_techniques_indices = list(set(input("Selection: ").split()))
 
         # Validate and display the user's selections
         selected_techniques = []
