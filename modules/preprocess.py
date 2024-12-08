@@ -14,13 +14,13 @@ class Preprocessing(IPipelineStage):
         self.__FOLDER_DATASET = ConfigManager.get_instance().FOLDER_DATASET
     def initial_update(self, *folder):
         raise DeidtoolkitError("initial_update() for Preprocessing have not been implemented")
-    def do_select(self, arg):
+    def do_select(self, *arg):
         raise DeidtoolkitError("do_select have not been implemented yet for Preprocessing")
-    def do_list(self):
+    def do_list(self, *arg):
         raise DeidtoolkitError("do_list have not been implemented yet for Preprocessing")
-    def get_selection(self):
+    def get_selection(self, *arg):
         raise DeidtoolkitError("get_selection() have not been implemented yet for Preprocessing")
-    def do_run(self):
+    def do_run(self , *arg):
         "Run preprocessing:  RUN_PREPROCESS"
         print("Running preprocessing")
         if not arg:
@@ -42,7 +42,7 @@ class Preprocessing(IPipelineStage):
         for step in preprocess_order:
             switcher[step](arg)
         return
-    def run_preprocess_alignment(self, arg):
+    def run_preprocess_alignment(self, *arg):
         "Run alignment:  RUN_PREPROCESS_ALIGNMENT"
         print("Running alignment")
         aligned_datasets = self.config.get("Available Datasets","aligned").split()
@@ -84,7 +84,7 @@ class Preprocessing(IPipelineStage):
                         self.config.write(configfile)   
             except Exception as e:
                 print(f"Error aligning dataset {dataset_name}: {e}")
-    def run_generate_pairs(self, arg):
+    def run_generate_pairs(self, *arg):
         print("Generation of pairs on selected datasets")
         if self.config.has_section("selection"):
             selected_datasets_names = self.config.get("selection", "datasets").split()

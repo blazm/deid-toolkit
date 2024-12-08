@@ -51,11 +51,11 @@ class Visualization(IPipelineStage):
             visualization_dict[visualization_name]= evaluation_names.split(" ")
             print(f"{Fore.LIGHTBLUE_EX}\t{visualization_name}:{visualization_dict[visualization_name]}", Fore.RESET)
         return visualization_dict
-    def do_select(self, arg):
+    def do_select(self, *arg):
         raise DeidtoolkitError("do_select() method for visulizations have not been implemented")
-    def get_selection(self):
+    def get_selection(self, *arg):
         raise DeidtoolkitError("get_select() method for visulizations have not been implemented")
-    def do_run(self):
+    def do_run(self, *arg):
         "Run visualization:  RUN_VISUALIZE"
         print("Running visualization")
         if (not self.config.has_option("selection", "evaluation") 
@@ -72,7 +72,7 @@ class Visualization(IPipelineStage):
             print("No evaluation methods are selected")
             return
         print("select evaluation names:", selected_evaluation_names)
-        available_visualization  = self.get_available_visualizations()
+        available_visualization  = self.do_list()
         for visualization, evaluations_list in available_visualization.items():
             #filter only the selected evaluatios in the configurarion list
             evaluations_list = [e for e in evaluations_list if e != '']
