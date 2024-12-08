@@ -74,7 +74,7 @@ class Evaluations(IPipelineStage):
             return
         print(Fore.CYAN + "Select evaluation by entering their numbers separated by space", Fore.RESET)
         # Prompt the user to select techniques
-        selected_evaluations_indices = input("Selection: ").split()
+        selected_evaluations_indices =list(set(input("Selection: ").split()))
 
         # Validate and display the user's selections
         selected_evaluations = []
@@ -88,7 +88,6 @@ class Evaluations(IPipelineStage):
                     print(Fore.RED + "Invalid technique number: ", i, Fore.RESET)
             except ValueError:
                 print(Fore.RED + "Invalid input, not a number: ", i, Fore.RESET)
-        selected_evaluations =list(set(selected_evaluations))
         # Create a config section if it doesn't exist and save selected techniques
         if not self.config.has_section("selection"):
             self.config.add_section("selection")
