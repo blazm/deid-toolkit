@@ -66,9 +66,9 @@ class Preprocessing(IPipelineStage):
             if os.path.exists(os.path.join(self.root_dir,self.__FOLDER_DATASET,"mirrored", dataset_name)):
                 dataset_path = os.path.join(self.root_dir,self.__FOLDER_DATASET,"mirrored", dataset_name)
             
-            print(Fore.LIGHTWHITE_EX,f"Aligning dataset:", Fore.LIGHTCYAN_EX, dataset_name, Fore.RESET)
-            print(Fore.LIGHTWHITE_EX,f"Source path: ",Fore.LIGHTCYAN_EX, dataset_path)
-            print(Fore.LIGHTWHITE_EX,f"Save path: ", Fore.LIGHTCYAN_EX,dataset_save_path,  Fore.RESET)
+            print(Fore.LIGHTWHITE_EX,f"Aligning dataset:", Fore.LIGHTBLACK_EX, dataset_name, Fore.RESET)
+            print(Fore.LIGHTWHITE_EX,f"Source path: ",Fore.LIGHTBLACK_EX, dataset_path)
+            print(Fore.LIGHTWHITE_EX,f"Save path: ", Fore.LIGHTBLACK_EX,dataset_save_path,  Fore.RESET)
 
             try:
                 align_face_mtcnn.main(dataset_path=dataset_path, dataset_save_path=dataset_save_path,dataset_name=dataset_name)
