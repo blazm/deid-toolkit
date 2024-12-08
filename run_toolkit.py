@@ -1,6 +1,7 @@
 from colorama import Fore, init
 from configparser import ConfigParser
 from deid_shell import DeidShell
+from modules import ConfigManager
 
 '''
 DeID ToolKit main file
@@ -46,7 +47,7 @@ if __name__ == '__main__':
     print(Fore.LIGHTYELLOW_EX + "Light Yellow")
     '''
     
-    config = ConfigParser()
-    config.read('config.ini')
-    
-    DeidShell(config=config).cmdloop()
+    #The configurations will store in this singleton
+    ConfigManager.get_instance()
+    #initialize the toolkit
+    DeidShell().cmdloop()

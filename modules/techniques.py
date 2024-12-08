@@ -1,15 +1,16 @@
-from PipelineStage import PipelineStage
-from utils import ConfigManager
+from modules.utils.PipelineStage import IPipelineStage
+from modules.utils import ConfigManager
+from modules.environments import Environments
 from colorama import Fore  # color text
 import os
 import subprocess
 import select
 
-class Techniques(PipelineStage):
+class Techniques(IPipelineStage):
     def __init__(self, stage_name):
         super().__init__(stage_name)
-        self.config = ConfigManager.get_instance().config_toolkit
-        self.module_settings = ConfigManager.get_instance().config_modules    
+       
+        
     def initial_update(self,techniques_folder):
         techniques_name = ""
          # Check if the config section for techniques exists; if not, create it
@@ -34,10 +35,10 @@ class Techniques(PipelineStage):
             print(Fore.RED + 'Techniques directory not found. Does the ROOT_DIR ({0}) have a folder named "techniques"?'.format(self.root_dir), Fore.RESET)
 
         # Save the configuration to the file
-        with open(self._config_file_name, "w") as configfile:
+        with open(self.filename_config_toolkit, "w") as configfile:
             self.config.write(configfile)
         pass
-    def get_available(self):
+    def do_list(self, *args):
         # Retrieve available techniques from the configuration
         techniques = self.config.get("Available Techniques", "techniques").split(" ")
 
@@ -55,15 +56,15 @@ class Techniques(PipelineStage):
         print(Fore.LIGHTBLACK_EX + "Gray name = technique name on display", Fore.RESET)
         # Display available techniques
         for i, technique in enumerate(techniques):
-            techniques_rename = self.modules_settings.techniques.get(technique, {"rename": technique}).get("rename", technique) 
+            techniques_rename = self.module_settings.techniques.get(technique, {"rename": technique}).get("rename", technique) 
             print(Fore.LIGHTYELLOW_EX + "\t" + str(i) + ". " + technique+Fore.LIGHTBLACK_EX +" ("+techniques_rename+")", Fore.RESET)
 
         return techniques
 
-    def select(self, arg):
+    def do_select(self, *arg):
         """implement this method is mandatory"""
         "List and interactively let user select techniques: SELECT_TECHNIQUES"
-        available_techniques = self.get_available_techniques()
+        available_techniques = self.do_list()
 
         if not available_techniques:
             print("No techniques available")
@@ -90,10 +91,14 @@ class Techniques(PipelineStage):
             self.config.add_section("selection")
         self.config.set("selection", "techniques", " ".join(selected_techniques))
 
+        configini_filename =ConfigManager.get_instance().filename_config_toolkit
         # Save the configuration
-        with open("config.ini", "w") as configfile:
+        with open(configini_filename, "w") as configfile:
             self.config.write(configfile)
-    def run(self):
+    def get_selection(self,*args ):
+        selected_techniques = self.config.get("selection", "techniques").split(" ")
+        return selected_techniques
+    def do_run(self, *args):
         "Run selected techniques on selected datasets: RUN_TECHNIQUES"
         print("Running techniques")
         if not self.config.has_option("selection", "techniques") or not self.config.has_option("selection", "datasets"):
@@ -106,7 +111,7 @@ class Techniques(PipelineStage):
         for technique_name in selected_techniques_names:
             try:
                 #TODO use this as a part of other module, no for techniques
-                venv_exists = self.check_and_create_conda_env(technique_name)
+                venv_exists = Environments.isEnvironmentExist(technique_name)
                 venv_name = 'toolkit'
                 if venv_exists:
                     venv_name = technique_name
@@ -135,7 +140,7 @@ class Techniques(PipelineStage):
             print(f"{dataset_name} dataset has not been preprocessed yet. Do you want to preprocess it first? [y/n]")
             answer = input("Answer: ")
             if answer == 'y':
-                import align_face_mtcnn
+                import modules.utils.align_face_mtcnn as align_face_mtcnn
                 align_face_mtcnn.main(dataset_name=dataset_name, dataset_path=original_dataset_path,
                                     dataset_save_path=aligned_dataset_path)
             else:
@@ -197,7 +202,14 @@ class Techniques(PipelineStage):
 
             if process.returncode != 0:
                 print(f"Script exited with return code {process.returncode}")
-
         except Exception as e:
             print(f"Error occurred while running the script: {e}")
+    def _list_available_techniques(self):
+        techniques_path = os.path.join(self.root_dir, ConfigManager.get_instance().FOLDER_TECHNIQUES)
+        if os.path.exists(techniques_path):
+            # Lister uniquement les fichiers avec l'extension .py
+            return [f for f in os.listdir(techniques_path) if f.endswith('.py')]
+        else:
+            print(f"Techniques directory not found: {techniques_path}")
+            return []
         
