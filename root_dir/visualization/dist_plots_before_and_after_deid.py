@@ -23,7 +23,7 @@ def main(args):
     for evaluation in evaluations: 
         rows = len(techniques)
         cols = len(datasets)
-        fig, axes = plt.subplots(rows, cols, figsize=(10, 15), sharex=True, sharey=True)
+        fig, axes = plt.subplots(rows, cols, figsize=(7, 15), sharex=True, sharey=True)
         axes = np.atleast_1d(axes).ravel()
 
         for idx, (dataset, technique) in enumerate(product(datasets, techniques)):

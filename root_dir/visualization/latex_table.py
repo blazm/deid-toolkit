@@ -32,13 +32,18 @@ def main(args):
                 path_to_csv = os.path.abspath(os.path.join(util.RESULTS_DIR, f"{evaluation}_{dataset}_{technique}.csv"))
 
                 if not os.path.exists(path_to_csv):
-                    mean_std_evaluations.append("Nan")
+                    mean_std_evaluations.append("/")
                     continue  # Skip if the file doesn't exist
                 
                 # Read CSV and calculate mean and std deviation
                 df = pd.read_csv(path_to_csv)
                 df_scores = df.iloc[:, 1]  # Assuming the second column contains the scores
-                mean_std_evaluations.append(f"${df_scores.mean():.2f} \pm {df_scores.std():.2f}$")
+                if len(df_scores) == 0:
+                    mean_std_evaluations.append(f"/")
+                elif len(df_scores) == 1:
+                    mean_std_evaluations.append(f"${df_scores.mean():.2f}$")
+                else:
+                    mean_std_evaluations.append(f"${df_scores.mean():.2f} \pm {df_scores.std():.2f}$")
 
             rows.append(mean_std_evaluations)  # Append the row for this dataset
 
