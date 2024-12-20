@@ -1,6 +1,7 @@
 *.zip
 *.tar.gz
-
+*.pt
+*.onnx 
 root_dir/logs/
 # Byte-compiled / optimized / DLL files
 __pycache__/
