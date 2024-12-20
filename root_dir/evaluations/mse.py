@@ -8,6 +8,11 @@ from PIL import Image
 import utils as util
 from tqdm import tqdm
 
+def im2tensor(image):
+    # Convert a NumPy image array to a PyTorch tensor scaled to [-1, 1]
+    tensor = torch.from_numpy(image).permute(2, 0, 1).float()  # Change shape to (C, H, W)
+    tensor = tensor / 127.5 - 1.0  # Scale to [-1, 1]
+    return tensor
 def main():
     args = util.read_args()
     
@@ -16,11 +21,9 @@ def main():
     path_to_save = args.save_path
     path_to_log = args.dir_to_log
 
-    dataset_name = util.get_dataset_name_from_path(aligned_path)
-    technique_name = util.get_technique_name_from_path(deidentified_path)
+    dataset_name = args.dataset_name #util.get_dataset_name_from_path(aligned_path)
+    technique_name = args.technique_name #util.get_technique_name_from_path(deidentified_path)
     metrics_df= util.Metrics( name_score="mse")
-
-    output_scores_file = util.get_output_filename("mse", aligned_path, deidentified_path)
 
     use_gpu = True if torch.cuda.is_available() else False
     from torch import nn
@@ -50,8 +53,8 @@ def main():
             img1 = Image.open(deidentified_img_path) # deidentified one
             img0 = util.resize_if_different(Image.open(aligned_img_path), img1) #the aligned image
             # Convert to tensors
-            img0 = lpips.im2tensor(np.array(img0))  # RGB image from [-1,1]
-            img1 = lpips.im2tensor(np.array(img1))  # RGB image from [-1,1]
+            img0 = im2tensor(np.array(img0))  # RGB image from [-1,1]
+            img1 = im2tensor(np.array(img1))  # RGB image from [-1,1]
 
             img0.cuda() if use_gpu else img0.cpu()
             img1.cuda() if use_gpu else img1.cpu()
@@ -66,7 +69,7 @@ def main():
     # Calculate mean and standard deviation
     #mean, std = util.compute_mean_std(output_scores_file)
     metrics_df.save_to_csv(path_to_save)
-    print(f"mse scores save in {path_to_save}")
+    print(f"mse scores saved in {path_to_save}")
     return 
 if __name__ == '__main__':
     main()

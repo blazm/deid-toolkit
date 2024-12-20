@@ -2,6 +2,25 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "/home/tico/Desktop/master_research/deid-toolkit/root_dir/datasets/aligned/LFW_benchmark",
+                "root_dir/datasets/MaskDDPG/LFW_benchmark/0.3",
+                "--dataset_name", "LFW_benchmark_0.3",
+                "--technique_name", "MaskDDPG",
+                "--impostor_pairs_filepath", "/home/tico/Desktop/master_research/deid-toolkit/root_dir/datasets/pairs/LFW_benchmark_impostor_pairs.txt",
+                "--genuine_pairs_filepath", "/home/tico/Desktop/master_research/deid-toolkit/root_dir/datasets/pairs/LFW_benchmark_genuine_pairs.txt",
+                "--save_path", "/home/tico/Desktop/master_research/deid-toolkit/root_dir/results/lpips_LFW_benchmark_0.3_MaskDDPG.csv"
+            ]
+        }
+    ]
+    /*"configurations": [
+        {
             "name": "Python Debugger: deid_shell",
             "type": "debugpy",
             "request": "launch",
@@ -92,7 +111,7 @@
             "description": "Please enter the evaluation name",
             "default": "001_ang_take000_img_0034"
         }
-    ]
+    ]*/
 }
 // Use IntelliSense to learn about possible attributes.
 // Hover to view descriptions of existing attributes.

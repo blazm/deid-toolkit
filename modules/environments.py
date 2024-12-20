@@ -10,6 +10,7 @@ class Environments(IPipelineStage):
     def __init__(self, stage_name):
         super().__init__(stage_name)
         self.__FOLDER_ENVIRONMENTS = ConfigManager.get_instance().FOLDER_ENVIRONMENTS
+        self.package_manager_key = ConfigManager.get_instance().package_manager
 
     def initial_update(self, environments_folder):
         # Check if the config section for techniques exists; if not, create it
@@ -81,7 +82,10 @@ class Environments(IPipelineStage):
             yaml_file = os.path.join(self.root_dir,self.__FOLDER_ENVIRONMENTS ,env_name+".yml")
             if os.path.isfile(yaml_file):
                 try:
-                    subprocess.check_call(['mamba', 'env', 'create', '-f', yaml_file, "--prefix", f"~/miniforge3/envs/{env_name}"])
+                    if self.package_manager_key == 'mamba':
+                        subprocess.check_call([self.package_manager_key, 'env', 'create', '-f', yaml_file, "--prefix", f"~/miniforge3/envs/{env_name}"])
+                    else:
+                        subprocess.check_call([self.package_manager_key, 'env', 'create', '-f', yaml_file, "--prefix", f"~/anaconda3/envs/{env_name}"])
                     print(f"'{env_name}' environment have been created")
                     return True
                 except subprocess.CalledProcessError as e:
@@ -97,7 +101,7 @@ class Environments(IPipelineStage):
 
     @staticmethod
     def get_system_environments() -> list:
-        envs_list = subprocess.check_output(['mamba', 'env', 'list']).decode('utf-8').split('\n')
+        envs_list = subprocess.check_output([ConfigManager.get_instance().package_manager, 'env', 'list']).decode('utf-8').split('\n')
         env_name_from_list =''
         env_names =[]
         for line in envs_list:
