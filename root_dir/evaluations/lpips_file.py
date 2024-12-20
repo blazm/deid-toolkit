@@ -15,15 +15,15 @@ def main():
     path_to_log = args.dir_to_log
 
     path_to_save = args.save_path
-    dataset_name = util.get_dataset_name_from_path(aligned_dataset_path)
-    technique_name = util.get_technique_name_from_path(deid_dataset_path)
+    dataset_name = args.dataset_name # = util.get_dataset_name_from_path(aligned_dataset_path)
+    technique_name = args.technique_name # = util.get_technique_name_from_path(deid_dataset_path)
     metrics_df= util.Metrics(name_score="lpips")
 
     #output_scores_file = util.get_output_filename("lpips", aligned_dataset_path, deid_dataset_path)
     use_gpu = False
     #True if torch.cuda.is_available() else False
     
-    loss_fn = lpips.LPIPS(net='alex', version="0.1") # alex
+    loss_fn = lpips.LPIPS(net='alex') # net='alex' best forward scores
     if use_gpu:
         loss_fn.cuda()
     

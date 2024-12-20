@@ -138,6 +138,8 @@ class Evaluations(IPipelineStage):
         #TODO: print(tabulate(rows, headers=headers, tablefmt="grid"))
         # TODO: every evaluation step must have a python script that can be run and preprocess either a single file or a directory
         # the script should be able to take input and output directories as arguments
+    def contains_only_files(self,folder_path):
+        return all(os.path.isfile(os.path.join(folder_path, item)) for item in os.listdir(folder_path))
     def _process_dataset_with_evaluation(self, evaluation_name:str, venv_name:str,dataset_name:str, techniques_names:list)->list:
         """This function performs the evaluation method for one dataset (provided in params),
           with the several deidentified methods. If not file exist for the technique, skip to the next one.
@@ -151,8 +153,19 @@ class Evaluations(IPipelineStage):
         #prepare the absolutes paths for the files to evaluate
         aligned_dataset_path = os.path.join(self.root_dir, self.__FOLDER_DATASET,"aligned", dataset_name)
         aligned_dataset_path = os.path.abspath(aligned_dataset_path)
-        deidentified_paths = [os.path.abspath(os.path.join(self.root_dir, 'datasets', technique, dataset_name)) 
-                              for technique in techniques_names] #convert techniques into absolute deidentified paths, needed by the called function from python files
+        #Deid paths for folders and subfolders
+        deidentified_paths=[]
+        for technique in techniques_names:
+            path = os.path.join(self.root_dir, 'datasets', technique, dataset_name)
+            only_files = self.contains_only_files(path)
+            if only_files:
+                deidentified_paths.append((True,path)) #convert techniques into absolute deidentified paths, needed by the called function from python files
+                # 1 for folder of a technique 
+            else:
+                for item in os.listdir(path):
+                    if os.path.isdir(os.path.join(path, item)):
+                        deidentified_paths.append((False,os.path.join(path, item)))# 0 for subfolder of a technique 
+
         impostor_pairs_file = os.path.abspath(os.path.join(self.root_dir, self.__FOLDER_DATASET, "pairs", f"{dataset_name}_impostor_pairs.txt"))
         genuine_pairs_file = os.path.abspath(os.path.join(self.root_dir, self.__FOLDER_DATASET, "pairs", f"{dataset_name}_genuine_pairs.txt"))
         if  os.path.exists(impostor_pairs_file) and os.path.exists(genuine_pairs_file):
@@ -161,24 +174,35 @@ class Evaluations(IPipelineStage):
             issue_path= os.path.join(self.root_dir, self.__FOLDER_DATASET, "pairs")
             print(f"{Fore.LIGHTRED_EX}No genuine and impostor pairs exist in {issue_path} for {dataset_name}{Fore.RESET}")
             return 
-
-        path_evaluation  = os.path.join(self.root_dir, self.__FOLDER_EVALUATION,f"{evaluation_name}.py" ) #file to call
+        if evaluation_name == 'lpips':
+            evaluation_file = 'lpips_file'
+        else:
+            evaluation_file = evaluation_name
+        path_evaluation  = os.path.join(self.root_dir, self.__FOLDER_EVALUATION,f"{evaluation_file}.py" ) #file to call
         path_evaluation = os.path.abspath(path_evaluation)
 
         print(f"Evaluation: {Fore.LIGHTCYAN_EX}{evaluation_name} -> {dataset_name} {Fore.RESET}")
-        for i,deidpath_abspath in enumerate(deidentified_paths): 
-            
-            print(f"{Fore.GREEN}Running: {Fore.LIGHTMAGENTA_EX}{evaluation_name}{Fore.RESET} for {Fore.LIGHTMAGENTA_EX}{dataset_name}{Fore.RESET} with technique {Fore.LIGHTMAGENTA_EX}{techniques_names[i]}{Fore.RESET}...")
+        for i,paths_tuples in enumerate(deidentified_paths): 
+            is_only_folder = paths_tuples[0]
+            deidpath_abspath = paths_tuples[1]
+            subfoler_name = os.path.basename(deidpath_abspath)
+            if is_only_folder:
+                print(f"{Fore.GREEN}Running: {Fore.LIGHTMAGENTA_EX}{evaluation_name}{Fore.RESET} for {Fore.LIGHTMAGENTA_EX}{dataset_name}{Fore.RESET} with technique {Fore.LIGHTMAGENTA_EX}{technique}{Fore.RESET}...")
+                dataset_name_exp = dataset_name
+            else:
+                print(f"{Fore.GREEN}Running: {Fore.LIGHTMAGENTA_EX}{evaluation_name}{Fore.RESET} for {Fore.LIGHTMAGENTA_EX}{dataset_name+'_'+subfoler_name}{Fore.RESET} with technique {Fore.LIGHTMAGENTA_EX}{technique}{Fore.RESET}...")
+                dataset_name_exp = dataset_name+'_'+subfoler_name
             if not (os.path.isdir(deidpath_abspath)): #skip if cannot find the identified dataset path
-                print(f"\t>{techniques_names[i]}: Cannot find deidentified folder for {techniques_names[i]}/{dataset_name} in datasets - {Fore.LIGHTYELLOW_EX}(Skipped){Fore.RESET}")
+                print(f"\t>{technique}: Cannot find deidentified folder for {technique}/{dataset_name} in datasets - {Fore.LIGHTYELLOW_EX}(Skipped){Fore.RESET}")
                 continue
-            #get the initinal time
-            save_path =os.path.abspath(os.path.join(self.root_dir,self.__FOLDER_RESULTS, f"{evaluation_name}_{dataset_name}_{techniques_names[i]}.csv"))
+            save_path =os.path.abspath(os.path.join(self.root_dir,self.__FOLDER_RESULTS, f"{evaluation_name}_{dataset_name_exp}_{technique}.csv"))
             #Executes the function
             self.run_evaluation_script(venv_name=venv_name, 
                                         path_evaluation=path_evaluation, 
                                         aligned_dataset_path=aligned_dataset_path,
                                         deidentified_dataset_path=deidpath_abspath,
+                                        dataset_name=dataset_name_exp,
+                                        technique_name=technique,
                                         pairs = pairs_paths,
                                         save_path=save_path)
             # log the results
@@ -208,7 +232,8 @@ class Evaluations(IPipelineStage):
         else:
             print(f"{evaluation_name} for {dataset_name} done ")
         return 
-    def run_evaluation_script(self, venv_name, path_evaluation, aligned_dataset_path, deidentified_dataset_path, pairs=[], save_path="./out.csv"):
+    def run_evaluation_script(self, venv_name, path_evaluation, aligned_dataset_path, deidentified_dataset_path,
+                              dataset_name,technique_name, pairs=[], save_path="./out.csv"):
         conda_sh_path = os.path.expanduser(self.__CONDA_DOT_SH_PATH)
         
         if not os.path.exists(conda_sh_path):
@@ -219,6 +244,8 @@ class Evaluations(IPipelineStage):
                    f"conda activate {venv_name} && " 
                    f"python -u {path_evaluation} {aligned_dataset_path} {deidentified_dataset_path} ")
        
+        command += f"--dataset_name {dataset_name} " # add save path
+        command += f"--technique_name {technique_name} " # add save path
         command += f"--impostor_pairs_filepath {pairs[0]} " # add impostor file to the command
         command += f"--genuine_pairs_filepath {pairs[1]} " # add genuine file path to the command
         command += f"--save_path {save_path} " # add save path

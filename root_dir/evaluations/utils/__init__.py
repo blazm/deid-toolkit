@@ -59,6 +59,8 @@ def read_args():
     parser.add_argument('--impostor_pairs_filepath', type=str, help="Path to impostor files")
     parser.add_argument('--genuine_pairs_filepath', type=str, help="Path to genuine files")
     parser.add_argument('--dir_to_log', type=str, help="Path to directory to log", default="./root_dir/logs/evaluation/")
+    parser.add_argument('--dataset_name', type=str, help="Given name for the dataset in the experiment")
+    parser.add_argument('--technique_name', type=str, help="Technique name")
     
     
     # Parse arguments
