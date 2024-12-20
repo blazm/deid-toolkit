@@ -1,10 +1,11 @@
 from colorama import Fore, init
 from configparser import ConfigParser
 from deid_shell import DeidShell
+from modules import ConfigManager
 
 '''
 DeID ToolKit main file
-Contributors: Blaž Meden, Manfred Gonzalez, ...
+Contributors: Blaž Meden, Manfred Gonzalez, Esteban Leiva
 '''
 
 valid_hex = '0123456789ABCDEF'.__contains__
@@ -46,7 +47,7 @@ if __name__ == '__main__':
     print(Fore.LIGHTYELLOW_EX + "Light Yellow")
     '''
     
-    config = ConfigParser()
-    config.read('config.ini')
-    
-    DeidShell(config=config).cmdloop()
+    #The configurations will store in this singleton
+    ConfigManager.get_instance()
+    #initialize the toolkit
+    DeidShell().cmdloop()

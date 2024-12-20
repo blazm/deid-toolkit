@@ -1,0 +1,53 @@
+datasets:
+  arface: 
+    rename: "AR Face"
+  celeba-test_aligned: 
+    rename: "CelebA"
+  ck+_fix: 
+    rename: "CK+"
+  mug-still: 
+    rename: "MUG (still images)"
+  rafd-frontal_aligned: 
+    rename: "RaFD"
+techniques:
+    ksamenet: 
+      rename: "k-Same-Net"
+      args: "--postprocessing_alignment yes"
+    deepprivacy2:
+      rename: "DeepPrivacy"
+    LeeCroft:
+      rename: "Croft et al"
+    pixelize:
+      rename: "Pixelize"
+    cpp-deid: 
+      rename: "CPP-DeID"
+evaluations:
+    adaface_iv: 
+      rename: "AdaFace"
+    adaface_optimized:
+      rename: "AdaFace"
+    dan: 
+      rename: "DAN"
+    deepface_GD:
+      rename: "DeepFace" 
+    hsemotion:
+      rename: "HSEmotion"
+    lpips: 
+      rename: "LPIPS"
+    mse:
+      rename: "MSE"
+    resnet18:
+      rename: "RestNet18"
+    ssim:
+      rename: "SSIM"
+    vggface_optimized: 
+      rename: "VGGFace"
+    vggface:
+      rename: "VGGFace"
+    swinface: 
+      rename: "SwinFace"
+visualization:
+  a: ""
+
+# The renaming does not modify the saving evaluation .csv filename to keep consistence
+# The args does not change the original ones like, --path to save, evaluation:rename evaluation:rename
