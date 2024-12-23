@@ -4,6 +4,8 @@
 *.onnx 
 root_dir/datasets/pairs/
 root_dir/logs/
+root_dir/evaluation/tmp/
+root_dir/evaluation/identity_verification/vgg-face.pytorch/pretrained/vgg_face_torch/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
