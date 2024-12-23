@@ -41,7 +41,19 @@ def save_features(filepath, features):
 def load_features(filepath):
     with open(filepath, 'rb') as f:
         return pickle.load(f).cuda()
-
+# Function to save features to a file
+def save_features(filepath, features):
+    with open(filepath, 'wb') as f:
+        pickle.dump(features.cpu(), f)
+def get_feats(feature_filepath,img_path,device,vgg_model,vgg_normalization_tensor, process_without_context = True):
+    if os.path.exists(feature_filepath):
+        features = load_features(feature_filepath)
+    else:
+        img = process_image(img_path, process_without_context = process_without_context)
+        vgg_img = torch.Tensor(img).permute(2, 0, 1).float().to(device)
+        features = vgg_model.forward_features_fc7(vgg_img - vgg_normalization_tensor).flatten()
+        save_features(feature_filepath, features)
+    return features
 def main():
     args = util.read_args()
     #get the mandatory args
@@ -113,26 +125,18 @@ def main():
         feature_filepath_a = os.path.join(temp_features_original_dir, f"{name_a}.pkl")
         feature_filepath_b = os.path.join(temp_features_deid_dir, f"{name_b}.pkl")
         #get features for a
-        if os.path.exists(feature_filepath_a):
-            features_a = load_features(feature_filepath_a)
-        else:
-            img_a = process_image(img_a_path, process_without_context = True)
-            vgg_img_a = torch.Tensor(img_a).permute(2, 0, 1).float().to(device)
-            features_a = vgg_model.forward_features_fc7(vgg_img_a - vgg_normalization_tensor).flatten()
+        features_a = get_feats(feature_filepath_a,img_a_path,
+                               device,vgg_model,vgg_normalization_tensor, 
+                               process_without_context = True)
         #get features for b
-        if os.path.exists(feature_filepath_b):
-            features_b = load_features(feature_filepath_b)
-        else:
-            img_b = process_image(img_b_path, process_without_context = True)
-            vgg_img_b = torch.Tensor(img_b).permute(2, 0, 1).float().to(device)
-            features_b = vgg_model.forward_features_fc7(vgg_img_b - vgg_normalization_tensor).flatten()
+        features_b = get_feats(feature_filepath_b,img_b_path,
+                               device,vgg_model,vgg_normalization_tensor, 
+                               process_without_context = True)
         if isGenuine or deid_impostors:
-            if os.path.exists(feature_filepath_c):
-                features_c = load_features(feature_filepath_c)
-            else:
-                img_c = process_image(img_c_path, process_without_context = True)
-                vgg_img_c = torch.Tensor(img_c).permute(2, 0, 1).float().to(device)
-                features_c = vgg_model.forward_features_fc7(vgg_img_c - vgg_normalization_tensor).flatten()
+            features_c = get_feats(feature_filepath_c,img_c_path,
+                                    device,vgg_model,vgg_normalization_tensor, 
+                                    process_without_context = True)
+            
         cos = nn.CosineSimilarity(dim=0, eps=1e-6)
         cos_score = cos(features_a.flatten(), features_b.flatten()).detach().cpu().numpy() #[0]
         #store results in a variable
