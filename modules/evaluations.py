@@ -121,7 +121,11 @@ class Evaluations(IPipelineStage):
                 venv_name = self.config.get("Available Environments",evaluation_name, fallback=evaluation_name)
                 venv_exists =Environments.isEnvironmentExist(venv_name)
                 if not venv_exists:
-                    venv_name = "toolkit"
+                    venv_exists2 = Environments(
+                                                ConfigManager.get_instance().FOLDER_ENVIRONMENTS
+                                                ).check_and_create_conda_env(venv_name)
+                    if not venv_exists2:
+                        venv_name = "toolkit"
                 for dataset_name in selected_datasets_names:
                     try:
                         
