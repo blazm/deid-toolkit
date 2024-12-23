@@ -12,6 +12,8 @@ import numpy as np
 import pickle
 import torch
 import torch.nn.functional as F
+import shutil
+from PIL import Image
 
 EVALUATION_NAME= "adaface"
 
@@ -43,7 +45,8 @@ def get_features(image_path, features_dir):
     if os.path.exists(feature_filepath):
         return load_features(feature_filepath)
     # Compute the features if not available
-    aligned_rgb_img = align.get_aligned_face(image_path)
+    aligned_rgb_img = Image.open(image_path).resize((112, 112), Image.Resampling.LANCZOS)
+    #aligned_rgb_img = align.get_aligned_face(image_path)
     if aligned_rgb_img == None: 
         raise ValueError(f"{image_path} is not a facial image")
 
@@ -66,12 +69,13 @@ def main():
     path_to_log = args.dir_to_log
 
     path_to_save = args.save_path
-    dataset_name = util.get_dataset_name_from_path(path_to_aligned_images)
-    technique_name = util.get_technique_name_from_path(path_to_deidentified_images)
+    dataset_name = args.dataset_name # = util.get_dataset_name_from_path(aligned_dataset_path)
+    technique_name = args.technique_name # = util.get_technique_name_from_path(deid_dataset_path)
+    deid_impostors = False # set this to true if you want to deidentify impostors as well
     metrics_df= util.Metrics(name_score="cossim")
-
+    aligned_original_dataset = os.path.basename(path_to_aligned_images)
     # Create directories for features if they don't exist
-    temp_features_original_dir= os.path.join(util.TEMP_DIR, EVALUATION_NAME,f"{dataset_name}_{technique_name}", "original")
+    temp_features_original_dir= os.path.join(util.TEMP_DIR, EVALUATION_NAME,f"{aligned_original_dataset}", "original")
     temp_features_deid_dir = os.path.join(util.TEMP_DIR, EVALUATION_NAME,f"{dataset_name}_{technique_name}", "deid")
     os.makedirs(temp_features_original_dir, exist_ok=True)
     os.makedirs(temp_features_deid_dir, exist_ok=True)
@@ -90,15 +94,16 @@ def main():
     
     names_a = genu_names_a + impo_names_a # images a are originals
     names_b = genu_names_b + impo_names_b # images b are deidentified
-    ids_a = genu_ids_a + impo_ids_a
-    ids_b = genu_ids_b + impo_ids_b
-    ground_truth_binary_labels = np.array([int(id_a == id_b) for id_a, id_b in zip(ids_a, ids_b)])
-
-    for name_a, name_b, gt_label in tqdm(zip(names_a, names_b, ground_truth_binary_labels), total=len(names_a), desc=f"adaface | {dataset_name}-{technique_name}"):
+    # list of booleans, same size as names_a but all the genu_names_a positions will be true and all the impo_names_a positions will be false
+    gt_labels_is_genuine = [True] * len(genu_names_a) + [False] * len(impo_names_a)
+    for name_a, name_b,isGenuine in tqdm(zip(names_a, names_b,gt_labels_is_genuine), total=len(names_a), desc=f"adaface | {dataset_name}-{technique_name}"):
         img_a_path = os.path.abspath(os.path.join(path_to_aligned_images, name_a)) #the the aligned image file path
-        img_b_path = os.path.abspath(os.path.join(path_to_deidentified_images, name_b)) #the deidentified image file path
-        img_c_path = os.path.abspath(os.path.join(path_to_aligned_images, name_b)) #the same image b but in aligned version
-
+        if isGenuine or deid_impostors:
+            img_b_path = os.path.abspath(os.path.join(path_to_deidentified_images, name_b)) #the deidentified image file path
+        else:
+            img_b_path = os.path.abspath(os.path.join(path_to_aligned_images, name_b))#take the image from the original paths
+        if isGenuine:
+            img_c_path = os.path.abspath(os.path.join(path_to_aligned_images, name_b)) # genuine orig to see the original distribution
         if not os.path.exists(img_a_path):
             util.log(os.path.join(path_to_log,"adaface_optimized.txt"), 
                      f"({dataset_name}) The source images are not in {img_a_path} ")
@@ -109,31 +114,31 @@ def main():
                      f"({technique_name}) The deidentified images are not in {img_b_path} ")
             print("Deid Images are not there! ", img_b_path)
             continue
-        if not os.path.exists(img_c_path): # if any of the pipelines failed to detect faces
-            util.log(os.path.join(path_to_log,"adaface_optimized.txt"), 
-                     f"({technique_name}) The aligned image are not in {img_c_path} ")
-            print("source Image are not there! ", img_c_path)
-            continue
         similarity_score = 0
         try:
-            feature_original = get_features(img_a_path, temp_features_original_dir)
-            feature_deid = get_features(img_b_path, temp_features_deid_dir)
-            feature_both_original = get_features(img_c_path, temp_features_original_dir)
-
+            feature_a = get_features(img_a_path, temp_features_original_dir)
+            feature_b = get_features(img_b_path, temp_features_deid_dir)
+            if isGenuine:
+                feature_c = get_features(img_c_path, temp_features_original_dir)
         except ValueError as e:
             print(f"(Warning) {e} - Skip")
             continue
         
         # Compute similarity and add to the list
-        similarity_score = compute_similarity(feature_deid, feature_original)
-        similarity_score_for_originals = compute_similarity(feature_original, feature_both_original)
+        similarity_score = compute_similarity(feature_a,feature_b)
+        if isGenuine:
+            similarity_gens_score = compute_similarity(feature_a,feature_c)
         metrics_df.add_score(img=name_a, 
                              metric_result=similarity_score)
         metrics_df.add_column_value("img_b", name_b)
-        metrics_df.add_column_value("ground_truth", gt_label)
-        metrics_df.add_column_value("cossim_originals", similarity_score_for_originals)
+        metrics_df.add_column_value("ground_truth", isGenuine)
+        if isGenuine or deid_impostors:
+            metrics_df.add_column_value("cossim_originals", similarity_gens_score)
+        else:
+            metrics_df.add_column_value("cossim_originals", -1)
     metrics_df.save_to_csv(path_to_save)
     print(f"Adaface scores saved into {path_to_save}")
+    shutil.rmtree(temp_features_deid_dir)
     return
 
 
