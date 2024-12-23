@@ -102,7 +102,7 @@ def main():
             img_b_path = os.path.abspath(os.path.join(path_to_deidentified_images, name_b)) #the deidentified image file path
         else:
             img_b_path = os.path.abspath(os.path.join(path_to_aligned_images, name_b))#take the image from the original paths
-        if isGenuine:
+        if isGenuine or deid_impostors:
             img_c_path = os.path.abspath(os.path.join(path_to_aligned_images, name_b)) # genuine orig to see the original distribution
         if not os.path.exists(img_a_path):
             util.log(os.path.join(path_to_log,"adaface_optimized.txt"), 
@@ -118,7 +118,7 @@ def main():
         try:
             feature_a = get_features(img_a_path, temp_features_original_dir)
             feature_b = get_features(img_b_path, temp_features_deid_dir)
-            if isGenuine:
+            if isGenuine or deid_impostors:
                 feature_c = get_features(img_c_path, temp_features_original_dir)
         except ValueError as e:
             print(f"(Warning) {e} - Skip")
@@ -126,7 +126,7 @@ def main():
         
         # Compute similarity and add to the list
         similarity_score = compute_similarity(feature_a,feature_b)
-        if isGenuine:
+        if isGenuine or deid_impostors:
             similarity_gens_score = compute_similarity(feature_a,feature_c)
         metrics_df.add_score(img=name_a, 
                              metric_result=similarity_score)
