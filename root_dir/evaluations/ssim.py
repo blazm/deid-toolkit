@@ -21,8 +21,8 @@ def main():
     path_to_save = args.save_path
     path_to_log = args.dir_to_log
 
-    dataset_name = util.get_dataset_name_from_path(aligned_dataset_path)
-    technique_name = util.get_technique_name_from_path(deidentified_path)
+    dataset_name = args.dataset_name # = util.get_dataset_name_from_path(aligned_dataset_path)
+    technique_name = args.technique_name # = util.get_technique_name_from_path(deid_dataset_path)
 
     ssim_df= util.Metrics(name_score="ssim")
     msssim_df= util.Metrics(name_score="msssim")

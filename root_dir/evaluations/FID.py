@@ -9,8 +9,6 @@ def main():
     path_to_save = args.save_path
     path_to_log = args.dir_to_log
 
-    dataset_name = util.get_dataset_name_from_path(path_to_aligned_images)
-    technique_name = util.get_technique_name_from_path(path_to_deidentified_images)
     metrics_df= util.Metrics(name_score="fidscore")
     path_to_aligned_images = os.path.abspath(path_to_aligned_images)
     path_to_deidentified_images = os.path.abspath(path_to_deidentified_images)
