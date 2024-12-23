@@ -10,6 +10,7 @@ from torchvision import transforms
 import cv2
 from tqdm import tqdm
 import pickle
+import shutil
 
 
 PATH_TO_MODEL_WEIGHTS  = './root_dir/evaluation/identity_verification/vgg-face.pytorch/pretrained/vgg_face_torch/VGG_FACE.t7'
@@ -149,6 +150,7 @@ def main():
     #print("MIN:", np.min(vgg_predicted_scores), " MAX: ", np.max(vgg_predicted_scores))
     metric_df.save_to_csv(path_to_save)
     print(f"vggface saved in {path_to_save}")
+    shutil.rmtree(temp_features_deid_dir)
     #np.savetxt(output_file_name, vgg_predicted_scores)
     return
 
