@@ -13,6 +13,7 @@ import utils as util
 from tqdm import tqdm
 import cv2
 import pickle
+import shutil
 
 EVALUATION_NAME= "swinface"
 PATH_TO_MODEL_WEIGHTS  = './root_dir/evaluation/identity_verification/swinface/checkpoint_step_79999_gpu_0.pt'
@@ -158,6 +159,7 @@ def main():
 
     metrics_df.save_to_csv(path_to_save)
     print(f"swinface scores saved into {path_to_save}")
+    shutil.rmtree(temp_features_deid_dir)
 
 
 if __name__ == "__main__":
