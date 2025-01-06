@@ -1,15 +1,14 @@
 from email.mime import image
 import sys
 import os
-current_dir = os.path.dirname(os.path.abspath(__file__))
-swinface_dir = os.path.join(current_dir, 'identity_verification', 'swinface')
-sys.path.append(swinface_dir)
+sys.path.append(os.path.abspath("./root_dir/evaluation"))
+sys.path.append(os.path.abspath("./root_dir/evaluation/identity_verification/swinface"))
 import numpy as np
 import torch
 import torch.nn.functional as F
 
 #import swinface
-from identity_verification.swinface import build_model
+from model import build_model
 import utils as util
 from tqdm import tqdm
 import cv2
@@ -74,15 +73,17 @@ def main():
     path_to_impostor_pairs = args.impostor_pairs_filepath
     path_to_save = args.save_path
     path_to_log = args.dir_to_log
-    dataset_name = util.get_dataset_name_from_path(path_to_aligned_images)
-    technique_name = util.get_technique_name_from_path(path_to_deidentified_images)
+    dataset_name = args.dataset_name # = util.get_dataset_name_from_path(aligned_dataset_path)
+    technique_name = args.technique_name # = util.get_technique_name_from_path(deid_dataset_path)
     # Create directories for features if they don't exist
-    temp_features_original_dir= os.path.join(util.TEMP_DIR, EVALUATION_NAME,f"{dataset_name}_{technique_name}", "original")
+    deid_impostors = True # set this to true if you want to deidentify impostors as well
+    aligned_original_dataset = os.path.basename(path_to_aligned_images)
+    #output_file_name = util.get_output_filename("vgg",path_to_aligned_images, path_to_deidentified_images)
+    # Create directories for features if they don't exist
+    temp_features_original_dir= os.path.join(util.TEMP_DIR, EVALUATION_NAME,f"{aligned_original_dataset}", "original")
     temp_features_deid_dir = os.path.join(util.TEMP_DIR, EVALUATION_NAME,f"{dataset_name}_{technique_name}", "deid")
     os.makedirs(temp_features_original_dir, exist_ok=True)
     os.makedirs(temp_features_deid_dir, exist_ok=True)
-    
-    metric_df= util.Metrics(name_score="cossim")
 
     #output_file_name = util.get_output_filename("vgg",path_to_aligned_images, path_to_deidentified_images)
 
@@ -110,13 +111,18 @@ def main():
     
     names_a = genu_names_a + impo_names_a # images a are originals
     names_b = genu_names_b + impo_names_b # images b are deidentified
-    ids_a = genu_ids_a + impo_ids_a
-    ids_b = genu_ids_b + impo_ids_b
 
-    ground_truth_binary_labels = np.array([int(id_a == id_b) for id_a, id_b in zip(ids_a, ids_b)])
-    for name_a, name_b, gt_label in tqdm(zip(names_a, names_b, ground_truth_binary_labels), total=len(names_a), desc=f"swinface | {dataset_name}-{technique_name}"):
+    # list of booleans, same size as names_a but all the genu_names_a positions will be true and all the impo_names_a positions will be false
+    gt_labels_is_genuine = [True] * len(genu_names_a) + [False] * len(impo_names_a)
+
+    for name_a, name_b,isGenuine in tqdm(zip(names_a, names_b,gt_labels_is_genuine), total=len(names_a), desc=f"swinface | {dataset_name}-{technique_name}"):
         img_a_path = os.path.join(path_to_aligned_images, name_a) #the the aligned image file path
-        img_b_path = os.path.join(path_to_deidentified_images, name_b) #the deidentified image file path
+        if isGenuine or deid_impostors:
+            img_b_path = os.path.abspath(os.path.join(path_to_deidentified_images, name_b)) #the deidentified image file path
+        else:
+            img_b_path = os.path.abspath(os.path.join(path_to_aligned_images, name_b))#take the image from the original paths
+        if isGenuine or deid_impostors:
+            img_c_path = os.path.abspath(os.path.join(path_to_aligned_images, name_b)) # genuine orig to see the original distribution
         if not os.path.exists(img_a_path):
             util.log(os.path.join(path_to_log,"swinface.txt"), 
                     f"({dataset_name}) The source images are not in {img_a_path} ")
@@ -140,8 +146,13 @@ def main():
         metrics_df.add_score(img=name_a, 
                              metric_result=similarity_score)
         metrics_df.add_column_value("img_b", name_b)
-        metrics_df.add_column_value("ground_truth", gt_label)
-
+        metrics_df.add_column_value("ground_truth", isGenuine)
+        if isGenuine or deid_impostors:
+            features_c = get_features(img_c_path,temp_features_original_dir, model=model)
+            similarity_gens_score = compute_similarity(features_a["Recognition"],features_c["Recognition"])
+            metrics_df.add_column_value("cossim_originals", similarity_gens_score)
+        else:
+            metrics_df.add_column_value("cossim_originals", -1)
         #for each in output_a.keys():
         #    print(each, "\t", output_a[each][0].detach().numpy())
 

@@ -2,6 +2,7 @@ name: swinface
 channels:
   - pytorch
   - conda-forge
+  - defaults
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_gnu
@@ -231,7 +232,6 @@ dependencies:
   - python-dateutil=2.9.0=pyhd8ed1ab_0
   - python-tzdata=2024.2=pyhd8ed1ab_0
   - python_abi=3.8=5_cp38
-  - pytorch=2.0.0=cpu_generic_py38h1f6ab43_1
   - pytorch-mutex=1.0=cpu
   - pytz=2024.2=pyhd8ed1ab_0
   - pyu2f=0.1.5=pyhd8ed1ab_0
@@ -257,8 +257,6 @@ dependencies:
   - tensorboard-plugin-wit=1.8.1=pyhd8ed1ab_0
   - timm=1.0.11=pyhd8ed1ab_0
   - tk=8.6.13=noxft_h4845f30_101
-  - torchaudio=2.0.0=py38_cpu
-  - torchvision=0.15.0=py38_cpu
   - tqdm=4.66.6=pyhd8ed1ab_0
   - typing-extensions=4.12.2=hd8ed1ab_0
   - typing_extensions=4.12.2=pyha770c72_0
@@ -300,7 +298,22 @@ dependencies:
   - zstandard=0.23.0=py38h62bed22_0
   - zstd=1.5.6=ha6fb4c9_0
   - pip:
+      - graphviz==0.8.4
       - mxnet==1.9.1
-      - opencv-python==4.10.0.84
-      - python-graphviz==0.8.4
-
+      - nvidia-cublas-cu12==12.1.3.1
+      - nvidia-cuda-cupti-cu12==12.1.105
+      - nvidia-cuda-nvrtc-cu12==12.1.105
+      - nvidia-cuda-runtime-cu12==12.1.105
+      - nvidia-cudnn-cu12==9.1.0.70
+      - nvidia-cufft-cu12==11.0.2.54
+      - nvidia-curand-cu12==10.3.2.106
+      - nvidia-cusolver-cu12==11.4.5.107
+      - nvidia-cusparse-cu12==12.1.0.106
+      - nvidia-nccl-cu12==2.20.5
+      - nvidia-nvjitlink-cu12==12.6.85
+      - nvidia-nvtx-cu12==12.1.105
+      - torch==2.4.1
+      - torchaudio==2.4.1
+      - torchvision==0.19.1
+      - triton==3.0.0
+prefix: /home/tico/anaconda3/envs/swinface
