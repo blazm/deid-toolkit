@@ -71,7 +71,7 @@ def main():
     path_to_save = args.save_path
     dataset_name = args.dataset_name # = util.get_dataset_name_from_path(aligned_dataset_path)
     technique_name = args.technique_name # = util.get_technique_name_from_path(deid_dataset_path)
-    deid_impostors = False # set this to true if you want to deidentify impostors as well
+    deid_impostors = True # set this to true if you want to deidentify impostors as well
     metrics_df= util.Metrics(name_score="cossim")
     aligned_original_dataset = os.path.basename(path_to_aligned_images)
     # Create directories for features if they don't exist
