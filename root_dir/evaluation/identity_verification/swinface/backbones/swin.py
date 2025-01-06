@@ -109,11 +109,11 @@ class WindowAttention(nn.Module):
             x: input features with shape of (num_windows*B, N, C)
             mask: (0/-inf) mask with shape of (num_windows, Wh*Ww, Wh*Ww) or None
         """
-        with torch.cuda.amp.autocast(True):
+        with torch.amp.autocast('cuda'):
             B_, N, C = x.shape
             qkv = self.qkv(x).reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
 
-        with torch.cuda.amp.autocast(False):
+        with torch.amp.autocast('cuda'):
             q, k, v = qkv[0].float(), qkv[1].float(), qkv[2].float()  # make torchscript happy (cannot use tensor as tuple)
 
             q = q * self.scale
@@ -136,7 +136,7 @@ class WindowAttention(nn.Module):
 
             x = (attn @ v).transpose(1, 2).reshape(B_, N, C)
 
-        with torch.cuda.amp.autocast(True):
+        with torch.amp.autocast('cuda'):
             x = self.proj(x)
             x = self.proj_drop(x)
         return x
@@ -263,7 +263,7 @@ class SwinTransformerBlock(nn.Module):
 
         # FFN
         x = shortcut + self.drop_path(x)
-        with torch.cuda.amp.autocast(True):
+        with torch.amp.autocast('cuda'):
             x = x + self.drop_path(self.mlp(self.norm2(x)))
 
         return x

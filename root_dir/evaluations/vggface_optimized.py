@@ -101,7 +101,7 @@ def main():
 
     #vgg_predicted_scores = []
     
-    for name_a, name_b,isGenuine in tqdm(zip(names_a, names_b,gt_labels_is_genuine), total=len(names_a), desc=f"adaface | {dataset_name}-{technique_name}"):
+    for name_a, name_b,isGenuine in tqdm(zip(names_a, names_b,gt_labels_is_genuine), total=len(names_a), desc=f"vggface | {dataset_name}-{technique_name}"):
         img_a_path = os.path.abspath(os.path.join(path_to_aligned_images, name_a)) #the the aligned image file path
         if isGenuine or deid_impostors:
             img_b_path = os.path.abspath(os.path.join(path_to_deidentified_images, name_b)) #the deidentified image file path
