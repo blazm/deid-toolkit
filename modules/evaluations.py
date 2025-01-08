@@ -189,6 +189,7 @@ class Evaluations(IPipelineStage):
         for i,paths_tuples in enumerate(deidentified_paths): 
             is_only_folder = paths_tuples[0]
             deidpath_abspath = paths_tuples[1]
+            technique = os.path.normpath(deidpath_abspath).split(os.sep)[2]
             subfoler_name = os.path.basename(deidpath_abspath)
             if is_only_folder:
                 print(f"{Fore.GREEN}Running: {Fore.LIGHTMAGENTA_EX}{evaluation_name}{Fore.RESET} for {Fore.LIGHTMAGENTA_EX}{dataset_name}{Fore.RESET} with technique {Fore.LIGHTMAGENTA_EX}{technique}{Fore.RESET}...")
