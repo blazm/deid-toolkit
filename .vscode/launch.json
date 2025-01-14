@@ -8,7 +8,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": [
+            /*"args": [
                 "/home/tico/Desktop/master_research/deid-toolkit/root_dir/datasets/aligned/LFW_benchmark",
                 "root_dir/datasets/MaskDDPG/LFW_benchmark/0.3",
                 "--dataset_name", "LFW_benchmark_0.3",
@@ -16,6 +16,18 @@
                 "--impostor_pairs_filepath", "/home/tico/Desktop/master_research/deid-toolkit/root_dir/datasets/pairs/LFW_benchmark_impostor_pairs.txt",
                 "--genuine_pairs_filepath", "/home/tico/Desktop/master_research/deid-toolkit/root_dir/datasets/pairs/LFW_benchmark_genuine_pairs.txt",
                 "--save_path", "/home/tico/Desktop/master_research/deid-toolkit/root_dir/results/lpips_LFW_benchmark_0.3_MaskDDPG.csv"
+            ]*/
+            /*"args": [
+                "/home/tico/Desktop/master_research/deid-toolkit/root_dir/datasets/aligned/LFW_benchmark",
+                "/home/tico/Desktop/master_research/deid-toolkit/root_dir/datasets/deepprivacy2/LFW_benchmark",
+                "--dataset_filetype",
+                "png",
+                "--dataset_newtype",
+                "png"
+            ]*/
+            "args": [
+                "-s","/home/tico/Desktop/master_research/deid-toolkit/root_dir/datasets/aligned/LFW_benchmark",
+                "-t","/home/tico/Desktop/master_research/deid-toolkit/root_dir/datasets/deepprivacy2/LFW_benchmark",
             ]
         }
     ]

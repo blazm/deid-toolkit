@@ -5,6 +5,7 @@ from colorama import Fore  # color text
 import os
 import subprocess
 import select
+import imghdr
 
 class Techniques(IPipelineStage):
     def __init__(self, stage_name):
@@ -112,9 +113,16 @@ class Techniques(IPipelineStage):
             try:
                 #TODO use this as a part of other module, no for techniques
                 venv_exists = Environments.isEnvironmentExist(technique_name)
-                venv_name = 'toolkit'
                 if venv_exists:
                     venv_name = technique_name
+                else:
+                    venv_exists2 = Environments(
+                                                ConfigManager.get_instance().FOLDER_ENVIRONMENTS
+                                                ).check_and_create_conda_env(technique_name)
+                    if venv_exists2:
+                        venv_name = technique_name
+                    else:
+                        venv_name = 'toolkit'
                 for dataset_name in selected_datasets_names:
                     try:
                         self._process_dataset_with_technique(technique_name, venv_name, dataset_name)
@@ -166,14 +174,22 @@ class Techniques(IPipelineStage):
         path_technique_folder = os.path.join(
             self.root_dir,
             ConfigManager.get_instance().FOLDER_TECHNIQUES)
-
-        command = (
-            f"source {conda_sh_path} && "
-            f"conda activate {venv_name} && "
-            f"cd {path_technique_folder} && "
-            f"python -u {technique_name}.py {aligned_dataset_path} {dataset_save_path} "
-        )
-        
+        if technique_name!="deepprivacy2":
+            command = (
+                f"source {conda_sh_path} && "
+                f"conda activate {venv_name} && "
+                f"cd {path_technique_folder} && "
+                f"python -u {technique_name}.py {aligned_dataset_path} {dataset_save_path} "
+            )
+        else:
+            file_type = imghdr.what(os.path.join(aligned_dataset_path,os.listdir(aligned_dataset_path)[0]))
+            command = (
+                f"source {conda_sh_path} && "
+                f"conda activate {venv_name} && "
+                f"cd {path_technique_folder} && "
+                f"python -u {technique_name}.py {aligned_dataset_path} {dataset_save_path} --dataset_filetype {file_type} --dataset_newtype {file_type}"
+            )
+            print(command)
         try:
             process = subprocess.Popen(command, shell=True,
                                         executable="/bin/bash",

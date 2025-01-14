@@ -16,7 +16,8 @@ from face_detection.retinaface.models.retinaface import RetinaFace
 class face_detection(base.Detector):
     def __init__(self, model: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        model_dir = os.path.join("DeepPrivacy","deep_privacy","checkpoints")
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        model_dir = os.path.join(current_dir,"DeepPrivacy","deep_privacy","checkpoints")
         map_location = torch_utils.get_device()
 
         if model == "mobilenet":
@@ -55,10 +56,11 @@ class face_detection(base.Detector):
 
 
 def main(dataset_path, dataset_save, dataset_filetype='jpg', dataset_newtype='jpg'):
+    current_dir = os.path.dirname(os.path.abspath(__file__))
     img_names = [i for i in os.listdir(dataset_path) if dataset_filetype in i]
     img_paths = [os.path.join(dataset_path, i) for i in img_names]
     save_paths = [os.path.join(dataset_save, i.replace(dataset_filetype, dataset_newtype)) for i in img_names]
-    anonymize_path = os.path.join('DeepPrivacy', 'anonymize.py')
+    anonymize_path = os.path.join(current_dir,'DeepPrivacy', 'anonymize.py')
 
     pbar = tqdm(total=len(img_paths), desc="Processing images", ncols=80)
     update_interval=int(np.round(2*len(img_names)/100))
