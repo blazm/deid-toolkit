@@ -216,7 +216,28 @@ def ensure_dir(file_path):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-def main(img_paths=None, save_paths=None, dataset_path=None, dataset_save_path=None, dataset_name=None):
+def filter_filenames(img_names, dataset_name):
+    if dataset_name == 'rafd':
+        img_names = [i for i in img_names 
+        if "frontal" in i 
+        and   ("090" in i 
+            or "135" in i
+            or "045" in i)]
+    # TODO: add matching patterns here for other datasets if needed
+    return img_names
+
+def chunk(file_list, num_processes):
+    file_counter = len(file_list)
+    
+    file_chunks = []
+    for i in range(num_processes):
+        file_chunks.append(file_list[i * file_counter // num_processes : (i+1) * file_counter // num_processes])
+
+    return file_chunks
+
+from multiprocessing import Process
+# multiprocessing version of main alignment
+def mp_main(img_paths=None, save_paths=None, dataset_path=None, dataset_save_path=None, dataset_name=None):
     dataset_filetype = "jpg"
     dataset_filetype_1 = "JPG"
     dataset_filetype_2 = "png"
@@ -226,6 +247,44 @@ def main(img_paths=None, save_paths=None, dataset_path=None, dataset_save_path=N
             i for i in os.listdir(dataset_path)
             if (dataset_filetype in i or dataset_filetype_1 in i or dataset_filetype_2 in i)
         ]
+        # do filtering
+        img_names = filter_filenames(img_names, dataset_name)
+        img_paths = [os.path.join(dataset_path, i) for i in img_names]
+        save_paths = [
+            os.path.join(dataset_save_path, os.path.splitext(i)[0] + "." + dataset_newtype)
+            for i in img_names]
+    
+    workers = 12
+    data_chunks = chunk(img_names, workers)
+    ps = []
+
+    for ix in range(workers):
+        img_names_ix = data_chunks[ix]
+        img_paths_ix = [os.path.join(dataset_path, i) for i in img_names_ix]
+        save_paths_ix = [
+            os.path.join(dataset_save_path, os.path.splitext(i)[0] + "." + dataset_newtype)
+            for i in img_names_ix]
+        
+        w = Process(target=main, args=(img_paths_ix, save_paths_ix, dataset_path, dataset_save_path, dataset_name))
+        w.deamon = True
+        w.start()
+        ps += [w]
+
+    for w in ps:
+        w.join()
+
+def main(img_paths=None, save_paths=None, dataset_path=None, dataset_save_path=None, dataset_name=None):
+    dataset_filetype = "jpg"
+    dataset_filetype_1 = "JPG"
+    dataset_filetype_2 = "png"
+    dataset_newtype = "jpg"
+    if dataset_path is not None and img_paths is None and save_paths is None:
+        img_names = [
+            i for i in os.listdir(dataset_path)
+            if (dataset_filetype in i or dataset_filetype_1 in i or dataset_filetype_2 in i)
+        ]
+        # do filtering
+        img_names = filter_filenames(img_names, dataset_name)
         img_paths = [os.path.join(dataset_path, i) for i in img_names]
         save_paths = [
             os.path.join(dataset_save_path, os.path.splitext(i)[0] + "." + dataset_newtype)
@@ -241,3 +300,4 @@ def main(img_paths=None, save_paths=None, dataset_path=None, dataset_save_path=N
             #print(f"Successfully aligned and saved image {count}: {save_path}")
         except Exception as e:
             print(f"Failed to process image {img_path}: {e}")
+            print("Img path is: " + img_path)

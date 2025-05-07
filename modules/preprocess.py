@@ -3,6 +3,7 @@ from modules.utils.PipelineStage import IPipelineStage
 from modules.utils.ErrorHandler import DeidtoolkitError
 import modules.utils.generate_img_pairs_all as generate_img_pairs_all
 import modules.utils.align_face_mtcnn as align_face_mtcnn
+import modules.utils.align_face as align_face
 
 import subprocess
 import os
@@ -28,7 +29,9 @@ class Preprocessing(IPipelineStage):
         preprocess_order = ["alignment", "generate_image_pairs"]
 
         switcher = {
+            #"filter_by_pattern": self.run_filter_by_name, # TODO: filter any filenames by pattern (currently done inside alignment)
             "alignment": self.run_preprocess_alignment,
+            # TODO: here we should generate labels CSV since they are needed in the next step (currently this needs to be done by hand)            
             "generate_image_pairs": self.run_generate_pairs
             #'normalization': self.run_preprocess_normalization,
         }
@@ -71,7 +74,11 @@ class Preprocessing(IPipelineStage):
             print(Fore.LIGHTWHITE_EX,f"Save path: ", Fore.LIGHTBLACK_EX,dataset_save_path,  Fore.RESET)
 
             try:
-                align_face_mtcnn.main(dataset_path=dataset_path, dataset_save_path=dataset_save_path,dataset_name=dataset_name)
+                #align_face_mtcnn.main(dataset_path=dataset_path, dataset_save_path=dataset_save_path,dataset_name=dataset_name)
+                align_face_mtcnn.mp_main(dataset_path=dataset_path, dataset_save_path=dataset_save_path,dataset_name=dataset_name)
+                                
+                #align_face.main(dataset_path=dataset_path, dataset_save_path=dataset_save_path,dataset_name=dataset_name)
+
                 print(Fore.GREEN, f"Successfully aligned dataset: {dataset_name}",  Fore.RESET)
                 if dataset_name not in aligned_datasets:
                     aligned_datasets.append(dataset_name)
