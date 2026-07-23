@@ -1,126 +1,221 @@
 # deid-toolkit
-An attempt to develop a toolkit for running and evaluating privacy preserving techniques in facial biometrics
 
-## Toolkit description
+A toolkit for running and evaluating privacy-preserving techniques in facial biometrics.
 
+## Two Modes
 
+- **Pipeline mode** (`deid run`) — Select datasets, techniques, and evaluation metrics; run the full de-identification pipeline
+- **Explore mode** (`deid explore`) — Interactive web UI for browsing results (before/after image comparison, Summary tab, metric tables, galleries)
 
-![Architecture](https://github.com/blazm/deid-toolkit/blob/main/assets/architecture.png?raw=true)
+## Quick Start
 
-## Table of Contents
-1. [Features](#features)
-2. [Prerequisites](#prerequisites)
-3. [Installation](#installation)
-4. [Configuration](#configuration)
-5. [Usage](#usage)
-6. [Examples](#examples)
-7. [Project Structure](#project-structure)
-8. [Contributing](#contributing)
-9. [License](#license)
-10. [Contact](#contact)
+```bash
+# 1. Create the conda environment
+conda env create -f environment.yml
+conda activate deid-toolkit
 
--- 
-## Features
-* Command-line interface (something like https://docs.python.org/3.8/library/cmd.html):
-    *   easy to use (simple commands + names to run experiments)
-    * easy to generate results
-    * good look & feel
-    * responsive logging (showing % of performed actions)
-    * helpful tips (where results are saved, how can be visualised, etc)
-* Handling of multiple separated virtual environments
-    * running the models in subshells, while reporting progress to main interface
-* Configuration parameters in text format via .ini file (loading & saving of different configurations within command line)
-* Checking and handling of datasets
-    * Raw datasets path (simple names)
-    * Cropped & Aligned path (dataset preparation/standardization)
-* Saving intermediate results for each phase (for each dataset, for each of the models)
-* Saving final results (final deidentified images and dataset evaluation scores / plots)
-* Handling and storing models / binary files for existing techniques
-<!-- TO DO: look and check remove needed -->
-    *   Pretrained models directory 
+# 2. Install the CLI
+pip install -e .
 
---
+# 3. Initialize the config
+deid config migrate --yes
+
+# 4. Select datasets, techniques, evaluations
+deid list datasets
+deid list techniques
+deid list evaluation
+
+deid select datasets arface ck+_fix
+deid select techniques deepprivacy2 ksamenet
+deid select evaluation ssim lpips vggface
+
+# 5. Run the pipeline
+deid run all
+
+# 6. Explore results
+deid explore
+```
+
+## CLI Reference
+
+```bash
+# List
+deid list datasets                 # Available datasets
+deid list techniques               # Available techniques
+deid list evaluation               # Available metrics
+deid list results                  # Available results
+deid list selected                 # Preview what 'deid run selected' would do
+
+# Select
+deid select datasets arface lfw     # By name
+deid select datasets 0 1            # By index
+deid select techniques deepprivacy2
+deid select evaluation ssim lpips
+
+# Run
+deid run all                       # Full pipeline (preprocess + techniques + evaluation)
+deid run preprocess                # Alignment + pair generation
+deid run techniques                # Techniques only
+deid run evaluation                # Evaluation only
+deid run selected                  # Resume incomplete stages
+deid run logs                      # Latest pipeline log
+
+# Config
+deid show                          # Current configuration
+deid migrate [--yes]               # Migrate legacy config.ini → deid-config.yaml
+deid explore [--port 8501]         # Streamlit result browser
+```
+
+## Architecture
+
+```
+deid/                          # CLI package + built-in scripts
+  cli/                         # Typer CLI commands
+  config/                      # Unified config (Pydantic + YAML)
+  pipeline.py                  # Pipeline orchestrator
+  utils/                       # Ported utilities (align_face_mtcnn, pair generation)
+  techniques/                  # Built-in DEID technique scripts
+  evaluation/                  # Built-in evaluation scripts + identity verification protocols
+  environments/                # Built-in conda env configs
+  explore/                     # Streamlit app (Compare/Summary/Embeddings/Metrics/Gallery)
+  __main__.py                  # Entry: `python -m deid`
+
+legacy/                        # Deprecated old codebase (preserved for reference)
+  modules/                     # Legacy cmd.Cmd shell
+  evaluations/, techniques/    # Legacy scripts
+  environments/                # Legacy conda configs
+  visualization/               # Legacy plot scripts
+
+root_dir/                      # Data directory (user extension points)
+  deid-config.yaml             # Active config (selections + settings)
+  pipeline.yml                 # Rename mappings + technique args
+  datasets/                    -- original/, aligned/, labels/, pairs/
+  techniques/                  -- User extension: custom technique scripts
+  evaluation/                  -- User extension: custom evaluation scripts
+  environments/                -- User extension: custom conda env YAMLs
+  results/                     -- Evaluation CSVs
+```
+
+## Adding a New Technique
+
+**Built-in** — add to `deid/techniques/` and `deid/environments/`
+**User custom** — place `my_technique.py` in `root_dir/techniques/` and `my_technique.yml` in `root_dir/environments/`. User scripts take priority over built-in.
+
+## Adding a New Evaluation
+
+**Built-in** — add to `deid/evaluation/`
+**User custom** — place `my_metric.py` in `root_dir/evaluation/`. User scripts take priority over built-in.
+
+Script receives: `--aligned_path`, `--deid_path`, `--dataset_name`, `--technique_name`, `--impostor_pairs_filepath`, `--genuine_pairs_filepath`, `--save_path`, `--root_dir`, `--eval_package_dir`
+
+## Configuration
+
+`root_dir/deid-config.yaml` is the single source of truth:
+
+```yaml
+root_dir: root_dir
+result_dir: results
+logs_dir: logs
+datasets:
+  selected: [arface, ck+_fix]
+techniques:
+  selected: [deepprivacy2, ksamenet]
+  args: {ksamenet: "--postprocessing_alignment yes"}
+evaluation:
+  selected: [ssim, lpips]
+```
+
+Legacy `config.ini` is still read as a fallback during migration.
 
 ## Prerequisites
-- **Operating System:** Linux ? 
-- **Python:** 3.9+
-- **Additional Dependencies:**  Conda, Mamba 
+
+- **Python 3.9+**
+- **Conda/Mamba** (see `environment.yml`)
+- **CUDA-capable GPU** for deep learning techniques
 
 ## Installation
 
-1. Clone the project: 
-   ```sh
-   git clone https://github.com/blazm/deid-toolkit
-   ```
-<!-- TODO: Where to download this zips-->
-2. Get `techniques.zip` and `aligned.zip` (and `original.zip` if wanted) and extract them with unzip:
-   ```sh
-   unzip techniques.zip -d root_dir
-   unzip evaluation.zip -d root_dir
-   unzip visualization.zip -d root_dir
-   unzip aligned.zip -d root_dir/datasets
-   unzip original.zip -d root_dir/datasets
-   ```
+```bash
+# 1. Create the conda environment (named "deid-toolkit")
+conda env create -f environment.yml
+conda activate deid-toolkit
 
-3. Create the toolkit environment:
-   ```sh
-   conda env create -f toolkit.yml
-   ```
-4. In `deid_shell.py`, change the `conda_sh_path` constant with the correct path to the conda.sh file on your machine.
+# 2. Install the toolkit package (choose one):
+pip install -e .                       # Core CLI only (compute pipeline + config)
+pip install -e ".[reports]"            # + PDF report generation (matplotlib, seaborn)
+pip install -e ".[explore]"            # + Streamlit web UI (browse results in browser)
+pip install -e ".[full]"               # Everything (deep learning deps for all techniques)
 
-## Usage
-### General commands
-- `root` - see currently set root directory
-- `set root` - set root directory
-- `serve` - run webserver to see the generated results
-- `set serve` - set results directory for serving results
-- `load config "filename.ini"`
-- `save config "filename.ini"`
-- `help "command"`
-- `?` - list of all commands
+# 3. Set up the workspace directory
+deid migrate-structure                 # Creates root_dir/ with needed subdirectories
+cp examples/workspace/deid-config.yaml root_dir/  # Copy config template
 
-### Listing commands for displaying implemented methods and current selection
-- `datasets`
-- `techniques`
-- `evaluation`
-- `visuals`
-- `selection`
+# 4. Initialize config (if migrating from legacy config.ini)
+deid migrate --yes
+```
 
-### Selection commands for dataset|technique|evaluation|all
-- `select datasets`
-- `select techniques`
-- `select evaluation`
-- `select *` 
+### Installation Tiers
 
-### Running the processing (with feedback on the progress)
-- `run preprocess`
-- `run techniques`
-- `run evaluation`
-- `run visualize`
-- `run *`
+| Command | Includes | Use case |
+|---------|----------|----------|
+| `pip install -e .` | Core CLI + config | Run pipeline, list/select commands |
+| `pip install -e ".[reports]"` | + matplotlib, seaborn | PDF report generation |
+| `pip install -e ".[explore]"` | + streamlit, plotly | Web UI (reads results CSVs) |
+| `pip install -e ".[full]"` | Everything | Complete toolkit (all techniques + evals) |
 
-<!-- TODO: add link for visualizations-->
-> [!NOTE]
-> There is no selection for visualization methods, please refer to [visualization]() to discover more details.
+### Two-Machine Deployment
 
-> [!TIP]
-> Your selection is stored in config.ini file: Which means you don't have to select again _dataset|technique|evaluation|_ if you want to run the same selected _dataset|technique|evaluation|_
+For the typical workflow (compute on workstation A, serve visualizations on server B):
 
---
+```bash
+# Machine A — Compute workstation (GPU required)
+conda activate deid-toolkit
+pip install -e ".[full]"
+deid run all                           # Runs full pipeline
+# Transfer results to Machine B:
+robocopy root_dir/results user@B:/workspace/root_dir/results /E
+robocopy root_dir/datasets/deidentified user@B:/workspace/root_dir/datasets/deidentified /E
 
-## Toolkit components
-### Datasets
-<!-- TODO: add link in the word "integrate" to learn how-->
-This module manages the datasets required for de-identification. It’s the first part of the pipeline. The toolkit is able to integrate (<-----) additional facial images datasets. Moreover, the datasets won’t be included in the toolkit because some of them have different licensing constraints.
+# Machine B — Visualization server (no GPU needed)
+conda activate deid-toolkit
+pip install -e ".[explore]"
+deid explore --port 8501               # Serves web UI at localhost:8501
+```
 
-<!-- TODO: add link to more details in README_DATASETS-->
+## Daemon Mode (`deid serve`)
 
+Run the explore app continuously with auto-reload on file changes — ideal for development and long-running demo setups.
 
-### Preprocess
-### Environments
-### Techniques
-### Evaluation
-### Visualization
+```bash
+# Start in a tmux session (background)
+tmux new -d -s deid
+deid serve
 
+# Attach back anytime
+tmux attach -t deid
 
+# Stop
+tmux kill-session -t deid
+```
 
+Or run directly (blocks the terminal):
+
+```bash
+deid serve --port 8501
+```
+
+See [`DAEMON.md`](DAEMON.md) for full details.
+
+## Data Paths
+
+All data lives under `root_dir/` (your workspace folder — configurable via `deid-config.yaml`):
+
+| Data | Path |
+|------|------|
+| Original images | `root_dir/datasets/original/{dataset_name}/img/` |
+| Aligned images | `root_dir/datasets/aligned/{dataset_name}/` |
+| De-identified images | `root_dir/datasets/deidentified/{technique_name}/{dataset_name}/` |
+| Labels | `root_dir/datasets/labels/{dataset_name}_labels.csv` |
+| Pairs | `root_dir/datasets/pairs/{dataset_name}_{impostor\|genuine}_pairs.txt` |
+| Results | `root_dir/results/` |
+| Config | `root_dir/deid-config.yaml` |

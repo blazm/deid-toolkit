@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deid-toolkit"
+version = "0.2.0"
+description = "Toolkit for running and evaluating privacy-preserving techniques in facial biometrics"
+requires-python = ">=3.9"
+dependencies = [
+    "typer>=0.9.0",
+    "pydantic-settings>=2.0",
+    "pyyaml>=6.0",
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "colorama>=0.4",
+    "tqdm>=4.65",
+]
+
+[project.optional-dependencies]
+reports = [
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+]
+explore = [
+    "streamlit>=1.28",
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+    "plotly>=5.18",
+    "scikit-learn>=1.3",
+]
+full = [
+    "deid-toolkit[explore,reports]",
+    "opencv-python>=4.8",
+    "mtcnn>=0.1",
+    "lpips>=0.1",
+    "scikit-learn>=1.3",
+    "scipy>=1.11",
+    "easydict>=1.10",
+    "tensorflow>=2.15",
+    "torch>=2.0",
+]
+
+[project.scripts]
+deid = "deid.cli.main:app"
+
+[tool.setuptools.packages.find]
+include = ["deid*"]
+
+[tool.setuptools.package-data]
+deid = [
+    "techniques/*.py",
+    "evaluation/**/*.py",
+    "evaluation/**/*.pth",
+    "evaluation/**/*.t7",
+    "evaluation/**/*.ckpt",
+    "evaluation/**/*.pt",
+    "evaluation/**/*.onnx",
+    "evaluation/**/*.rec",
+    "evaluation/**/*.idx",
+    "evaluation/**/*.lst",
+    "evaluation/**/*.json",
+    "environments/*.yml",
+    "reports/*.py",
+]

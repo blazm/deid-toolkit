@@ -1,8 +1,0 @@
-pytorch-lightning==1.8.6
-pytorch<=1.13.1
-tqdm
-bcolz-zipline
-prettytable
-menpo
-mxnet
-opencv-python

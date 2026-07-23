@@ -1,26 +1,18 @@
-*.zip
-*.tar.gz
-*.pt
-*.onnx 
-root_dir/datasets/pairs/
-root_dir/logs/
-root_dir/evaluation/tmp/
-root_dir/evaluation/identity_verification/vgg-face.pytorch/pretrained/vgg_face_torch/
-root_dir/techniques/deep_privacy2
-# Byte-compiled / optimized / DLL files
+# Generated / cache
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
+.pyre/
+.pytype/
+cython_debug/
+.mypy_cache/
+.dmypy.json
+dmypy.json
 
-# Distribution / packaging
-.Python
+# Build / distribution
 build/
-develop-eggs/
 dist/
-downloads/
 eggs/
 .eggs/
 lib/
@@ -29,104 +21,15 @@ parts/
 sdist/
 var/
 wheels/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
-
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
+share/python-wheels/
 .pybuilder/
 target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
-
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#Pipfile.lock
-
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
-
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#pdm.lock
-#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
-#   in version control.
-#   https://pdm.fming.dev/#use-with-ide
-.pdm.toml
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
+*.zip
+*.tar.gz
 
 # Environments
 .env
@@ -137,34 +40,101 @@ ENV/
 env.bak/
 venv.bak/
 
-# Spyder project settings
+# User workspace data (per-workspace, not shipped)
+root_dir/datasets/original/
+root_dir/datasets/aligned/
+root_dir/datasets/deid/
+root_dir/datasets/deidentified/
+examples/workspace/datasets/original/
+examples/workspace/datasets/aligned/
+examples/workspace/datasets/deid/
+
+# Evaluation intermediate files
+root_dir/evaluation/tmp/
+examples/workspace/evaluation/tmp/
+
+# Generated results (CSVs + PDFs — transferred between machines, not committed)
+root_dir/results/**/*.csv
+root_dir/results/*.pdf
+examples/workspace/results/*.pdf
+
+# Pairs & logs
+root_dir/datasets/pairs/
+examples/workspace/datasets/pairs/
+root_dir/logs/
+examples/workspace/logs/
+
+# Large model checkpoints shipped with the package
+root_dir/evaluation/identity_verification/vgg-face.pytorch/pretrained/vgg_face_torch/
+root_dir/techniques/deep_privacy2/
+
+# IDE / editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
 .spyderproject
 .spyproject
-
-# Rope project settings
 .ropeproject
 
-# mkdocs documentation
-/site
+# Testing
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.pytest_cache/
+.cover/
+.hypothesis
+nosetests.xml
+coverage.xml
+*.cover
+.py,cover
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
+# Misc
+*.log
+*.pt
+*.onnx
+*.ckpt
+*.pth
+*.t7
+*.idx
+*.rec
+*.lst
 config.ini
+
+# User workspace (if placed inside repo)
+workspace/
+my_workspace/
+*_workspace/
+*.workspace/
+
+# Generated PDF reports
+root_dir/results/*.pdf
+examples/workspace/results/*.pdf
+root_dir/evaluation/pdf_reports/
+examples/workspace/evaluation/pdf_reports/
+
+# User authentication (secrets)
+.deid-users.yaml
+users.yaml
+
+# Large data files
+root_dir/datasets/labels/doc/
+
+# Jupyter / Dev artifacts (not shipped)
+*.ipynb_checkpoints/
+
+# Vim swap files
+*.swp
+*.swo
+*~
+
+# Raw portfolio / scraped data (not shipped)
+raw_portfolio_data/
+raw_visualisations_to_port/
+
+# DAEMON.md — generated docs
+DAEMON.md

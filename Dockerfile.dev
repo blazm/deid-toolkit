@@ -39,7 +39,11 @@ RUN apt-get update > /dev/null && \
 # Set up the working directory and copy environment file
 RUN mkdir -p /home/deidtoolkit
 WORKDIR /home/deidtoolkit
-COPY toolkit.yml .
+COPY docker/conda-env.yml .
+
+# Note: conda-env.yml is a frozen export for reproducible Docker builds.
+# For local development, use environment.yml instead (declarative, not frozen).
+
 
 #Needed dependencies for the correct functionality for some libraries
 #https://stackoverflow.com/questions/55313610/importerror-libgl-so-1-cannot-open-shared-object-file-no-such-file-or-directo
