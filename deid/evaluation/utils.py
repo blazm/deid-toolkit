@@ -76,7 +76,12 @@ def get_dataset_name_from_path(path: str) -> str:
 
 
 def get_technique_name_from_path(path: str) -> str:
-    return Path(path).name
+    """Extract technique name from de-identified image path.
+
+    Standard layout: {root}/datasets/deidentified/{technique}/{dataset}/
+    Returns parent directory name (the technique folder).
+    """
+    return Path(path).parent.name
 
 
 def read_pairs_file(filepath: str) -> tuple[list[str], list[str], list[str], list[str]]:
@@ -95,3 +100,10 @@ def read_pairs_file(filepath: str) -> tuple[list[str], list[str], list[str], lis
             ids_b.append(parts[2])
             names_b.append(parts[3])
     return names_a, ids_a, names_b, ids_b
+
+
+def get_temp_dir(root_dir: str, eval_name: str) -> str:
+    """Return a temporary directory under root_dir for cached features of an evaluation."""
+    temp_path = os.path.join(root_dir, "preprocess", "temp", eval_name)
+    os.makedirs(temp_path, exist_ok=True)
+    return temp_path

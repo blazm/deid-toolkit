@@ -2,10 +2,11 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+# Import project utils BEFORE adding vgg-face to path (to avoid shadowing)
+import utils as util
 sys.path.insert(1, str(SCRIPT_DIR / "identity_verification" / "vgg-face.pytorch" / "models"))
 import torch
 import vgg_face
-import utils as util
 import numpy as np
 from torch import nn
 import os

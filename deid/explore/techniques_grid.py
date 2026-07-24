@@ -30,10 +30,10 @@ def render() -> None:
         for ds in manifest.get("datasets", []):
             all_datasets.add(ds)
 
-    for tech_name in results:
-        for ds_name in results[tech_name]:
-            all_techs.add(tech_name)
+    for ds_name in results:
+        for tech_name in results[ds_name]:
             all_datasets.add(ds_name)
+            all_techs.add(tech_name)
 
     if not all_techs or not all_datasets:
         st.info("No technique+dataset combinations found.")
@@ -44,7 +44,7 @@ def render() -> None:
     for tech_name in all_techs:
         status_lookup[tech_name] = {}
         for ds_name in all_datasets:
-            has_results = ds_name in results.get(tech_name, {}) and bool(results[tech_name][ds_name])
+            has_results = tech_name in results.get(ds_name, {}) and bool(results[ds_name][tech_name])
             tech_script = Path(loader.settings.techniques_path) / f"{tech_name}.py"
             has_script = tech_script.exists()
             # Also check built-in scripts

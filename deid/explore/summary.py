@@ -16,6 +16,8 @@ from deid.explore.viz import (
     plot_roc_multi,
     plot_distance_histogram,
     plot_confusion_matrix,
+    plot_radar_with_attributes,
+    plot_attack_surface_map,
 )
 from deid.explore.data_loader import get_loader
 from deid.explore.radar_charts import (
@@ -35,6 +37,15 @@ def _export_fig(fig, base_name: str) -> None:
         file_name=f"{base_name}.pdf",
         mime="application/pdf",
     )
+
+
+def _transpose_results(results: dict) -> dict:
+    """Convert {dataset: {technique: {eval: path}}} → {technique: {dataset: {eval: path}}}."""
+    transposed = {}
+    for ds, techs in results.items():
+        for tech, evals in techs.items():
+            transposed.setdefault(tech, {}).setdefault(ds, {}).update(evals)
+    return transposed
 
 
 def render() -> None:
@@ -60,7 +71,8 @@ def render() -> None:
     # View selector
     view = st.radio(
         "View",
-        ["Score Table", "ROC Comparison", "Distance Histograms", "Confusion Matrices", "Radar Charts"],
+        ["Score Table", "ROC Comparison", "Distance Histograms", "Confusion Matrices",
+         "Radar Charts", "Attribute Radar", "Attack Surface"],
         horizontal=True,
     )
 
@@ -71,7 +83,7 @@ def render() -> None:
     # ---- Score Table ----
     if view == "Score Table":
         st.caption("Mean ± std score per technique per evaluation.")
-        fig, stats_df = plot_score_summary(results)
+        fig, stats_df = plot_score_summary(_transpose_results(results))
         if not stats_df.empty:
             st.dataframe(stats_df, use_container_width=True)
         if not fig.empty:
@@ -268,6 +280,70 @@ def render() -> None:
                     file_name=f"radar_charts_{ds}.pdf",
                     mime="application/pdf",
                 )
+
+    # ---- Attribute Radar (enhanced with demographic axes) ----
+    elif view == "Attribute Radar":
+        st.subheader("Privacy × Attribute Preservation Radar")
+        st.caption(
+            "Each axis is an independent metric (verification, gender/expression/age/race match, "
+            "SSIM, LPIPS, FIQ delta). Axes appear only when data exists."
+        )
+
+        techs = sorted(results.get(selected_ds, {}).keys())
+        selected_techs = st.multiselect(
+            "Techniques to compare",
+            techs,
+            default=techs[:min(4, len(techs))],
+        )
+
+        if not selected_techs:
+            st.info("Select at least one technique.")
+        else:
+            # Transpose results: {technique: {dataset: {eval: path}}}
+            transposed = _transpose_results(results)
+            fig = plot_radar_with_attributes(transposed, selected_ds, selected_techs)
+            if not fig.empty:
+                st.pyplot(fig)
+                _export_fig(fig, f"attribute_radar_{selected_ds}")
+            else:
+                st.info(
+                    "No matching evaluation data found. Run demographic evaluations "
+                    "(deepface_gender, deepface_expression, deepface_age, deepface_race) "
+                    "and verification (arcface, adaface, swinface) to populate the radar axes."
+                )
+
+    # ---- Attack Surface Map ----
+    elif view == "Attack Surface":
+        st.subheader("Attack Surface Map")
+        st.caption(
+            "Scatter plot of privacy strength vs. utility preservation. "
+            "Each technique is a bubble sized by image quality (SSIM). "
+            "Axes adapt to available evaluation data."
+        )
+
+        techs = sorted(results.get(selected_ds, {}).keys())
+        selected_techs = st.multiselect(
+            "Techniques",
+            techs,
+            default=techs[:min(4, len(techs))],
+        )
+
+        if not selected_techs:
+            st.info("Select at least one technique.")
+        else:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                x_metric = st.selectbox("X-axis", ["privacy"], key="as_x")
+            with col2:
+                y_metric = st.selectbox("Y-axis", ["utility", "ssim", "msssim", "fiq_deid"], key="as_y")
+            with col3:
+                size_metric = st.selectbox("Bubble size", ["quality", "ssim", "msssim", "fiq_deid"], key="as_s")
+
+            transposed = _transpose_results(results)
+            fig = plot_attack_surface_map(transposed, selected_ds, selected_techs, x_metric, y_metric, size_metric)
+            if not fig.empty:
+                st.pyplot(fig)
+                _export_fig(fig, f"attack_surface_{selected_ds}")
 
     # Bottom: per-technique detailed table
     st.subheader("All Results")

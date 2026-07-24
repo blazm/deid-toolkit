@@ -7,13 +7,14 @@ from tqdm import tqdm
 import warnings
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+# Import project utils BEFORE adding AdaFace to path (to avoid shadowing)
+import utils as util
 sys.path.insert(0, str(SCRIPT_DIR / "identity_verification" / "AdaFace"))
 from inference import load_pretrained_model, to_input
 from face_alignment import align
 import torch.nn as nn
 
 #from identity_verification.AdaFace.inference import load_pretrained_model, to_input
-import utils as util
 import numpy as np
 from PIL import Image
 from numpy import dot
@@ -47,12 +48,17 @@ def main():
 
     if path_to_impostor_pairs is None:
         print("No impostor pairs provided")
-        return  
+        return
     if path_to_genuine_pairs is None:
         print("No genuine pairs provided")
-        return  
-    #load model
-    model = load_pretrained_model('ir_50')
+        return
+
+    # Load model with proper device handling
+    _has_cuda = torch.cuda.is_available() and torch.cuda.device_count() > 0
+    device = torch.device('cuda' if _has_cuda else 'cpu')
+    print(f"Device: {device}")
+    model = load_pretrained_model('ir_50', device)
+    model.eval()
     
 
     #get pairs from file
@@ -88,10 +94,11 @@ def main():
         try:
             aligned_rgb_img_a = align.get_aligned_face(img_a_path)
             aligned_rgb_img_b = align.get_aligned_face(img_b_path)
-            bgr_input_a = to_input(aligned_rgb_img_a)
-            bgr_input_b = to_input(aligned_rgb_img_b)
-            feat_a, _ = model(bgr_input_a)
-            feat_b, _ = model(bgr_input_b)
+            bgr_input_a = to_input(aligned_rgb_img_a).to(device)
+            bgr_input_b = to_input(aligned_rgb_img_b).to(device)
+            with torch.no_grad():
+                feat_a, _ = model(bgr_input_a)
+                feat_b, _ = model(bgr_input_b)
        
             # Detach features from the computation graph
             feat_a = feat_a.detach()

@@ -4,13 +4,14 @@ from pathlib import Path
 from tqdm import tqdm
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+# Import project utils BEFORE adding AdaFace to path (to avoid shadowing)
+import utils as util
 sys.path.insert(0, str(SCRIPT_DIR / "identity_verification" / "AdaFace"))
 
 from inference import load_pretrained_model, to_input
 from face_alignment import align
 import torch.nn as nn
 import warnings
-import utils as util
 import numpy as np
 import pickle
 import torch
@@ -18,39 +19,35 @@ import torch.nn.functional as F
 
 EVALUATION_NAME= "adaface"
 
-#load model
-model = load_pretrained_model('ir_50').cuda()
-model.eval()
-
 # Function to save features to a file
 def save_features(filepath, features):
     with open(filepath, 'wb') as f:
         pickle.dump(features.cpu(), f)
 
 # Function to load features from a file
-def load_features(filepath):
+def load_features(filepath, device):
     with open(filepath, 'rb') as f:
-        return pickle.load(f).cuda()
+        return pickle.load(f).to(device)
 # Function to compute the cosine similarity score
 def compute_similarity(feature1, feature2):
     cosine_similarity = F.cosine_similarity(feature1, feature2)
     # Standardize the cosine similarity score to range [0, 1]
     similarity_score = (cosine_similarity + 1) / 2
     return similarity_score.item()
-    
-def get_features(image_path, features_dir): 
+
+def get_features(image_path, features_dir, model, device):
     image_name = os.path.basename(image_path)
     #save in temporary file
     feature_filepath = os.path.join(features_dir, f"{image_name}.pkl")
     # Check if the features have already been computed and saved
     if os.path.exists(feature_filepath):
-        return load_features(feature_filepath)
+        return load_features(feature_filepath, device)
     # Compute the features if not available
     aligned_rgb_img = align.get_aligned_face(image_path)
-    if aligned_rgb_img == None: 
+    if aligned_rgb_img is None:
         raise ValueError(f"{image_path} is not a facial image")
 
-    bgr_input = to_input(aligned_rgb_img).cuda()
+    bgr_input = to_input(aligned_rgb_img).to(device)
     with torch.no_grad():
         feature, _ = model(bgr_input)
     # Save the computed features for future use
@@ -83,10 +80,17 @@ def main():
 
     if path_to_impostor_pairs is None:
         print("No impostor pairs provided")
-        return  
+        return
     if path_to_genuine_pairs is None:
         print("No genuine pairs provided")
-        return  
+        return
+
+    # Load model with proper device handling
+    _has_cuda = torch.cuda.is_available() and torch.cuda.device_count() > 0
+    device = torch.device('cuda' if _has_cuda else 'cpu')
+    print(f"Device: {device}")
+    model = load_pretrained_model('ir_50', device)
+    model.eval()
 
       #get pairs from file
     genu_names_a, genu_ids_a, genu_names_b, genu_ids_b = util.read_pairs_file(path_to_genuine_pairs)
@@ -122,9 +126,9 @@ def main():
             continue
         similarity_score = 0
         try:
-            feature_original = get_features(img_a_path, temp_features_original_dir)
-            feature_deid = get_features(img_b_path, temp_features_deid_dir)
-            feature_both_original = get_features(img_c_path, temp_features_original_dir)
+            feature_original = get_features(img_a_path, temp_features_original_dir, model, device)
+            feature_deid = get_features(img_b_path, temp_features_deid_dir, model, device)
+            feature_both_original = get_features(img_c_path, temp_features_original_dir, model, device)
 
         except ValueError as e:
             print(f"(Warning) {e} - Skip")

@@ -1,7 +1,10 @@
 from email.mime import image
 import sys
 import os
+from pathlib import Path
 current_dir = os.path.dirname(os.path.abspath(__file__))
+identity_verification_dir = os.path.join(current_dir, 'identity_verification')
+sys.path.insert(0, identity_verification_dir)
 swinface_dir = os.path.join(current_dir, 'identity_verification', 'swinface')
 sys.path.append(swinface_dir)
 import numpy as np
@@ -25,28 +28,28 @@ def save_features(filepath, features):
         pickle.dump(features_dict_cpu, f)
 
 # Function to load features from a file
-def load_features(filepath):
+def load_features(filepath, device):
     with open(filepath, 'rb') as f:
         loaded_features=pickle.load(f)
-        features_cuda = {key: value.cpu() for key, value in loaded_features.items()}
+        features_cuda = {key: value.to(device) for key, value in loaded_features.items()}
         return features_cuda
-def get_features(image_path, features_dir, model):
+def get_features(image_path, features_dir, model, device):
     image_name = os.path.basename(image_path)
 
     feature_filepath = os.path.join(features_dir, f"{image_name}.pkl")
     if os.path.exists(feature_filepath):
-        return load_features(feature_filepath)
-    img_a = process_image(image_path)
+        return load_features(feature_filepath, device)
+    img_a = process_image(image_path, device)
     features = model(img_a)
     save_features(feature_filepath, features)
     return features
 
-def process_image(image_path:str):
+def process_image(image_path:str, device='cpu'):
     img = cv2.imread(image_path) # original images have to be resampled to 112x112
-    img = cv2.resize(img,  (112, 112)) 
+    img = cv2.resize(img,  (112, 112))
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = np.transpose(img, (2, 0, 1))
-    img = torch.from_numpy(img).unsqueeze(0).float()
+    img = torch.from_numpy(img).unsqueeze(0).float().to(device)
     img.div_(255).sub_(0.5).div_(0.5)
     return img
 def compute_similarity(feature1, feature2):
@@ -79,8 +82,8 @@ def main():
     technique_name = util.get_technique_name_from_path(path_to_deidentified_images)
     # Create directories for features if they don't exist
     temp_dir = util.get_temp_dir(args.root_dir, EVALUATION_NAME)
-    temp_features_original_dir= os.path.join(temp_dir, f"{dataset_name}_{technique_name}", "original")
-    temp_features_deid_dir = os.path.join(temp_dir, f"{dataset_name}_{technique_name}", "deid")
+    temp_features_original_dir = os.path.join(temp_dir, dataset_name, "original")
+    temp_features_deid_dir = os.path.join(temp_dir, dataset_name, "deid", technique_name)
     os.makedirs(temp_features_original_dir, exist_ok=True)
     os.makedirs(temp_features_deid_dir, exist_ok=True)
     
@@ -94,15 +97,19 @@ def main():
     if path_to_genuine_pairs is None:
         print("No genuine pairs provided")
         return  
-    #initialize the model 
+    #initialize the model
     cfg = SwinFaceCfg()
     model = build_model(cfg)
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    dict_checkpoint = torch.load(PATH_TO_MODEL_WEIGHTS,map_location=device)
+    _force_cpu = os.environ.get("DEID_FORCE_CPU", "0") in ("1", "true", "yes")
+    _has_cuda = not _force_cpu and torch.cuda.is_available() and torch.cuda.device_count() > 0
+    device = torch.device('cuda' if _has_cuda else 'cpu')
+    print(f"Device: {device}")
+    dict_checkpoint = torch.load(PATH_TO_MODEL_WEIGHTS, map_location=device)
     model.backbone.load_state_dict(dict_checkpoint["state_dict_backbone"])
     model.fam.load_state_dict(dict_checkpoint["state_dict_fam"])
     model.tss.load_state_dict(dict_checkpoint["state_dict_tss"])
     model.om.load_state_dict(dict_checkpoint["state_dict_om"])
+    model.to(device)
     model.eval()
     metrics_df= util.Metrics(name_score="cossim")
 
@@ -136,8 +143,8 @@ def main():
         #else compute and save 
 
         
-        features_a = get_features(img_a_path, temp_features_original_dir, model=model)
-        features_b = get_features(img_b_path, temp_features_deid_dir, model=model )
+        features_a = get_features(img_a_path, temp_features_original_dir, model=model, device=device)
+        features_b = get_features(img_b_path, temp_features_deid_dir, model=model, device=device)
 
         similarity_score = compute_similarity(features_a["Recognition"], features_b["Recognition"])
         #we can add more about the output

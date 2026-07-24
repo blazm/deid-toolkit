@@ -10,29 +10,14 @@ A toolkit for running and evaluating privacy-preserving techniques in facial bio
 ## Quick Start
 
 ```bash
-# 1. Create the conda environment
-conda env create -f environment.yml
-conda activate deid-toolkit
-
-# 2. Install the CLI
+conda env create -f environment.yml && conda activate deid-toolkit
 pip install -e .
-
-# 3. Initialize the config
-deid config migrate --yes
-
-# 4. Select datasets, techniques, evaluations
-deid list datasets
-deid list techniques
-deid list evaluation
-
+deid migrate --yes
+deid list datasets   # e.g. arface lfw fri mug-still
 deid select datasets arface ck+_fix
 deid select techniques deepprivacy2 ksamenet
-deid select evaluation ssim lpips vggface
-
-# 5. Run the pipeline
+deid select evaluation ssim lpips vggface adaface_iv arcface swinface
 deid run all
-
-# 6. Explore results
 deid explore
 ```
 
@@ -40,77 +25,190 @@ deid explore
 
 ```bash
 # List
-deid list datasets                 # Available datasets
-deid list techniques               # Available techniques
-deid list evaluation               # Available metrics
-deid list results                  # Available results
-deid list selected                 # Preview what 'deid run selected' would do
+deid list datasets|techniques|evaluation|results|selected
 
 # Select
-deid select datasets arface lfw     # By name
-deid select datasets 0 1            # By index
+deid select datasets arface lfw       # By name or index
 deid select techniques deepprivacy2
 deid select evaluation ssim lpips
+deid select all -d arface -t dp2 -e ssim  # All in one command
+deid select wizard                     # Interactive guided selection
 
 # Run
-deid run all                       # Full pipeline (preprocess + techniques + evaluation)
-deid run preprocess                # Alignment + pair generation
-deid run techniques                # Techniques only
-deid run evaluation                # Evaluation only
-deid run selected                  # Resume incomplete stages
-deid run logs                      # Latest pipeline log
+deid run all                           # Full pipeline (preprocess + techniques + eval)
+deid run preprocess                    # Alignment + pair generation
+deid run techniques                    # Techniques only
+deid run evaluation                    # Evaluation only
+deid run selected                      # Resume incomplete stages
+deid run logs                          # Show latest pipeline log
 
-# Config
-deid show                          # Current configuration
-deid migrate [--yes]               # Migrate legacy config.ini → deid-config.yaml
-deid explore [--port 8501]         # Streamlit result browser
+# Config & UI
+deid show                              # Current config
+deid migrate [--yes]                   # Migrate legacy config.ini → deid-config.yaml
+deid migrate-structure                 # Create workspace dirs with .gitkeep files
+deid explore [--port 8501]             # Launch Streamlit web UI
+deid serve [--port 8501]               # Auto-reload server (watchdog-based)
 ```
 
-## Architecture
+## Available Evaluation Metrics
+
+### Image Quality (perceptual similarity)
+
+| Script | Name for `deid select` | What it measures |
+|--------|----------------------|-----------------|
+| `ssim.py` | `ssim` | Structural Similarity Index |
+| `lpips.py` | `lpips` | Learned Perceptual Image Patch Similarity |
+| `mse.py` | `mse` | Mean Squared Error |
+| `FID.py` | `fid` | Fréchet Inception Distance |
+| `ediffiqa.py` | `ediffiqa` | E-DIFFIQA (no-reference image quality) |
+
+### Identity Verification (cosine similarity of face embeddings)
+
+| Script | Name for `deid select` | What it measures | Status |
+|--------|----------------------|-----------------|--------|
+| `adaface_iv.py` | `adaface_iv` | AdaFace full verification protocol | ✅ Working |
+| `adaface_optimized.py` | `adaface_optimized` | AdaFace with feature caching (faster) | ✅ Working |
+| `arcface.py` | `arcface` | ArcFace ONNX-based verification (fastest) | ✅ Working |
+| `swinface.py` | `swinface` | SWINFace full verification protocol | ✅ Working |
+| `deepface_vggface.py` | `deepface_vggface` | VGG-Face via DeepFace (H5 weights, bypasses broken .t7 loader) | ✅ Working |
+| `vggface.py` / `vggface_optimized.py` | `vggface` / `vggface_optimized` | VGG-Face (.t7 loader — needs torchfile fix) | ⚠️ Loader issue |
+
+### Data Utility (attribute preservation after de-identification)
+
+| Script | Name for `deid select` | What it measures |
+|--------|----------------------|-----------------|
+| **Identity** | | |
+| `deepface_GD.py` | `deepface_gender` | Gender classification match rate |
+| `dan.py` | `dan` | Facial expression (emotion) via AffecNet |
+| **DeepFace Demographics** | | |
+| `deepface_expression.py` | `deepface_expression` | Facial expression classification |
+| `deepface_age.py` | `deepface_age` | Age bucket classification (child/teen/adult/mid_adult/elderly) |
+| `deepface_race.py` | `deepface_race` | Race classification |
+
+### Other Evaluations
+
+| Script | Name for `deid select` | What it measures |
+|--------|----------------------|-----------------|
+| `hsemotion.py` | `hsemotion` | HSEmotion facial emotions (needs external module) |
+| `restnet18_GD.py` | `restnet18_GD` | Gender via ResNet18 (needs external module + weight) |
+| `deepface_GD.py` | `deepface_GD` | Legacy DeepFace gender (alias for `deepface_gender`) |
+
+## Running the Pipeline — Full Example
+
+```bash
+# 1. Set up workspace
+deid migrate-structure
+
+# 2. Edit config or use CLI to select
+deid select datasets fri mug-still
+deid select techniques blur pixelize deepprivacy2
+deid select evaluation ssim lpips arcface adaface_iv swinface \
+                       deepface_gender deepface_expression deepface_age dan
+
+# 3. Run full pipeline
+deid run all
+
+# Results appear in root_dir/results/{technique}/{dataset}/*.csv
+
+# 4. Browse results in browser
+deid explore
+```
+
+## Pipeline Flow
+
+1. **Preprocess**: MTCNN alignment (`align_face_mtcnn.py`) + pair generation (`generate_img_pairs_all.py`)
+2. **Techniques**: Runs each technique script (blurs, pixelation, GANs, etc.)
+3. **Evaluations**: Runs selected eval scripts on each dataset/technique combo
+4. **Validation**: Always runs evaluations on aligned images as reference baseline (`results/validation/{ds}/`)
+5. **Reports**: Auto-generates PDF reports via `deid.reports.pdf_export`
+
+## Data Paths
+
+| Data | Path |
+|------|------|
+| Original images | `root_dir/datasets/original/{dataset_name}/img/` |
+| Aligned images | `root_dir/datasets/aligned/{dataset_name}/` |
+| De-identified images | `root_dir/datasets/deidentified/{technique_name}/{dataset_name}/` |
+| Labels | `root_dir/datasets/labels/{dataset_name}_labels.csv` |
+| Pairs | `root_dir/datasets/pairs/{dataset_name}_{impostor\|genuine}_pairs.txt` |
+| Results (evaluation) | `root_dir/results/{technique}/{dataset}/{metric}.csv` |
+| Results (visualization) | `root_dir/results/viz/{dataset}_{model}/` |
+| Embedding cache | `root_dir/preprocess/temp/{model}/{dataset}/` |
+| Config | `root_dir/deid-config.yaml` |
+
+## CSV Result Format
+
+Evaluation scripts produce CSVs with a per-metric schema:
+
+| Eval type | Columns | Example |
+|-----------|---------|---------|
+| Verification (SWINFace, AdaFace Opt.) | `image,cossim,img_b,ground_truth` (+ `cossim_originals` for adaface_optimized) | `00172.jpg,0.493,00172.jpg,1` |
+| Verification (ArcFace) | `image,cossim,ground_truth` — no `img_b` column | `00172.jpg,0.493,1` |
+| Image quality (SSIM, LPIPS, MSE) | `image,{metric}` — per-image score | `00172.jpg,0.82` |
+| Attribute preservation (DAN, DeepFace*) | `image,isMatch` — 1 if attribute preserved | `00172.jpg,1` |
+| eDifFIQA | Three separate CSVs: `*_aligned.csv`, `*_deid.csv`, `*_delta.csv` with `image,quality_{x}` columns | `00172.jpg,3.45` |
+| FID | Single row with `image` = directory path and metric column = distribution-level score | Not per-image |
+
+## Model Weights
+
+Pre-trained weights live in `deid/evaluation/weights/`:
+
+| File | Used by | Status |
+|------|---------|--------|
+| `adaface_ir50_ms1mv2.ckpt` | AdaFace eval scripts | ✅ Present |
+| `checkpoint_step_79999_gpu_0.pt` | SWINFace | ✅ Present |
+| `model.onnx` | ArcFace (ONNX) | ✅ Present |
+| `VGG_FACE.t7` | VGG-Face (.t7 — loader broken) | ⚠️ Loader issue |
+| `affecnet8_epoch5_acc0.6209.pth` | DAN (emotion) | ✅ Present |
+| `face_gender_classification_transfer_learning_with_ResNet18.pth` | ResNet18 gender | ✅ Present |
+
+DeepFace weights (`~/.deepface/weights/`) are auto-downloaded on first use:
+- `vgg_face_weights.h5` — VGG-Face (via DeepFace)
+- `gender_model_weights.h5`, `age_model_weights.h5`, `facial_expression_model_weights.h5`, `race_model_single_batch.h5` — Demographic classifiers
+
+## Embedding Cache Structure
+
+Verification models cache embeddings as `.pkl` files for reuse across evaluations:
 
 ```
-deid/                          # CLI package + built-in scripts
-  cli/                         # Typer CLI commands
-  config/                      # Unified config (Pydantic + YAML)
-  pipeline.py                  # Pipeline orchestrator
-  utils/                       # Ported utilities (align_face_mtcnn, pair generation)
-  techniques/                  # Built-in DEID technique scripts
-  evaluation/                  # Built-in evaluation scripts + identity verification protocols
-  environments/                # Built-in conda env configs
-  explore/                     # Streamlit app (Compare/Summary/Embeddings/Metrics/Gallery)
-  __main__.py                  # Entry: `python -m deid`
-
-legacy/                        # Deprecated old codebase (preserved for reference)
-  modules/                     # Legacy cmd.Cmd shell
-  evaluations/, techniques/    # Legacy scripts
-  environments/                # Legacy conda configs
-  visualization/               # Legacy plot scripts
-
-root_dir/                      # Data directory (user extension points)
-  deid-config.yaml             # Active config (selections + settings)
-  pipeline.yml                 # Rename mappings + technique args
-  datasets/                    -- original/, aligned/, labels/, pairs/
-  techniques/                  -- User extension: custom technique scripts
-  evaluation/                  -- User extension: custom evaluation scripts
-  environments/                -- User extension: custom conda env YAMLs
-  results/                     -- Evaluation CSVs
+root_dir/preprocess/temp/
+  swinface/
+    {dataset}/original/              # Original face embeddings (shared across techniques)
+    {dataset}/deid/{technique}/      # De-identified embeddings (computed per technique)
+  adaface/
+    {dataset}_{technique}/original/  # AdaFace: per-technique originals (not shared)
+    {dataset}_{technique}/deid/      # AdaFace: per-technique de-identified
+  deepface_vggface/
+    {dataset}/aligned/               # DeepFace VGG-Face: shared originals
+    {dataset}_{technique}/deid/      # DeepFace VGG-Face: per technique
 ```
 
-## Adding a New Technique
+**Note:** ArcFace does NOT cache embeddings — it uses ONNX inference without pickle caching. Only SWINFace, AdaFace Optimized, and DeepFace VGG-Face have embedding caches.
 
-**Built-in** — add to `deid/techniques/` and `deid/environments/`
-**User custom** — place `my_technique.py` in `root_dir/techniques/` and `my_technique.yml` in `root_dir/environments/`. User scripts take priority over built-in.
+**Embedding formats:**
+| Model | Dimension | Pickle Format |
+|-------|-----------|---------------|
+| SWINFace | 512-d | `dict[str, torch.Tensor]` with `"Recognition"` key |
+| AdaFace | 512-d | `torch.Tensor` |
+| DeepFace VGG-Face | 4096-d | raw `numpy.ndarray` |
 
-## Adding a New Evaluation
+**Important:** `adaface_iv.py` (full verification protocol) does NOT cache embeddings — it re-aligns and extracts features every run via internal MTCNN. Only `adaface_optimized.py` and `deepface_vggface.py` cache embeddings.
 
-**Built-in** — add to `deid/evaluation/`
-**User custom** — place `my_metric.py` in `root_dir/evaluation/`. User scripts take priority over built-in.
+## Embedding Space Visualization
 
-Script receives: `--aligned_path`, `--deid_path`, `--dataset_name`, `--technique_name`, `--impostor_pairs_filepath`, `--genuine_pairs_filepath`, `--save_path`, `--root_dir`, `--eval_package_dir`
+CLI tool and Streamlit tab for analyzing how de-identification techniques manipulate identity embeddings:
+
+```bash
+python -m deid.explore.embedding_viz_cli \
+  --dataset celeba-test_aligned --model swinface \
+  --techniques blur pixelize --method umap
+```
+
+Output: `root_dir/results/viz/{dataset}_{model}/` — PDF/PNG figures + CSV metrics (displacement fields, identity collapse charts, multi-technique comparison overlays). Projection methods: UMAP, PCA, t-SNE. Interactive version available via `deid serve` → Results → Embedding Analysis tab.
 
 ## Configuration
 
-`root_dir/deid-config.yaml` is the single source of truth:
+`root_dir/deid-config.yaml`:
 
 ```yaml
 root_dir: root_dir
@@ -122,100 +220,61 @@ techniques:
   selected: [deepprivacy2, ksamenet]
   args: {ksamenet: "--postprocessing_alignment yes"}
 evaluation:
-  selected: [ssim, lpips]
+  selected: [ssim, lpips, arcface, adaface_iv, deepface_gender]
 ```
 
-Legacy `config.ini` is still read as a fallback during migration.
+## Architecture
+
+```
+deid/                          # CLI package + built-in scripts
+  cli/                         # Typer CLI commands
+  config/                      # Unified config (Pydantic + YAML)
+  pipeline.py                  # Pipeline orchestrator
+  utils/                       # Ported utilities (align_face_mtcnn, pair generation)
+  techniques/                  # Built-in DEID technique scripts
+  evaluation/                  # Built-in evaluation scripts
+    data_utility/              # DAN emotion classifier module
+      DAN/networks/dan.py      # Attention-based emotion network
+    identity_verification/     # Full ID verification protocols
+      AdaFace/                 # AdaFace (MTCNN alignment + IR-50 backbone)
+      swinface/                # SWINFace (SwinT backbone + attention module)
+      vgg-face.pytorch/        # VGG-Face PyTorch port (.t7 loader — has issues)
+    weights/                   # Pre-trained model checkpoints
+  environments/                # Built-in conda env configs
+  explore/                     # Streamlit app (Compare/Summary/Embeddings/Metrics)
+  __main__.py                  # Entry: `python -m deid`
+
+root_dir/                      # Data directory (user extension points)
+  deid-config.yaml             # Active config (selections + settings)
+  datasets/                    -- original/, aligned/, labels/, pairs/
+  techniques/                  -- User custom technique scripts
+  evaluation/                  -- User custom evaluation scripts
+  environments/                -- User custom conda env YAMLs
+  results/                     -- Evaluation CSVs
+```
+
+## Two-Machine Deployment
+
+```bash
+# Machine A — Compute (GPU required)
+pip install -e ".[full]"
+deid run all
+robocopy root_dir/results user@B:/workspace/root_dir/results /E
+
+# Machine B — Visualization (no GPU needed)
+pip install -e ".[explore]"
+deid explore --port 8501
+```
+
+## Adding Evaluations
+
+**Built-in** — add to `deid/evaluation/`
+**User custom** — place in `root_dir/evaluation/`. User scripts take priority.
+
+Script receives: `--aligned_path`, `--deid_path`, `--dataset_name`, `--technique_name`, `--impostor_pairs_filepath`, `--genuine_pairs_filepath`, `--save_path`, `--root_dir`, `--eval_package_dir`
 
 ## Prerequisites
 
 - **Python 3.9+**
 - **Conda/Mamba** (see `environment.yml`)
-- **CUDA-capable GPU** for deep learning techniques
-
-## Installation
-
-```bash
-# 1. Create the conda environment (named "deid-toolkit")
-conda env create -f environment.yml
-conda activate deid-toolkit
-
-# 2. Install the toolkit package (choose one):
-pip install -e .                       # Core CLI only (compute pipeline + config)
-pip install -e ".[reports]"            # + PDF report generation (matplotlib, seaborn)
-pip install -e ".[explore]"            # + Streamlit web UI (browse results in browser)
-pip install -e ".[full]"               # Everything (deep learning deps for all techniques)
-
-# 3. Set up the workspace directory
-deid migrate-structure                 # Creates root_dir/ with needed subdirectories
-cp examples/workspace/deid-config.yaml root_dir/  # Copy config template
-
-# 4. Initialize config (if migrating from legacy config.ini)
-deid migrate --yes
-```
-
-### Installation Tiers
-
-| Command | Includes | Use case |
-|---------|----------|----------|
-| `pip install -e .` | Core CLI + config | Run pipeline, list/select commands |
-| `pip install -e ".[reports]"` | + matplotlib, seaborn | PDF report generation |
-| `pip install -e ".[explore]"` | + streamlit, plotly | Web UI (reads results CSVs) |
-| `pip install -e ".[full]"` | Everything | Complete toolkit (all techniques + evals) |
-
-### Two-Machine Deployment
-
-For the typical workflow (compute on workstation A, serve visualizations on server B):
-
-```bash
-# Machine A — Compute workstation (GPU required)
-conda activate deid-toolkit
-pip install -e ".[full]"
-deid run all                           # Runs full pipeline
-# Transfer results to Machine B:
-robocopy root_dir/results user@B:/workspace/root_dir/results /E
-robocopy root_dir/datasets/deidentified user@B:/workspace/root_dir/datasets/deidentified /E
-
-# Machine B — Visualization server (no GPU needed)
-conda activate deid-toolkit
-pip install -e ".[explore]"
-deid explore --port 8501               # Serves web UI at localhost:8501
-```
-
-## Daemon Mode (`deid serve`)
-
-Run the explore app continuously with auto-reload on file changes — ideal for development and long-running demo setups.
-
-```bash
-# Start in a tmux session (background)
-tmux new -d -s deid
-deid serve
-
-# Attach back anytime
-tmux attach -t deid
-
-# Stop
-tmux kill-session -t deid
-```
-
-Or run directly (blocks the terminal):
-
-```bash
-deid serve --port 8501
-```
-
-See [`DAEMON.md`](DAEMON.md) for full details.
-
-## Data Paths
-
-All data lives under `root_dir/` (your workspace folder — configurable via `deid-config.yaml`):
-
-| Data | Path |
-|------|------|
-| Original images | `root_dir/datasets/original/{dataset_name}/img/` |
-| Aligned images | `root_dir/datasets/aligned/{dataset_name}/` |
-| De-identified images | `root_dir/datasets/deidentified/{technique_name}/{dataset_name}/` |
-| Labels | `root_dir/datasets/labels/{dataset_name}_labels.csv` |
-| Pairs | `root_dir/datasets/pairs/{dataset_name}_{impostor\|genuine}_pairs.txt` |
-| Results | `root_dir/results/` |
-| Config | `root_dir/deid-config.yaml` |
+- **CUDA-capable GPU** for deep learning techniques (PyTorch 2.7+ recommended for sm_120 GPUs)

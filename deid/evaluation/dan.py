@@ -22,7 +22,8 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 AFFECT_NET_PATH = str(SCRIPT_DIR / "weights" / "affecnet8_epoch5_acc0.6209.pth")
 class Model():
     def __init__(self):
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        _has_cuda = torch.cuda.is_available() and torch.cuda.device_count() > 0
+        self.device = torch.device("cuda:0" if _has_cuda else "cpu")
         self.data_transforms = transforms.Compose([
                                     transforms.Resize((224, 224)),
                                     transforms.ToTensor(),
@@ -34,7 +35,7 @@ class Model():
         #checkpoint = torch.load('./checkpoints/affecnet8_epoch6_acc0.6326.pth',
         #    map_location=self.device)
         checkpoint = torch.load(AFFECT_NET_PATH,
-            map_location=self.device)       
+            map_location=self.device)
         self.model.load_state_dict(checkpoint['model_state_dict'],strict=True)
         self.model.to(self.device)
         self.model.eval()

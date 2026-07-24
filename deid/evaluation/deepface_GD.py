@@ -1,69 +1,49 @@
-import tqdm
-from deepface import DeepFace
+"""DeepFace-based gender classification evaluation."""
 import os
-import argparse
+from deepface import DeepFace
 import utils as util
 from tqdm import tqdm
 
-#import warnings
-#warnings.filterwarnings('ignore', category=FutureWarning)
+labels_map = {"Man": 1, "Woman": -1}
 
-
-labels_map = {"Man": 1, "Woman":-1}
 
 def main():
     args = util.read_args()
-    aligned_dataset_path = args.aligned_path
-    deidentified__dataset_path  = args.deidentified_path
+    aligned_path = args.aligned_path
+    deid_path = args.deidentified_path
     path_to_save = args.save_path
     path_to_log = args.dir_to_log
 
-    files = os.listdir(aligned_dataset_path)
-    #output_score_file = util.get_output_filename("deepface", aligned_dataset_path, deidentified__dataset_path)
-    #f = open(output_score_file, 'w')
+    files = os.listdir(aligned_path)
+    ds = util.get_dataset_name_from_path(aligned_path)
+    tech = util.get_technique_name_from_path(deid_path)
+    metrics_df = util.Metrics(name_score="isMatch")
 
-    dataset_name = util.get_dataset_name_from_path(aligned_dataset_path)
-    technique_name = util.get_technique_name_from_path(deidentified__dataset_path)
-    metrics_df= util.Metrics(name_score="isMatch")
-    
-    device = 'cuda' if True else 'cpu'
-
-
-    for i, file in enumerate(tqdm(files, total =len(files), desc=f"deepface | {dataset_name}-{technique_name} ")):
+    for i, file in enumerate(tqdm(files, total=len(files), desc=f"deepface_gender | {ds}-{tech}")):
         if util._TEST_SINGLE and i > 0:
             break
-        aligned_img_path = os.path.join(aligned_dataset_path, file)
-        deidentified_img_path = os.path.join(deidentified__dataset_path, file)
-        if not os.path.exists(aligned_img_path):
-            util.log(os.path.join(path_to_log,"deepface.txt"), 
-                     f"({dataset_name}) The source images are not in {aligned_img_path} ")
-            print(f"{aligned_dataset_path} does not exist")
+        path_a = os.path.join(aligned_path, file)
+        path_d = os.path.join(deid_path, file)
+        if not os.path.exists(path_a):
+            util.log(os.path.join(path_to_log, "deepface_gender.txt"), f"({ds}) Missing: {path_a}")
             continue
-        if not  os.path.exists(deidentified_img_path):
-            util.log(os.path.join(path_to_log,"deepface.txt"), 
-                     f"({technique_name}) The deidentified images are not in {deidentified_img_path} ")
-            print(f"{deidentified_img_path} does not exist")
+        if not os.path.exists(path_d):
+            util.log(os.path.join(path_to_log, "deepface_gender.txt"), f"({tech}) Missing: {path_d}")
             continue
-        #run the predicctions
-        pred_aligned = DeepFace.analyze(img_path = aligned_img_path, actions = ['gender'],enforce_detection=False)
-        pred_deidentified = DeepFace.analyze(img_path = deidentified_img_path, actions = ['gender'],enforce_detection=False)
-        #Log the result
-        #f.writelines(f"{emotion_aligned}, {emotion_deidentified},{True if emotion_aligned == emotion_deidentified else False}")
-        gender_aligned = pred_aligned[0].get("dominant_gender", [])#.get("dominant_gender", "-")
-        gender_deidentified = pred_deidentified[0].get("dominant_gender", [])#.get("dominant_gender", "--")
-        
-        #Increase the succeses if are equal
-        
-        is_match = 1 if gender_aligned == gender_deidentified else 0
-        metrics_df.add_score(img=file,metric_result=is_match)
-        metrics_df.add_column_value("aligned_predictions", labels_map[gender_aligned])
-        metrics_df.add_column_value("deidentified_predictions", labels_map[gender_deidentified])
-    #f.close()
-    metrics_df.save_to_csv(path_to_save)
-    print(f"deepface saved into {path_to_save}")
 
-    return
+        pred_a = DeepFace.analyze(img_path=path_a, actions=["gender"], detector_backend="skip")
+        pred_d = DeepFace.analyze(img_path=path_d, actions=["gender"], detector_backend="skip")
+
+        ga = pred_a[0].get("dominant_gender")
+        gd = pred_d[0].get("dominant_gender")
+        is_match = 1 if ga == gd else 0
+        metrics_df.add_score(file, is_match)
+        metrics_df.add_column_value("aligned_predictions", labels_map.get(ga, 0))
+        metrics_df.add_column_value("deidentified_predictions", labels_map.get(gd, 0))
+
+    metrics_df.save_to_csv(path_to_save)
+    print(f"deepface_gender saved into {path_to_save}")
+
 
 if __name__ == "__main__":
-    #main()
     main()

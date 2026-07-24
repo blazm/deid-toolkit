@@ -138,3 +138,5 @@ raw_visualisations_to_port/
 
 # DAEMON.md — generated docs
 DAEMON.md
+
+deid/evaluation/identity_verification/vgg-face.pytorch/

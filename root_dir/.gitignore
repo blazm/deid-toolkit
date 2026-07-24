@@ -1,0 +1,8 @@
+.gitkeep
+results/
+preprocess/temp/
+deid-config.yaml
+pipeline.yml
+datasets/deidentified/
+datasets/aligned/
+logs/

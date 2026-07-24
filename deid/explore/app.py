@@ -200,9 +200,11 @@ def _render_toolkit_results():
         tab_compare, tab_summary, tab_unsupervised,
         tab_reid, tab_metrics, tab_clusters,
         tab_gallery, tab_techniques,
+        tab_embedding_analysis, tab_interactive_viz,
     ) = st.tabs([
         "Compare", "Summary", "Embeddings", "Re-ID Risk",
         "Metrics", "Clusters", "Gallery", "Techniques",
+        "Embedding Analysis", "Interactive Viewer",
     ])
 
     with tab_compare:
@@ -229,12 +231,15 @@ def _render_toolkit_results():
         from deid.explore.techniques_grid import render as render_techniques
         render_techniques()
 
+    with tab_embedding_analysis:
+        from deid.explore.embedding_analysis_tab import render as render_embedding_analysis
+        render_embedding_analysis()
+
+    with tab_interactive_viz:
+        from deid.explore.interactive_embedding_tab import render as render_interactive_viz
+        render_interactive_viz()
+
     with tab_unsupervised:
-        from deid.explore.unsupervised import (
-            compute_reid_risk,
-            plot_before_after,
-            plot_reid_risk,
-        )
         st.subheader("Embedding Clustering — t-SNE/UMAP")
         st.caption("Project identity embeddings to 2D. Colored by available labels (gender, expression, ethnicity).")
 

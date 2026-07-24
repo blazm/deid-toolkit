@@ -1,0 +1,23 @@
+dataset_renames: {}
+datasets:
+  selected:
+  - fri
+  - mug-still
+environments: {}
+evaluation:
+  selected:
+  - ssim
+  - mse
+  - ediffiqa
+evaluation_renames: {}
+logs_dir: logs
+result_dir: results
+root_dir: root_dir
+technique_renames: {}
+techniques:
+  args: {}
+  selected:
+  - blur
+  - pixelize
+visualization:
+  selections: []

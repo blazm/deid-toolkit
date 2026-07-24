@@ -6,20 +6,22 @@ from face_alignment import align
 import numpy as np
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-WEIGHTS_DIR = str(SCRIPT_DIR.parent / "weights")
+WEIGHTS_DIR = str(SCRIPT_DIR.parent.parent / "weights")
 adaface_models = {
     'ir_50': str(Path(WEIGHTS_DIR) / "adaface_ir50_ms1mv2.ckpt"),
 }
 
-def load_pretrained_model(architecture='ir_50'):
+def load_pretrained_model(architecture='ir_50', device=None):
     # load model and pretrained statedict
     assert architecture in adaface_models.keys()
+    if device is None:
+        device = torch.device('cpu')
     model = net.build_model(architecture)
-    statedict = torch.load(adaface_models[architecture])['state_dict']
+    statedict = torch.load(adaface_models[architecture], map_location=device)['state_dict']
     model_statedict = {key[6:]:val for key, val in statedict.items() if key.startswith('model.')}
     model.load_state_dict(model_statedict)
     model.eval()
-    return model
+    return model.to(device)
 
 def to_input(pil_rgb_image):
     np_img = np.array(pil_rgb_image)
