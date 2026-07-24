@@ -40,7 +40,7 @@ Identity-colored rings for cluster preservation analysis.
 ```bash
 # CLI (PDF + PNG output)
 python -m deid.explore.embedding_viz_cli \
-  --dataset celeba-test_aligned --techniques blur pixelize \
+  --dataset celeba-test --techniques blur pixelize \
   --model swinface --method umap --output root_dir/results/viz/
 
 # Interactive: deid serve → Results → Embedding Analysis → Displacement tab
@@ -81,7 +81,7 @@ plus a per-identity metrics table (CSV exportable).
 ```bash
 # CLI (PDF + CSV metrics table)
 python -m deid.explore.embedding_viz_cli \
-  --dataset celeba-test_aligned --techniques blur pixelize \
+  --dataset celeba-test --techniques blur pixelize \
   --model swinface --output root_dir/results/viz/
 
 # Interactive: deid serve → Results → Embedding Analysis → Collapse Analysis tab
@@ -120,7 +120,7 @@ Current "attack surface" analysis places techniques in a 2D metric space (privac
 ```bash
 # CLI (single PDF with all techniques overlaid)
 python -m deid.explore.embedding_viz_cli \
-  --dataset celeba-test_aligned --techniques blur pixelize deepprivacy2 ksamenet \
+  --dataset celeba-test --techniques blur pixelize deepprivacy2 ksamenet \
   --model swinface --method umap --output root_dir/results/viz/
 
 # Interactive: deid serve → Results → Embedding Analysis → Technique Comparison tab
@@ -159,7 +159,7 @@ Most de-identification papers evaluate on a single dataset or report aggregate r
 
 **Methodology:**
 
-1. Run displacement analysis independently on studio-captured (mug-still) and in-the-wild (celeba-test_aligned) datasets
+1. Run displacement analysis independently on studio-captured (mug-still) and in-the-wild (celeba-test) datasets
 2. Compare mean displacement distributions (Kolmogorov-Smirnov test)
 3. Analyze directional consistency: do displacement vectors point in similar directions across datasets?
 

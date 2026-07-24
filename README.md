@@ -196,7 +196,7 @@ CLI tool and Streamlit tab for analyzing how de-identification techniques manipu
 
 ```bash
 python -m deid.explore.embedding_viz_cli \
-  --dataset celeba-test_aligned --model swinface \
+  --dataset celeba-test --model swinface \
   --techniques blur pixelize --method umap
 ```
 

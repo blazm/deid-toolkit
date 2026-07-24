@@ -33,12 +33,19 @@ def datasets() -> None:
     loader = ConfigLoader()
     original = set(loader.load_datasets())
     aligned = set(loader.load_aligned_datasets())
+    unaligned_names = loader.unaligned_datasets()
     all_names = sorted(original | aligned)
     if not all_names:
-        typer.echo("No datasets found.")
+        typer.echo("No datasets found. Place raw data in:")
+        typer.echo(f"  {loader.settings.original_path}/{{dataset}}/")
         return
     for i, name in enumerate(all_names):
-        marker = " [aligned]" if name in aligned else ""
+        if name in aligned and name in unaligned_names:
+            marker = " [aligned + original]"
+        elif name in aligned:
+            marker = " [aligned]"
+        else:
+            marker = " [needs alignment]"
         typer.echo(f"  {i}. {name}{marker}")
 
 
@@ -217,8 +224,8 @@ def datasets(items: list[str]) -> None:
     """
     from deid.config.loader import ConfigLoader
     loader = ConfigLoader()
-    # Prefer aligned datasets (most users have pre-aligned data)
-    all_names = loader.load_aligned_datasets() or loader.load_datasets()
+    # Show both aligned and unaligned for selection
+    all_names = loader.load_aligned_datasets() + loader.unaligned_datasets()
     if not all_names:
         typer.echo("No datasets available.")
         return
@@ -347,13 +354,41 @@ def wizard() -> None:
     typer.echo("=== DEID Toolkit Wizard ===")
     typer.echo()
 
+    unaligned = loader.unaligned_datasets()
+    all_names_for_selection = all_ds + unaligned
+
+    if not all_names_for_selection:
+        typer.echo("No datasets found. Place raw datasets in:")
+        typer.echo(f"  {loader.settings.original_path}/{{dataset-name}}/img/")
+        typer.echo("Or pre-aligned images in:")
+        typer.echo(f"  {loader.settings.aligned_path}/{{dataset-name}}/")
+        typer.echo()
+        return
+
     typer.echo("Available datasets:")
-    for i, name in enumerate(all_ds):
-        typer.echo(f"  [ ] {i}. {name}")
+    idx = 0
+    for name in all_names_for_selection:
+        tag = "" if name in all_ds else " [needs alignment]"
+        typer.echo(f"  [ ] {idx}. {name}{tag}")
+        idx += 1
     typer.echo()
 
     ds_input = typer.prompt("Select datasets (indices or names, space/comma separated)").strip()
-    ds_selected = _parse_selection(ds_input, all_ds, "dataset") if ds_input else []
+    ds_selected = _parse_selection(ds_input, all_names_for_selection, "dataset") if ds_input else []
+
+    # Check which selected datasets need alignment
+    needs_align = [ds for ds in ds_selected if ds not in all_ds]
+    if needs_align:
+        typer.echo()
+        typer.echo(f"The following datasets need MTCNN alignment first: {', '.join(needs_align)}")
+        align_now = typer.confirm("Run alignment now? (takes ~5-30 min per dataset)", default=True)
+        if align_now:
+            from deid.pipeline import run_preprocess
+            typer.echo()
+            typer.echo(f"Aligning {len(needs_align)} dataset(s)...")
+            run_preprocess(loader)
+            # Refresh aligned list after alignment
+            all_ds = loader.load_aligned_datasets()
 
     # --- Techniques ---
     typer.echo()
@@ -537,7 +572,7 @@ def _run_selected(loader: "ConfigLoader") -> None:
 # -------------- --------------------------------------------------
 
 def _setup_logging(quiet: bool = False) -> None:
-    """Configure logging and warnings. Set DEID_QUIET env var for child processes."""
+    """Configure logging and warnings. Set env vars for child processes."""
     import logging
     import warnings
 
@@ -545,6 +580,9 @@ def _setup_logging(quiet: bool = False) -> None:
         os.environ["DEID_QUIET"] = "1"
         warnings.filterwarnings("ignore")
         logging.basicConfig(level=logging.ERROR, format="%(levelname)s: %(message)s")
+        # Suppress TensorFlow oneDNN and internal warnings
+        os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
+        os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
     else:
         logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 

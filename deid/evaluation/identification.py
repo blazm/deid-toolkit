@@ -1,18 +1,21 @@
 """Identification evaluation: gallery search producing CMC curve data.
 
-Loads identity labels, splits each identity's images into gallery and probe,
-computes DeepFace embeddings for probe and gallery images, ranks gallery
+Loads cached .pkl embeddings (produced by verification scripts), splits
+images into gallery/probe per identity using label CSVs, ranks gallery
 identities by cosine similarity, and outputs per-probe match data for CMC.
 
-CSV output columns:
-    probe_image, true_identity, rank, matched_identity, rank1_score,
-    rank5_score, rank1_correct
+Supports all 4 verification models: arcface, adaface_optimized, swinface, deepface_vggface.
+Embeddings are read from root_dir/preprocess/temp/{model}/{dataset}/original/.
+
+CSV output columns (per probe):
+    probe_image, true_identity, rank, rank1_correct, rank2_correct, ..., rank20_correct
 """
 from __future__ import annotations
 
 import argparse
 import csv
 import os
+import pickle
 import sys
 from pathlib import Path
 from collections import defaultdict
@@ -20,21 +23,47 @@ from collections import defaultdict
 import numpy as np
 from tqdm import tqdm
 
-# Ensure evaluation dir is on path for utils
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import utils as util
 
 
+def load_cached_embeddings(cache_dir: str) -> dict[str, np.ndarray]:
+    """Load all .pkl embeddings from a directory.
+
+    Returns {image_name_without_ext: numpy_embedding} dict.
+    """
+    embs = {}
+    if not os.path.isdir(cache_dir):
+        return embs
+    for f in os.listdir(cache_dir):
+        if f.endswith(".pkl"):
+            try:
+                with open(os.path.join(cache_dir, f), "rb") as fh:
+                    data = pickle.load(fh)
+                name = f[:-4]  # strip .pkl
+                if isinstance(data, dict):
+                    # SWINFace format: {"Recognition": tensor}
+                    for _, v in data.items():
+                        embs[name] = np.array(v.cpu() if hasattr(v, "cpu") else v)
+                elif hasattr(data, "cpu"):
+                    embs[name] = data.cpu().numpy()
+                else:
+                    embs[name] = np.array(data)
+            except Exception as e:
+                print(f"  [WARN] Failed to load {f}: {e}")
+    return embs
+
+
 def cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
-    norm_a = np.linalg.norm(a)
-    norm_b = np.linalg.norm(b)
-    if norm_a == 0 or norm_b == 0:
+    na = np.linalg.norm(a)
+    nb = np.linalg.norm(b)
+    if na < 1e-10 or nb < 1e-10:
         return 0.0
-    return float(np.dot(a, b) / (norm_a * norm_b))
+    return float(np.dot(a, b) / (na * nb))
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Identification evaluation")
+    parser = argparse.ArgumentParser(description="Identification evaluation (gallery search)")
     parser.add_argument("aligned_path", type=str, help="Path to aligned (original) images")
     parser.add_argument("deidentified_path", type=str, help="Path to de-identified images")
     parser.add_argument("--dataset_name", type=str, default="")
@@ -43,6 +72,10 @@ def main() -> None:
     parser.add_argument("--genuine_pairs_filepath", type=str, default="")
     parser.add_argument("--save_path", type=str, help="Output CSV path")
     parser.add_argument("--dir_to_log", type=str, default=".")
+    parser.add_argument("--root_dir", type=str, default=".", help="Root directory (for cache lookup)")
+    parser.add_argument("--model", type=str, default="swinface",
+                        choices=["arcface", "adaface_optimized", "swinface", "deepface_vggface"],
+                        help="Embedding model to use (reads cached .pkl files)")
     parser.add_argument("--gallery_ratio", type=float, default=0.5,
                         help="Fraction of each identity's images to use as gallery (0-1)")
     parser.add_argument("--labels_path", type=str, default="",
@@ -55,13 +88,12 @@ def main() -> None:
     # --- Load identity labels ---
     labels_path = args.labels_path
     if not labels_path:
-        # Auto-detect from standard labels directory
         labels_dir = Path(args.aligned_path).parent.parent / "labels"
         candidate = labels_dir / f"{dataset_name}_labels.csv"
         if candidate.exists():
             labels_path = str(candidate)
         else:
-            print(f"No labels file found for {dataset_name} — skipping identification evaluation.")
+            print(f"No labels file found for {dataset_name} — skipping identification.")
             return
 
     identity_images: dict[str, list[str]] = defaultdict(list)
@@ -78,15 +110,8 @@ def main() -> None:
         return
 
     # --- Split into gallery/probe per identity ---
-    gallery_dir = Path(args.deidentified_path).parent / "gallery"
-    gallery_dir.mkdir(exist_ok=True)
-    probe_dir = Path(args.deidentified_path).parent / "probe"
-    probe_dir.mkdir(exist_ok=True)
-
-    aligned_path = Path(args.aligned_path)
-    deid_path = Path(args.deidentified_path)
-    gallery_images: dict[str, list[str]] = defaultdict(list)  # identity -> [probe_image_name]
-    probe_images: list[str] = []  # (probe_name, true_identity)
+    gallery_names_by_id: dict[str, list[str]] = {}  # identity -> [image_names]
+    probe_list: list[tuple[str, str]] = []  # [(image_name, true_identity)]
 
     for identity, images in sorted(identity_images.items()):
         n = len(images)
@@ -94,132 +119,117 @@ def main() -> None:
         gallery_imgs = sorted(images[:n_gallery])
         probe_imgs = sorted(images[n_gallery:])
         if not probe_imgs:
-            continue  # need at least one probe per identity
-
-        gallery_images[identity] = gallery_imgs
+            continue
+        gallery_names_by_id[identity] = gallery_imgs
         for img_name in probe_imgs:
-            probe_images.append(img_name)
+            probe_list.append((img_name, identity))
 
-    if not probe_images:
+    if not probe_list:
         print("No probe images after split — skipping.")
         return
 
-    # --- Extract embeddings using DeepFace ---
-    from deepface import DeepFace
-    DeepFace.settings.represent_mode = "flatten"
+    # --- Load cached embeddings ---
+    # Original (gallery) embeddings: shared across techniques
+    temp_dir = util.get_temp_dir(args.root_dir, args.model)
+    cache_original  = os.path.join(temp_dir, dataset_name, "original")
+    # De-identified (probe) embeddings: per technique
+    cache_deid      = os.path.join(temp_dir, dataset_name, "deid", technique_name)
 
-    print(f"Extracting gallery embeddings ({sum(len(v) for v in gallery_images.values()} images)...")
-    gallery_embeddings: dict[str, np.ndarray] = {}  # identity -> [embedding]
-    gallery_image_names: dict[str, list[str]] = {}  # identity -> [img_name]
+    print(f"Loading cached embeddings ({args.model}) ...")
+    print(f"  Original cache: {cache_original}")
+    print(f"  De-identified cache: {cache_deid}")
 
-    for identity, imgs in sorted(gallery_images.items()):
-        gallery_image_names[identity] = []
-        gallery_embeddings[identity] = []
-        for img_name in imgs:
-            aligned_path_img = aligned_path / img_name
-            if not aligned_path_img.exists():
-                continue
-            try:
-                rep = DeepFace.represent(
-                    img_path=str(aligned_path_img),
-                    model_name="VGG-Face",
-                    enforce_detection=False,
-                    silent=True,
-                )
-                if rep:
-                    emb = np.array(rep[0]["embedding"])
-                    gallery_embeddings[identity].append(emb)
-                    gallery_image_names[identity].append(img_name)
-            except Exception:
-                continue
+    orig_embs = load_cached_embeddings(cache_original)
+    deid_embs = load_cached_embeddings(cache_deid)
 
-    # Filter identities with no embeddings
-    gallery_images = {k: v for k, v in gallery_images.items() if v}
-    gallery_embeddings = {k: np.array(v) for k, v in gallery_embeddings.items() if v}
-    gallery_image_names = {k: v for k, v in gallery_image_names.items() if v}
-
-    if not gallery_images:
-        print("No gallery embeddings extracted — skipping.")
+    if not orig_embs:
+        print(f"No cached original embeddings found in {cache_original}")
+        print(f"  Run verification (e.g. `{args.model}`) first to generate cache.")
         return
 
-    print(f"Extracting probe embeddings ({len(probe_images)} images)...")
-    probe_results: list[dict] = []
+    # --- Build gallery embedding map: identity -> matrix of embeddings ---
+    gallery_by_id: dict[str, np.ndarray] = {}
+    for identity, img_names in gallery_names_by_id.items():
+        embs_list = []
+        for name in img_names:
+            if name in orig_embs:
+                embs_list.append(orig_embs[name])
+        if embs_list:
+            gallery_by_id[identity] = np.array(embs_list)
 
-    for i, img_name in enumerate(tqdm(probe_images, desc=f"identification | {dataset_name}-{technique_name}")):
+    if not gallery_by_id:
+        print("No gallery embeddings matched — skipping.")
+        return
+
+    total_gallery = sum(len(v) for v in gallery_by_id.values())
+    print(f"Gallery: {len(gallery_by_id)} identities, {total_gallery} images")
+    print(f"Probes:  {len(probe_list)} images")
+
+    # --- Gallery search ---
+    probe_results: list[dict] = []
+    max_probes_to_process = min(len(probe_list), 20)  # we only need rank-1..20 for CMC
+
+    for i, (img_name, true_identity) in enumerate(
+        tqdm(probe_list, desc=f"identification({args.model}) | {dataset_name}-{technique_name}")
+    ):
         if util._TEST_SINGLE and i > 0:
             break
-        probe_path_img = deid_path / img_name
-        if not probe_path_img.exists():
+
+        # Try de-identified cache first, fall back to original (validation baseline)
+        probe_emb = None
+        if img_name in deid_embs:
+            probe_emb = deid_embs[img_name]
+        elif img_name in orig_embs:
+            probe_emb = orig_embs[img_name]  # validation: aligned vs aligned
+        else:
             continue
 
-        # Find true identity for this probe image
-        true_identity = None
-        for identity, images in identity_images.items():
-            if img_name in images:
-                true_identity = identity
-                break
-        if not true_identity:
-            continue
-
-        try:
-            probe_rep = DeepFace.represent(
-                img_path=str(probe_path_img),
-                model_name="VGG-Face",
-                enforce_detection=False,
-                silent=True,
-            )
-            if not probe_rep or not probe_rep[0]["embedding"]:
+        # Rank all identities by best cosine similarity to any gallery image
+        ranked: list[tuple[float, str]] = []
+        for identity, gallery_embs in gallery_by_id.items():
+            norms = np.linalg.norm(gallery_embs, axis=1)
+            if norms.min() < 1e-10:
                 continue
-            probe_emb = np.array(probe_rep[0]["embedding"])
-        except Exception:
+            sims = np.dot(gallery_embs, probe_emb) / (norms * np.linalg.norm(probe_emb))
+            ranked.append((float(sims.max()), identity))
+
+        if not ranked:
             continue
-
-        # Compute similarity to all gallery images across all identities
-        ranked: list[tuple[float, str]] = []  # (sim, identity)
-        for identity, gallery_embs in gallery_embeddings.items():
-            sims = np.dot(gallery_embs, probe_emb) / (
-                np.linalg.norm(gallery_embs, axis=1) * np.linalg.norm(probe_emb)
-            )
-            best_sim = float(sims.max())
-            ranked.append((best_sim, identity))
-
         ranked.sort(key=lambda x: x[0], reverse=True)
 
-        rank1_match = ranked[0][1] == true_identity
-        rank5_matches = [r[1] for r in ranked[:5]]
-        rank5_match = true_identity in rank5_matches
-        rank = next((i + 1 for i, (_, ident) in enumerate(ranked) if ident == true_identity), len(ranked) + 1)
-
+        rank = next((k + 1 for k, (_, ident) in enumerate(ranked) if ident == true_identity), len(ranked) + 1)
         probe_results.append({
             "probe_image": img_name,
             "true_identity": true_identity,
-            "rank": rank,
-            "rank1_score": ranked[0][0] if ranked else 0.0,
-            "rank5_score": ranked[4][0] if len(ranked) > 4 else 0.0,
-            "rank1_correct": int(rank1_match),
-            "rank5_correct": int(rank5_match),
+            "rank": min(rank, max_probes_to_process + 1),  # cap for CMC purposes
         })
 
     if not probe_results:
         print("No probe results — skipping.")
         return
 
-    # --- Save CSV ---
+    # --- Save CSV with per-rank correctness columns ---
     os.makedirs(os.path.dirname(args.save_path) or ".", exist_ok=True)
-    fieldnames = ["probe_image", "true_identity", "rank", "rank1_score", "rank5_score",
-                   "rank1_correct", "rank5_correct"]
+    top_k = min(max_probes_to_process, 20)
+    fieldnames = ["probe_image", "true_identity", "rank"] + [f"rank{k}_correct" for k in range(1, top_k + 1)]
+
+    for r in probe_results:
+        for k in range(1, top_k + 1):
+            r[f"rank{k}_correct"] = int(r["rank"] <= k)
+
     with open(args.save_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(probe_results)
 
     # Summary stats
-    rank1_hits = sum(r["rank1_correct"] for r in probe_results)
-    rank5_hits = sum(r["rank5_correct"] for r in probe_results)
     total = len(probe_results)
-    print(f"Identification saved to {args.save_path}")
-    print(f"  Rank@1: {rank1_hits}/{total} ({100*rank1_hits/total:.1f}%)")
-    print(f"  Rank@5: {rank5_hits}/{total} ({100*rank5_hits/total:.1f}%)")
+    print(f"\nIdentification ({args.model}) saved to {args.save_path}")
+    print(f"  Total probes: {total}")
+    for k in [1, 5, 10]:
+        if k <= top_k:
+            hits = sum(r[f"rank{k}_correct"] for r in probe_results)
+            print(f"  Rank@{k:>2}: {hits}/{total} ({100*hits/total:.1f}%)")
 
 
 if __name__ == "__main__":

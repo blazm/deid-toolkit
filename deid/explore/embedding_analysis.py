@@ -55,7 +55,7 @@ _MODEL_CACHE_CONFIG = {
     },
     "swinface": {
         "original_key": "{ds}/original",      # Shared originals
-        "deid_key": "{ds}/deid/{tech}",       # Per technique: celeba-test_aligned/deid/blur/
+        "deid_key": "{ds}/deid/{tech}",       # Per technique: celeba-test/deid/blur/
         "format": "torch_dict",               # dict[str, torch.Tensor], key="Recognition"
     },
     "deepface_vggface": {

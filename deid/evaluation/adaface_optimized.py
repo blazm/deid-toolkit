@@ -54,9 +54,11 @@ def get_features(image_path, features_dir, model, device):
     save_features(feature_filepath, feature)
     return feature
 
-def main(): 
+def main():
     #prevent warnings
     warnings.filterwarnings('ignore', category=FutureWarning)
+    # Skip MTCNN re-alignment — images are already pre-aligned from preprocessing
+    os.environ.setdefault("SKIP_MTCNN", "1")
     #get args
     args = util.read_args()
     path_to_aligned_images = args.aligned_path
@@ -133,7 +135,7 @@ def main():
             feature_both_original = get_features(img_c_path, temp_features_original_dir, model, device)
 
         except ValueError as e:
-            print(f"(Warning) {e} - Skip")
+            # MTCNN failed to detect a face — silently skip (heavy glasses, hats, profiles)
             continue
         
         # Compute similarity and add to the list

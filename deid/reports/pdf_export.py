@@ -49,13 +49,13 @@ def export_results_to_pdf(results_dir: Path, output_dir: Optional[Path] = None) 
         except Exception:
             continue
 
-        # Determine evaluation type from filename
+        # Determine evaluation type from content (columns) first, then filename
         name = csv_file.stem.lower()
         pdf_path = output_dir / f"{csv_file.stem}.pdf"
 
-        if "roc" in name:
+        if "ground_truth" in df.columns or "roc" in name:
             generated.append(_plot_roc(df, pdf_path))
-        elif "cmc" in name or "identification" in name:
+        elif "rank1_correct" in df.columns or "cmc" in name or "identification" in name:
             generated.append(_plot_cmccurve(df, pdf_path))
         elif "fid" in name or "lpips" in name or "mse" in name or "ssim" in name:
             generated.append(_plot_distribution(df, pdf_path))
@@ -71,25 +71,28 @@ def export_results_to_pdf(results_dir: Path, output_dir: Optional[Path] = None) 
 def _plot_roc(df: pd.DataFrame, pdf_path: Path) -> Path:
     """Plot ROC curve from evaluation results."""
     fig, ax = plt.subplots(figsize=(8, 6))
+    x, y = None, None
 
-    # Extract x and y coordinates from DataFrame
     if "FPR" in df.columns and "TPR" in df.columns:
+        # Already has computed rates — plot directly
         x, y = df["FPR"].values, df["TPR"].values
-    elif "threshold" in df.columns and "score" in df.columns:
-        # Sort by score for ROC
-        df_sorted = df.sort_values("score", ascending=True)
-        x = df_sorted["threshold"].values
-        y = df_sorted["score"].values
-    else:
-        # Generic: use first two numeric columns
-        numeric_cols = df.select_dtypes(include="number").columns
-        if len(numeric_cols) >= 2:
-            x, y = df[numeric_cols[0]].values, df[numeric_cols[1]].values
-        else:
-            plt.text(0.5, 0.5, "No numeric data for ROC plot", transform=ax.transAxes, ha="center")
-            fig.savefig(pdf_path, dpi=150, format="pdf")
-            plt.close()
-            return pdf_path
+    elif "ground_truth" in df.columns:
+        # Verification CSV (image,cossim,img_b,ground_truth) — compute ROC from scores
+        score_col = None
+        for c in ["cossim", "score", "similarity"]:
+            if c in df.columns:
+                score_col = c
+                break
+        if score_col is not None:
+            x, y = _compute_roc_points(df[score_col].values, df["ground_truth"].values)
+
+    if x is None or y is None:
+        # No suitable data found
+        ax.text(0.5, 0.5, "No ROC-compatible data\n(need FPR/TPR columns or ground_truth + score)",
+                transform=ax.transAxes, ha="center", va="center")
+        fig.savefig(pdf_path, dpi=150, format="pdf")
+        plt.close()
+        return pdf_path
 
     ax.plot(x, y, "b-", linewidth=2)
     ax.set_title("ROC Curve")
@@ -97,13 +100,8 @@ def _plot_roc(df: pd.DataFrame, pdf_path: Path) -> Path:
     ax.set_ylabel("True Positive Rate")
     ax.plot([0, 1], [0, 1], "r--", alpha=0.5)  # random baseline
 
-    # Add AUC if available
-    if "AUC" in df.columns:
-        auc_val = df["AUC"].iloc[0]
-        ax.set_title(f"ROC Curve\nAUC: {auc_val:.4f}")
-    elif len(x) > 0:
-        auc_val = float(((x[1:] + x[:-1]) / 2 * (y[1:] - y[:-1])).sum())
-        ax.set_title(f"ROC Curve\nAUC: {auc_val:.4f}")
+    auc_val = float(-(x[1:] - x[:-1]) * ((y[1:] + y[:-1]) / 2).sum()) if len(x) > 1 else 0.0
+    ax.set_title(f"ROC Curve\nAUC: {auc_val:.4f}")
 
     plt.tight_layout()
     fig.savefig(pdf_path, dpi=150, format="pdf")
@@ -111,29 +109,86 @@ def _plot_roc(df: pd.DataFrame, pdf_path: Path) -> Path:
     return pdf_path
 
 
-def _plot_cmccurve(df: pd.DataFrame, pdf_path: Path) -> Path:
-    """Plot CMC curve from identification results."""
-    fig, ax = plt.subplots(figsize=(8, 6))
+def _compute_roc_points(scores, labels):
+    """Compute ROC curve points (FPR, TPR) from scores and binary labels.
 
-    # Extract rank and matching score
-    if "rank" in df.columns and "score" in df.columns:
-        x, y = df["rank"].values, df["score"].values
-    else:
-        # Assume first column is rank, second is score
-        numeric_cols = df.select_dtypes(include="number").columns
-        if len(numeric_cols) >= 2:
-            x, y = df[numeric_cols[0]].values, df[numeric_cols[1]].values
+    Higher score = more similar (genuine). Sorts by descending score,
+    computes TPR/FPR at each threshold.
+    """
+    import numpy as np
+
+    desc_indices = np.argsort(scores)[::-1]
+    sorted_labels = labels[desc_indices].astype(int)
+    total_pos = sorted_labels.sum()
+    total_neg = len(sorted_labels) - total_pos
+
+    if total_pos == 0 or total_neg == 0:
+        return np.array([0.0, 1.0]), np.array([0.0, 1.0])
+
+    tpr_prev, fpr_prev = 0.0, 0.0
+    tprs, fprs = [0.0], [0.0]
+
+    for i in range(len(sorted_labels)):
+        if sorted_labels[i] == 1:
+            tpr_prev += 1.0 / total_pos
         else:
-            plt.text(0.5, 0.5, "No numeric data for CMC plot", transform=ax.transAxes, ha="center")
-            fig.savefig(pdf_path, dpi=150, format="pdf")
-            plt.close()
-            return pdf_path
+            fpr_prev += 1.0 / total_neg
+        tprs.append(tpr_prev)
+        fprs.append(fpr_prev)
 
-    ax.plot(x, y, "g-", linewidth=2, marker="o")
-    ax.set_title("CMC Curve")
-    ax.set_xlabel("Rank")
-    ax.set_ylabel("Matching Score")
-    ax.set_xlim(0, x.max())
+    return np.array(fprs), np.array(tprs)
+
+
+def _plot_cmccurve(df: pd.DataFrame, pdf_path: Path) -> Path:
+    """Plot CMC curve from identification results.
+
+    Expects columns: rank1_correct, rank2_correct, ..., rankK_correct
+    (or raw rank column — will be converted to cumulative CMC).
+    """
+    import numpy as np
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    total = len(df)
+
+    if "rank" not in df.columns or total == 0:
+        ax.text(0.5, 0.5, "No CMC data\n(need 'rank' column or rank-k_correct columns)",
+                transform=ax.transAxes, ha="center", va="center")
+        fig.savefig(pdf_path, dpi=150, format="pdf")
+        plt.close()
+        return pdf_path
+
+    # Find rank-k columns: rank1_correct, rank2_correct, ..., rankN_correct
+    rank_cols = sorted(
+        [int(c.split("_correct")[0].replace("rank", ""))
+         for c in df.columns if c.endswith("_correct") and c.startswith("rank")],
+    )
+
+    if rank_cols:
+        # Cumulative CMC: fraction of probes matched at each rank
+        ranks = np.array(rank_cols)
+        cumulative_rate = np.array([df[f"rank{k}_correct"].sum() / total for k in rank_cols])
+    else:
+        # Fallback: compute from raw 'rank' column
+        max_k = min(df["rank"].max(), 20)
+        ranks = np.arange(1, int(max_k) + 1)
+        cumulative_rate = np.array([df["rank"].le(k).sum() / total for k in ranks])
+
+    ax.plot(ranks, cumulative_rate, "b-", linewidth=2, marker="o", markersize=4)
+    ax.set_xlabel("Rank", fontsize=12)
+    ax.set_ylabel("Cumulative Match Rate", fontsize=12)
+    r5_idx = min(4, len(cumulative_rate) - 1)
+    ax.set_title(f"CMC Curve\nRank@1: {cumulative_rate[0]:.1%}, Rank@{ranks[r5_idx]}: {cumulative_rate[r5_idx]:.1%}")
+    ax.set_xlim(left=0)
+    ax.set_ylim(bottom=0, top=1.05)
+    ax.grid(True, alpha=0.3)
+
+    # Annotate rank-1 and rank-5 points
+    for k_idx in [0, min(4, len(ranks) - 1)]:
+        if k_idx < len(ranks):
+            ax.annotate(f"{cumulative_rate[k_idx]:.1%}",
+                        xy=(ranks[k_idx], cumulative_rate[k_idx]),
+                        textcoords="offset points", xytext=(5, 8),
+                        fontsize=9, color="red")
 
     plt.tight_layout()
     fig.savefig(pdf_path, dpi=150, format="pdf")

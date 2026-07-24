@@ -53,6 +53,8 @@ REM Force CPU — sm_120 not supported by PyTorch < 2.7
 REM Remove this once you upgrade: pip install torch --index-url https://download.pytorch.org/whl/cu128
 set CUDA_VISIBLE_DEVICES=
 set DEID_FORCE_CPU=1
+set TF_CPP_MIN_LOG_LEVEL=3
+set TF_ENABLE_ONEDNN_OPTS=0
 
 echo ============================================================
 echo  Full evaluation — %DATASET%

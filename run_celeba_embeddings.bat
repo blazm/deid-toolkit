@@ -1,7 +1,7 @@
 @echo off
 REM ============================================================
 REM  CelebA Test — Embedding Space Analysis Pipeline
-REM  Datasets: celeba-test_aligned (2824 images, 579 identities)
+REM  Datasets: celeba-test (2824 images, 579 identities)
 REM  Techniques: blur, pixelize
 REM  Model: SWINFace (optimized for embedding space viz)
 REM
@@ -13,7 +13,7 @@ cd /d "%~dp0"
 
 for %%I in (.) do set ROOT=%CD%
 
-set DATASET=celeba-test_aligned
+set DATASET=celeba-test
 set TECHS=blur pixelize
 
 echo Selected dataset: %DATASET%
@@ -33,6 +33,8 @@ set LOGS=%ROOT%\root_dir\logs
 REM Force CPU — sm_120 not supported by PyTorch ^< 2.7
 set CUDA_VISIBLE_DEVICES=
 set DEID_FORCE_CPU=1
+set TF_CPP_MIN_LOG_LEVEL=3
+set TF_ENABLE_ONEDNN_OPTS=0
 
 REM ============================================================
 REM  Step 1: Generate genuine/impostor pair files

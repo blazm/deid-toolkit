@@ -117,6 +117,9 @@ def run_streamed(
     # Respect DEID_QUIET — suppress warnings from child processes (TensorFlow/PyTorch noise)
     if quiet or os.environ.get("DEID_QUIET", "0") in ("1", "true", "yes"):
         proc_env.setdefault("PYTHONWARNINGS", "ignore")
+        # Suppress TensorFlow oneDNN and internal warnings
+        proc_env.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
+        proc_env.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
 
     if " " in exe and platform.system() == "Windows":
         proc = subprocess.Popen(
@@ -344,18 +347,21 @@ def run_preprocess(loader: ConfigLoader) -> bool:
     success = True
     for ds_name in selected:
         aligned = settings.aligned_path / ds_name
-        original = settings.original_path / ds_name / "img"
+        original_dir = settings.original_path / ds_name
+        original = None
+
         # Prefer pre-aligned images; fall back to original for alignment
-        if aligned.exists():
+        if aligned.exists() and any(aligned.iterdir()):
             logger.info("Using pre-aligned images for %s", ds_name)
-        elif original.exists():
-            logger.info("Aligning %s from original images", ds_name)
+        elif original_dir.is_dir() and any(original_dir.iterdir()):
+            logger.info("Aligning %s from original images (%s)", ds_name, original_dir)
+            original = original_dir
         else:
             logger.warning("Neither aligned nor original dataset found: %s — skipping", ds_name)
             continue
 
         aligned.mkdir(parents=True, exist_ok=True)
-        if original.exists():
+        if original is not None:
             try:
                 align_mtcnn.mp_main(
                     dataset_path=str(original),

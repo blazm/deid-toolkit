@@ -74,6 +74,23 @@ class ConfigLoader:
             return []
         return sorted(d.name for d in aligned.iterdir() if d.is_dir())
 
+    def unaligned_datasets(self) -> list[str]:
+        """Return dataset names present in original/ but not yet in aligned/.
+
+        Images go directly in original/{ds}/ (no img/ subfolder).
+        These need MTCNN alignment before they can be used by the pipeline.
+        """
+        original = self.settings.datasets_path / "original"
+        if not original.is_dir():
+            return []
+        aligned_names = set(self.load_aligned_datasets())
+        unaligned = []
+        for d in sorted(original.iterdir()):
+            if d.is_dir() and d.name not in aligned_names:
+                if any(p.suffix.lower() in {".jpg", ".jpeg", ".png"} for p in d.iterdir()):
+                    unaligned.append(d.name)
+        return sorted(unaligned)
+
     def load_techniques(self) -> list[str]:
         techniques_dir = self.settings.techniques_path
         user_techs: set[str] = set()

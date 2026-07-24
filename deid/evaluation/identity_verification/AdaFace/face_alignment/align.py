@@ -8,7 +8,8 @@ from tqdm import tqdm
 import random
 from datetime import datetime
 import torch
-_has_cuda = torch.cuda.is_available() and torch.cuda.device_count() > 0
+_force_cpu = os.environ.get("DEID_FORCE_CPU", "0") in ("1", "true", "yes")
+_has_cuda = not _force_cpu and torch.cuda.is_available() and torch.cuda.device_count() > 0
 _device = 'cuda:0' if _has_cuda else 'cpu'
 mtcnn_model = mtcnn.MTCNN(device=_device, crop_size=(112, 112))
 
@@ -23,10 +24,14 @@ def add_padding(pil_img, top, right, bottom, left, color=(0,0,0)):
 def get_aligned_face(image_path, rgb_pil_image=None):
     if rgb_pil_image is None:
         img = Image.open(image_path).convert('RGB')
-        #img.resize((112,112))
     else:
         assert isinstance(rgb_pil_image, Image.Image), 'Face alignment module requires PIL image or path to the image'
         img = rgb_pil_image
+
+    # Skip MTCNN re-alignment — images are already pre-aligned
+    if os.environ.get("SKIP_MTCNN", "0") in ("1", "true", "yes"):
+        return img.resize((112, 112), Image.Resampling.LANCZOS)
+
     # find face
     try:
         bboxes, faces = mtcnn_model.align_multi(img, limit=1)

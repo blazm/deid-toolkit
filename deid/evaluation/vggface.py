@@ -111,7 +111,7 @@ def main():
 
     
     vgg_predicted_scores = np.array(vgg_predicted_scores)
-    print("MIN:", np.min(vgg_predicted_scores), " MAX: ", np.max(vgg_predicted_scores))
+    # print("MIN:", np.min(vgg_predicted_scores), " MAX: ", np.max(vgg_predicted_scores))
     metric_df.save_to_csv(path_to_save)
     print(f"vggface saved in {path_to_save}")
     #np.savetxt(output_file_name, vgg_predicted_scores)

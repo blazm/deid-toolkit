@@ -110,7 +110,7 @@ Whether a technique's embedding manipulation pattern is consistent across differ
 | Type | Datasets | Characteristics | Embedding space properties |
 |------|----------|-----------------|----------------------------|
 | **Studio-captured** | mug-still | Controlled lighting, uniform background, constrained pose range, professional capture | Narrow embedding distribution; tight inter-identity clusters; limited representation of occlusion/variation |
-| **In-the-wild** | celeba-test_aligned | Uncontrolled lighting, diverse backgrounds, natural poses, real-world conditions (glasses, hats, expressions) | Broad embedding distribution; well-separated identity clusters; rich attribute diversity embedded in representations |
+| **In-the-wild** | celeba-test | Uncontrolled lighting, diverse backgrounds, natural poses, real-world conditions (glasses, hats, expressions) | Broad embedding distribution; well-separated identity clusters; rich attribute diversity embedded in representations |
 
 ### Why It Matters for De-identification
 A technique that works uniformly on studio data may fail under in-the-wild conditions:
@@ -138,7 +138,7 @@ A technique that works uniformly on studio data may fail under in-the-wild condi
 | Dataset | Type | Images | Identities | Avg Images/ID |
 |---------|------|--------|------------|---------------|
 | mug-still | Studio-captured | ~671 (with labels) | 40 | ~17 |
-| celeba-test_aligned | In-the-wild | ~2824 | 579 | ~3.3 |
+| celeba-test | In-the-wild | ~2824 | 579 | ~3.3 |
 
 ### Techniques Under Analysis
 
@@ -182,5 +182,5 @@ A technique that works uniformly on studio data may fail under in-the-wild condi
 |---------------|------------|
 | H1 | Pixel-space techniques (blur, pixelize) produce isotropic displacement patterns with no systematic direction bias | RQ1 + RQ3: Displacement vectors uniformly distributed across all directions |
 | H2 | De-identification techniques preserve intra-identity diversity (CR ~ 1.0), meaning they perturb identity position without collapsing individual variation | RQ2: Collapse ratio distribution centered near 1.0 |
-| H3 | In-the-wild datasets exhibit greater mean displacement magnitudes due to richer feature content available for perturbation | RQ4: celeba-test_aligned shows higher mean displacement than mug-still |
+| H3 | In-the-wild datasets exhibit greater mean displacement magnitudes due to richer feature content available for perturbation | RQ4: celeba-test shows higher mean displacement than mug-still |
 | H4 | Techniques with lower verification AUC do not necessarily cause more identity collapse | RQ1 + RQ2 cross-reference: No strong correlation between AUC and collapse ratio |

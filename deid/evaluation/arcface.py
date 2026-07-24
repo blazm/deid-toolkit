@@ -1,4 +1,9 @@
-"""ArcFace evaluation using ONNX model (no face detection — works on pre-aligned images)."""
+"""ArcFace evaluation using ONNX model (no face detection — works on pre-aligned images).
+
+Embeddings are cached as .pkl files under root_dir/preprocess/temp/arcface/ so that:
+  - Re-runs skip ONNX inference entirely (seconds instead of minutes).
+  - Original embeddings are computed once per dataset, reused across techniques.
+"""
 import sys
 import os
 from pathlib import Path
@@ -6,6 +11,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import onnxruntime
+import pickle
 from tqdm import tqdm
 
 import utils as util
@@ -15,6 +21,36 @@ PATH_TO_MODEL = str(SCRIPT_DIR / "weights" / "model.onnx")
 EVALUATION_NAME = "arcface"
 
 
+def _get_embedding(image_path: str, session, input_name, output_names,
+                   input_mean: float, input_std: float, input_size: tuple,
+                   cache_dir: str) -> np.ndarray:
+    """Return an ArcFace embedding, using a pickle cache if available."""
+    image_name = os.path.basename(image_path)
+    cache_file = os.path.join(cache_dir, f"{image_name}.pkl")
+
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, "rb") as f:
+                return np.array(pickle.load(f))
+        except Exception:
+            pass  # stale/corrupt cache — recompute below
+
+    blob = cv2.dnn.blobFromImage(
+        cv2.resize(cv2.imread(image_path), input_size),
+        1.0 / input_std, input_size,
+        (input_mean, input_mean, input_mean), swapRB=True,
+    )
+    feat = session.run(output_names, {input_name: blob})[0].flatten()
+
+    try:
+        with open(cache_file, "wb") as f:
+            pickle.dump(feat, f)
+    except Exception:
+        pass  # best-effort cache
+
+    return feat
+
+
 def _setup_session(model_path: str):
     """Create ONNX inference session, preferring GPU if available."""
     providers = [
@@ -22,17 +58,6 @@ def _setup_session(model_path: str):
         "CPUExecutionProvider",
     ]
     return onnxruntime.InferenceSession(model_path, providers=providers)
-
-
-def _preprocess(img_path: str, input_mean: float, input_std: float, input_size: tuple):
-    """Load image, resize to 112x112, normalize and return blob for ONNX."""
-    img = cv2.imread(img_path)
-    img = cv2.resize(img, input_size)
-    blob = cv2.dnn.blobFromImage(
-        img, 1.0 / input_std, input_size,
-        (input_mean, input_mean, input_mean), swapRB=True,
-    )
-    return blob
 
 
 def main():
@@ -55,6 +80,13 @@ def main():
     if not path_to_genuine_pairs:
         print("No genuine pairs provided")
         return
+
+    # Shared embedding cache: {dataset}/original/ (shared) + {dataset}/deid/{technique}/ (per technique)
+    temp_dir = util.get_temp_dir(args.root_dir, EVALUATION_NAME)
+    cache_aligned = os.path.join(temp_dir, dataset_name, "original")
+    cache_deid   = os.path.join(temp_dir, dataset_name, "deid", technique_name)
+    os.makedirs(cache_aligned, exist_ok=True)
+    os.makedirs(cache_deid,   exist_ok=True)
 
     # Load ONNX model
     print(f"Loading ArcFace ONNX model from {PATH_TO_MODEL}")
@@ -114,11 +146,10 @@ def main():
                      f"({technique_name}) Missing: {path_b}")
             continue
 
-        blob_a = _preprocess(path_a, input_mean, input_std, input_size)
-        blob_b = _preprocess(path_b, input_mean, input_std, input_size)
-
-        feat_a = session.run(output_names, {input_name: blob_a})[0].flatten()
-        feat_b = session.run(output_names, {input_name: blob_b})[0].flatten()
+        feat_a = _get_embedding(path_a, session, input_name, output_names,
+                                input_mean, input_std, input_size, cache_aligned)
+        feat_b = _get_embedding(path_b, session, input_name, output_names,
+                                input_mean, input_std, input_size, cache_deid)
 
         # Cosine similarity
         norm_a = np.linalg.norm(feat_a)
@@ -133,12 +164,13 @@ def main():
         metrics_df.add_column_value("ground_truth", gt)
 
     if cos_scores:
-        print(f"MIN: {np.min(cos_scores):.4f}  MAX: {np.max(cos_scores):.4f}")
+        pass  # MIN/MAX debug prints commented out
     else:
         print("No scores computed — check that image paths are correct.")
 
     metrics_df.save_to_csv(path_to_save)
     print(f"ArcFace scores saved to {path_to_save}")
+    print(f"Embedding cache: aligned={cache_aligned}, deid={cache_deid}")
 
 
 if __name__ == "__main__":

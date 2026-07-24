@@ -63,7 +63,7 @@ def render() -> None:
         st.warning(
             "No visualization data files found.\n\n"
             "Generate them with:\n"
-            "`python -m deid.explore.embedding_viz_cli --dataset celeba-test_aligned --model swinface --techniques blur pixelize`"
+            "`python -m deid.explore.embedding_viz_cli --dataset celeba-test --model swinface --techniques blur pixelize`"
         )
         return
 

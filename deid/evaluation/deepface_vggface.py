@@ -3,7 +3,7 @@
 Uses DeepFace's built-in VGG-Face model to extract 4096-d embeddings and compute
 cosine similarity for each image pair, matching the standard eval script interface.
 
-Embeddings are cached as .npy files under root_dir/preprocess/temp/deepface_vggface/
+Embeddings are cached as .pkl files under root_dir/preprocess/temp/deepface_vggface/
 so that:
   - Re-runs skip TF inference entirely (minutes instead of hours).
   - Embeddings are available for downstream visualization (t-SNE, UMAP, clusters).
@@ -116,7 +116,7 @@ def main():
             continue
 
     if scores:
-        print(f"MIN: {np.min(scores):.4f}  MAX: {np.max(scores):.4f}")
+        pass  # MIN/MAX debug prints commented out
     else:
         print("No scores computed.")
 
