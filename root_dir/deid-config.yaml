@@ -1,14 +1,16 @@
 dataset_renames: {}
 datasets:
   selected:
-  - fri
-  - mug-still
+  - celeba-test_aligned
 environments: {}
 evaluation:
   selected:
+  - adaface_optimized
+  - arcface
   - ssim
-  - mse
-  - ediffiqa
+  - lpips
+  - swinface
+  - dan
 evaluation_renames: {}
 logs_dir: logs
 result_dir: results

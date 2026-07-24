@@ -19,10 +19,10 @@ app.add_typer(commands.run_app, name="run")
 app.add_typer(commands.list_app, name="list")
 app.add_typer(commands.select_app, name="select")
 
-app.command()(commands.cmd_show)
-app.command()(commands.cmd_migrate)
-app.command()(commands.cmd_migrate_structure)
-app.command()(commands.cmd_explore)
+app.command(name="show")(commands.cmd_show)
+app.command(name="migrate")(commands.cmd_migrate)
+app.command(name="migrate-structure")(commands.cmd_migrate_structure)
+app.command(name="explore")(commands.cmd_explore)
 
 from deid.cli import serve
 app.add_typer(serve.app, name="serve")

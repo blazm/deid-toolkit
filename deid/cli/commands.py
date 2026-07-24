@@ -57,19 +57,39 @@ def techniques() -> None:
         typer.echo(f"  {i}. {name}  ({rename})")
 
 
+# Reverse alias map: canonical script name → user-facing display name
+_EVAL_DISPLAY = {
+    "adaface_optimized": "adaface",
+    "FID": "fid",
+}
+
+
 @list_app.command()
 def evaluation() -> None:
-    """List available evaluation metrics."""
+    """List available evaluation metrics (grouped by category)."""
     from deid.config.loader import ConfigLoader
     loader = ConfigLoader()
-    evals = loader.load_evaluations()
-    renames = loader.settings.evaluation_renames
-    if not evals:
+    grouped = loader.list_evaluations_grouped()
+    if not grouped:
         typer.echo("No evaluation methods found.")
         return
-    for i, name in enumerate(evals):
-        rename = renames.get(name, name)
-        typer.echo(f"  {i}. {name}  ({rename})")
+
+    global_idx = 0
+    for category, names in grouped:
+        typer.echo(f"\n  {category}:")
+        for name in names:
+            display = _EVAL_DISPLAY.get(name, name)
+            typer.echo(f"  [{global_idx}] {display}")
+            global_idx += 1
+
+    typer.echo()
+    typer.echo(f"  (use index or name to select; e.g. '0 3 ssim' or 'arcface,swinface')")
+
+
+@list_app.command(name="evaluations")
+def evaluations_cmd() -> None:
+    """Alias for ``deid list evaluation``."""
+    evaluation()
 
 
 @list_app.command()
@@ -189,7 +209,7 @@ def _resolve_items(names: list[str], all_names: list[str], label: str) -> list[s
 
 
 @select_app.command()
-def datasets(names: str) -> None:
+def datasets(items: list[str]) -> None:
     """Select datasets by name or index.
 
     Usage:  deid select datasets 0 1        (by index)
@@ -202,7 +222,6 @@ def datasets(names: str) -> None:
     if not all_names:
         typer.echo("No datasets available.")
         return
-    items = [n.strip() for n in names.replace(",", " ").split() if n.strip()]
     selected = _resolve_items(items, all_names, "dataset")
     if not selected:
         return
@@ -211,7 +230,7 @@ def datasets(names: str) -> None:
 
 
 @select_app.command()
-def techniques(names: str) -> None:
+def techniques(items: list[str]) -> None:
     """Select techniques by name or index."""
     from deid.config.loader import ConfigLoader
     loader = ConfigLoader()
@@ -219,7 +238,6 @@ def techniques(names: str) -> None:
     if not all_names:
         typer.echo("No techniques available.")
         return
-    items = [n.strip() for n in names.replace(",", " ").split() if n.strip()]
     selected = _resolve_items(items, all_names, "technique")
     if not selected:
         return
@@ -228,16 +246,20 @@ def techniques(names: str) -> None:
 
 
 @select_app.command()
-def evaluation(names: str) -> None:
+def evaluation(items: list[str]) -> None:
     """Select evaluation metrics by name or index."""
     from deid.config.loader import ConfigLoader
     loader = ConfigLoader()
     all_names = loader.load_evaluations()
+    # Also accept aliases (adaface → adaface_optimized, etc.)
+    alias_map = {v: k for k, v in _EVAL_DISPLAY.items()}
+    aliased_names = all_names + list(alias_map.keys())
     if not all_names:
         typer.echo("No evaluation methods available.")
         return
-    items = [n.strip() for n in names.replace(",", " ").split() if n.strip()]
-    selected = _resolve_items(items, all_names, "evaluation")
+    selected = _resolve_items(items, aliased_names, "evaluation")
+    # Resolve aliases back to canonical names
+    selected = [alias_map.get(n, n) for n in selected]
     if not selected:
         return
     _save_selection(loader, evaluation=selected)
@@ -246,9 +268,9 @@ def evaluation(names: str) -> None:
 
 @select_app.command()
 def all(
-    ds: str = typer.Option("", "-d", "--ds", help="Comma-separated dataset names or indices"),
-    tech: str = typer.Option("", "-t", "--tech", help="Comma-separated technique names or indices"),
-    eval: str = typer.Option("", "-e", "--eval", help="Comma-separated evaluation names or indices"),  # noqa: A002
+    ds: list[str] = typer.Option([], "-d", "--ds", help="Dataset names or indices (repeat -d or comma-sep)"),
+    tech: list[str] = typer.Option([], "-t", "--tech", help="Technique names or indices (repeat -t or comma-sep)"),
+    eval_list: list[str] = typer.Option([], "-e", "--eval", help="Evaluation names or indices (repeat -e or comma-sep)"),  # noqa: A002
 ) -> None:
     """Select datasets, techniques, and evaluations in one command."""
     from deid.config.loader import ConfigLoader
@@ -256,10 +278,20 @@ def all(
     all_ds = loader.load_aligned_datasets()
     all_tech = loader.load_techniques()
     all_eval = loader.load_evaluations()
+    # Accept display aliases (adaface → adaface_optimized, etc.)
+    alias_map = {v: k for k, v in _EVAL_DISPLAY.items()}
+    aliased_evals = all_eval + list(alias_map.keys())
 
-    ds_selected = _parse_selection(ds, all_ds, "dataset") if ds else []
-    tech_selected = _parse_selection(tech, all_tech, "technique") if tech else []
-    eval_selected = _parse_selection(eval, all_eval, "evaluation") if eval else []
+    # Flatten repeated -d/-t/-e flags + handle comma-separated values
+    ds_input = " ".join(ds) if ds else ""
+    tech_input = " ".join(tech) if tech else ""
+    eval_input = " ".join(eval_list) if eval_list else ""
+
+    ds_selected = _parse_selection(ds_input, all_ds, "dataset") if ds_input else []
+    tech_selected = _parse_selection(tech_input, all_tech, "technique") if tech_input else []
+    eval_selected = _parse_selection(eval_input, aliased_evals, "evaluation") if eval_input else []
+    # Resolve aliases back to canonical names
+    eval_selected = [alias_map.get(n, n) for n in eval_selected]
 
     if not ds_selected and not tech_selected and not eval_selected:
         typer.echo("Nothing specified. Use 'deid select wizard' for guided selection.")

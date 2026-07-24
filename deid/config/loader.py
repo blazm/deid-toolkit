@@ -18,7 +18,11 @@ def _get_builtin_scripts(package: str) -> set[str]:
     from importlib import resources
 
     pkg = resources.files(package)
-    return {p.stem for p in pkg.iterdir() if p.suffix == ".py" and p.is_file() and p.stem != "__init__"}
+    return {
+        p.stem for p in pkg.iterdir()
+        if p.suffix == ".py" and p.is_file()
+        and p.stem not in {"__init__", "utils"}
+    }
 
 
 def _get_builtin_envs(package: str):
@@ -91,7 +95,64 @@ class ConfigLoader:
             }
         # Union with built-in evaluations from the package
         user_evals |= set(_get_builtin_scripts("deid.evaluation"))
+        # Filter out legacy/broken scripts — superseded by better alternatives
+        _deprecated_evals = frozenset({
+            "adaface_iv",       # redundant: adaface_optimized is faster + caches embeddings
+            "vggface",          # broken .t7 loader; use deepface_vggface instead
+            "vggface_optimized",# broken .t7 loader; use deepface_vggface instead
+        })
+        user_evals -= _deprecated_evals
         return sorted(user_evals)
+
+    def resolve_eval_alias(self, name: str) -> str:
+        """Resolve an evaluation alias to its canonical name.
+
+        Maps user-friendly names (e.g. "adaface") to the actual script name
+        ("adaface_optimized"). Returns the input unchanged if no alias exists.
+        """
+        _aliases = {
+            "adaface": "adaface_optimized",
+            "fid": "FID",
+        }
+        return _aliases.get(name, name)
+
+    def list_evaluations_grouped(self) -> list[tuple[str, list[str]]]:
+        """Return evaluations grouped by category for display.
+
+        Returns: list of (category_name, [eval_names]) tuples.
+        Unknown/custom evals are placed under "Other".
+        """
+        # Category mapping — expandable as new scripts are added
+        _categories = {
+            "Verification": frozenset({
+                "arcface", "adaface_optimized", "adaface_iv",
+                "swinface", "deepface_vggface",
+                "vggface", "vggface_optimized",
+            }),
+            "Image Quality": frozenset({
+                "ssim", "lpips", "mse", "fid", "FID",
+                "pytorchFid", "ediffiqa",
+            }),
+            "Data Utility": frozenset({
+                "dan", "deepface_gender", "deepface_GD",
+                "deepface_expression", "deepface_age", "deepface_race",
+                "hsemotion", "restnet18_GD",
+            }),
+        }
+
+        evals = set(self.load_evaluations())  # flat, already filtered
+        grouped: dict[str, list[str]] = {}
+        for category, members in _categories.items():
+            found = sorted(evals & members)
+            if found:
+                grouped[category] = found
+        other = sorted(evals - set().union(*_categories.values()))
+        if other:
+            grouped["Other"] = other
+
+        # Reorder: Verification first, then Image Quality, Data Utility, Other
+        _order = ["Verification", "Image Quality", "Data Utility", "Other"]
+        return [(cat, grouped[cat]) for cat in _order if cat in grouped]
 
     def load_environments(self) -> dict[str, str]:
         env_dir = self.settings.environments_path
