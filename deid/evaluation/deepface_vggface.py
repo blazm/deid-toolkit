@@ -8,6 +8,8 @@ so that:
   - Re-runs skip TF inference entirely (minutes instead of hours).
   - Embeddings are available for downstream visualization (t-SNE, UMAP, clusters).
 """
+from __future__ import annotations
+
 import os
 import pickle
 import numpy as np
@@ -18,7 +20,7 @@ from tqdm import tqdm
 EVALUATION_NAME = "deepface_vggface"
 
 
-def _get_embedding(image_path: str, cache_dir: str, log_dir: str) -> np.ndarray | None:
+def _get_embedding(image_path: str, cache_dir: str, log_dir: str) -> "np.ndarray | None":
     """Return a VGG-Face embedding, using a pickle cache if available."""
     image_name = os.path.basename(image_path)
     cache_file = os.path.join(cache_dir, f"{image_name}.pkl")

@@ -97,8 +97,14 @@ def run_streamed(
     executable: Optional[str] = None,
     cwd: Optional[str] = None,
     env_extra: Optional[dict[str, str]] = None,
+    quiet: bool = False,
 ) -> int:
-    """Run a command, streaming stdout/stderr to the console."""
+    """Run a command, streaming stdout/stderr to the console.
+
+    If quiet=True, suppress progress bars and informational output,
+    only showing errors and final results. Also sets PYTHONWARNINGS=ignore
+    for child processes to hide TensorFlow/PyTorch deprecation noise.
+    """
     exe = executable or _get_shell_executable()
 
     # On Windows, passing a path with spaces as `executable` + `shell=True`
@@ -107,6 +113,10 @@ def run_streamed(
     proc_env = os.environ.copy()
     if env_extra:
         proc_env.update(env_extra)
+
+    # Respect DEID_QUIET — suppress warnings from child processes (TensorFlow/PyTorch noise)
+    if quiet or os.environ.get("DEID_QUIET", "0") in ("1", "true", "yes"):
+        proc_env.setdefault("PYTHONWARNINGS", "ignore")
 
     if " " in exe and platform.system() == "Windows":
         proc = subprocess.Popen(

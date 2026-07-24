@@ -536,12 +536,24 @@ def _run_selected(loader: "ConfigLoader") -> None:
 # run commands
 # -------------- --------------------------------------------------
 
-@run_app.command()
-def all() -> None:
-    """Execute the full pipeline: preprocess -> techniques -> evaluations."""
-    from deid.pipeline import run_all
+def _setup_logging(quiet: bool = False) -> None:
+    """Configure logging and warnings. Set DEID_QUIET env var for child processes."""
     import logging
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    import warnings
+
+    if quiet:
+        os.environ["DEID_QUIET"] = "1"
+        warnings.filterwarnings("ignore")
+        logging.basicConfig(level=logging.ERROR, format="%(levelname)s: %(message)s")
+    else:
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
+
+@run_app.command()
+def all(quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress warnings and progress messages")) -> None:
+    """Execute the full pipeline: preprocess -> techniques -> evaluations."""
+    _setup_logging(quiet)
+    from deid.pipeline import run_all
     from deid.config.loader import ConfigLoader
     loader = ConfigLoader()
     s = loader.settings
@@ -554,11 +566,10 @@ def all() -> None:
 
 
 @run_app.command()
-def preprocess() -> None:
+def preprocess(quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress warnings and progress messages")) -> None:
     """Run preprocessing only (alignment + pair generation)."""
+    _setup_logging(quiet)
     from deid.pipeline import run_preprocess
-    import logging
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     from deid.config.loader import ConfigLoader
     loader = ConfigLoader()
     success = run_preprocess(loader)
@@ -567,11 +578,10 @@ def preprocess() -> None:
 
 
 @run_app.command()
-def techniques() -> None:
+def techniques(quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress warnings and progress messages")) -> None:
     """Run techniques only."""
+    _setup_logging(quiet)
     from deid.pipeline import run_techniques
-    import logging
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     from deid.config.loader import ConfigLoader
     loader = ConfigLoader()
     success = run_techniques(loader)
@@ -580,11 +590,10 @@ def techniques() -> None:
 
 
 @run_app.command()
-def evaluation() -> None:
+def evaluation(quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress warnings and progress messages")) -> None:
     """Run evaluations only."""
+    _setup_logging(quiet)
     from deid.pipeline import run_evaluations
-    import logging
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     from deid.config.loader import ConfigLoader
     loader = ConfigLoader()
     success = run_evaluations(loader)
@@ -593,11 +602,9 @@ def evaluation() -> None:
 
 
 @run_app.command()
-def validation() -> None:
+def validation(quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress warnings and progress messages")) -> None:
     """Run preprocessing + evaluation using only validation (aligned images as reference)."""
-    from deid.pipeline import run_preprocess, run_evaluations
-    import logging
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    _setup_logging(quiet)
     from deid.config.loader import ConfigLoader
     loader = ConfigLoader()
     s = loader.settings
@@ -643,18 +650,13 @@ def logs() -> None:
 
 
 @run_app.command()
-def selected() -> None:
+def selected(quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress warnings and progress messages")) -> None:
     """Run only the stages that haven't been completed yet.
 
     Checks existing results in root_dir/results/ and skips stages
     that already have output. Useful for resuming partial runs.
     """
-    from deid.config.loader import ConfigLoader
-    from deid.pipeline import run_preprocess, run_techniques, run_evaluations
-    import logging
-
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-    loader = ConfigLoader()
+    _setup_logging(quiet)
     s = loader.settings
 
     ds_selected = s.datasets.selected

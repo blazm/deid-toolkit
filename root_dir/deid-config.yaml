@@ -1,16 +1,14 @@
 dataset_renames: {}
 datasets:
   selected:
-  - celeba-test_aligned
+  - fri
 environments: {}
 evaluation:
   selected:
   - adaface_optimized
   - arcface
-  - ssim
-  - lpips
   - swinface
-  - dan
+  - deepface_vggface
 evaluation_renames: {}
 logs_dir: logs
 result_dir: results
@@ -19,7 +17,8 @@ technique_renames: {}
 techniques:
   args: {}
   selected:
-  - blur
+  - validation
   - pixelize
+  - blur
 visualization:
   selections: []
