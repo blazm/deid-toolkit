@@ -230,7 +230,7 @@ def _render_displacement(df: pd.DataFrame, viz_dir: Path):
         )
 
     with export_cols[2]:
-        png_bytes = _fig_to_png(plt.gcf() if plt.gcf()._gestalt_figure is not None else _generate_displacement_png(df))
+        png_bytes = _fig_to_png(_generate_displacement_png(df))
         st.download_button(
             "Download Displacement PNG (High-Res)",
             data=png_bytes,

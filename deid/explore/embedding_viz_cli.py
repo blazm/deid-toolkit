@@ -52,30 +52,20 @@ def main():
     print()
 
     # Discover techniques from cache if not specified
+    # All models share: {dataset}/original/ (shared) + {dataset}/deid/{technique}/ (per technique)
     techniques = args.techniques
     if not techniques:
         techniques = []
         temp_dir = Path(root) / "preprocess" / "temp" / model
         if temp_dir.exists():
-            ds_key = ds.replace("-", "_")  # normalize for dir matching
-            for d in sorted(temp_dir.iterdir()):
-                if not (d.is_dir() and (d / "original").exists() and (d / "deid").exists()):
-                    continue
-                # Dir name is {dataset}_{technique} — strip dataset prefix
-                name = d.name.replace("-", "_")
-                for suffix_sep in ("_",):  # separator between ds and tech
-                    if name.startswith(ds_key + suffix_sep):
-                        tech_name = name[len(ds_key) + len(suffix_sep):]
-                        # Convert back to original naming (preserve hyphens)
-                        tech_name = tech_name.replace("_", "-")
-                        if tech_name not in techniques:
-                            techniques.append(tech_name)
-                    elif name == ds_key:  # edge case: dir is just dataset name
-                        if d.name not in techniques:
-                            techniques.append(d.name)
-                        break
+            ds_key = ds.replace("-", "_").replace(" ", "_")  # normalize for dir matching
+            deid_sub = temp_dir / ds_key / "deid"
+            if deid_sub.exists():
+                for t in sorted(deid_sub.iterdir()):
+                    if t.is_dir() and t.name not in techniques:
+                        techniques.append(t.name)
         if not techniques:
-            print(f"ERROR: Cache directory not found: {temp_dir}")
+            print(f"ERROR: No technique caches found under {temp_dir} for dataset '{ds}'")
             sys.exit(1)
 
     if not techniques:
@@ -129,14 +119,18 @@ def main():
                 fig.savefig(p.with_suffix(".png"), dpi=150)
                 plt.close(fig)
 
+                raw_eucl = data.get("raw_euclidean_displacement")
+                cos_sim  = data.get("cosine_similarity")
+
                 # Save per-image displacement CSV for interactive viewer
                 disp_csv = p.with_name(p.name + "_data").with_suffix(".csv")
                 import pandas as pd
                 disp_rows = []
+                identities_list = data.get("identities")
                 for idx in range(len(data["image_names"])):
                     disp_rows.append({
                         "image": data["image_names"][idx],
-                        "identity": data.get("identities", [""] * len(data["image_names"]))[idx] if data.get("identities") else "",
+                        "identity": identities_list[idx] if identities_list is not None else "",
                         "orig_x": float(data["orig_xy"][idx, 0]),
                         "orig_y": float(data["orig_xy"][idx, 1]),
                         "deid_x": float(data["deid_xy"][idx, 0]),
@@ -148,9 +142,6 @@ def main():
                     if cos_sim is not None:
                         disp_rows[-1]["cosine_similarity"] = round(float(cos_sim[idx]), 4)
                 pd.DataFrame(disp_rows).to_csv(disp_csv, index=False)
-
-                raw_eucl = data.get("raw_euclidean_displacement")
-                cos_sim  = data.get("cosine_similarity")
                 print(f"    Saved: {p.with_suffix('.pdf')}, {p.with_suffix('.png')}")
                 print(f"    Data CSV: {disp_csv}")
                 if raw_eucl is not None and cos_sim is not None:

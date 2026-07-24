@@ -172,18 +172,14 @@ Verification models cache embeddings as `.pkl` files for reuse across evaluation
 
 ```
 root_dir/preprocess/temp/
-  swinface/
+  {model}/
     {dataset}/original/              # Original face embeddings (shared across techniques)
     {dataset}/deid/{technique}/      # De-identified embeddings (computed per technique)
-  adaface/
-    {dataset}_{technique}/original/  # AdaFace: per-technique originals (not shared)
-    {dataset}_{technique}/deid/      # AdaFace: per-technique de-identified
-  deepface_vggface/
-    {dataset}/aligned/               # DeepFace VGG-Face: shared originals
-    {dataset}_{technique}/deid/      # DeepFace VGG-Face: per technique
 ```
 
-**Note:** ArcFace does NOT cache embeddings — it uses ONNX inference without pickle caching. Only SWINFace, AdaFace Optimized, and DeepFace VGG-Face have embedding caches.
+All three models (AdaFace, SWINFace, DeepFace VGG-Face) use the same cache layout. Originals are shared across techniques — each image's original embedding is computed once and reused. De-identified embeddings are computed independently per technique.
+
+**Note:** ArcFace does NOT cache embeddings — it uses ONNX inference without pickle caching.
 
 **Embedding formats:**
 | Model | Dimension | Pickle Format |

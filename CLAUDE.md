@@ -242,16 +242,12 @@ Verification models with caching store `.pkl` files under `root_dir/preprocess/t
 
 ```
 root_dir/preprocess/temp/
-  swinface/
-    {dataset}/original/                # Original face embeddings (shared across techniques)
-    {dataset}/deid/{technique}/        # De-identified embeddings (computed per technique)
-  adaface/
-    {dataset}_{technique}/original/    # AdaFace: per-technique originals (not shared)
-    {dataset}_{technique}/deid/        # AdaFace: per-technique de-identified
-  deepface_vggface/
-    {dataset}/aligned/                 # DeepFace VGG-Face: shared originals
-    {dataset}_{technique}/deid/        # DeepFace VGG-Face: per technique
+  {model}/
+    {dataset}/original/              # Original face embeddings (shared across techniques)
+    {dataset}/deid/{technique}/      # De-identified embeddings (computed per technique)
 ```
+
+All three models (AdaFace, SWINFace, DeepFace VGG-Face) share the same layout. Originals computed once per dataset, reused across techniques.
 
 **Cache format by model:**
 - **SWINFace**: `dict[str, torch.Tensor]` with key `"Recognition"` (512-d)

@@ -56,10 +56,10 @@ def main():
     ds = util.get_dataset_name_from_path(aligned_path)
     tech = util.get_technique_name_from_path(deid_path)
 
-    # Shared embedding cache (reused across techniques / runs)
+    # Shared embedding cache: {dataset}/original/ (shared) + {dataset}/deid/{technique}/ (per technique)
     temp_dir = util.get_temp_dir(args.root_dir, EVALUATION_NAME)
-    cache_aligned = os.path.join(temp_dir, ds, "aligned")
-    cache_deid   = os.path.join(temp_dir, f"{ds}_{tech}", "deid")
+    cache_aligned = os.path.join(temp_dir, ds, "original")
+    cache_deid   = os.path.join(temp_dir, ds, "deid", tech)
     os.makedirs(cache_aligned, exist_ok=True)
     os.makedirs(cache_deid,   exist_ok=True)
 

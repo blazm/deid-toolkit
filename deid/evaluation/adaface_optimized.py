@@ -71,9 +71,10 @@ def main():
     metrics_df= util.Metrics(name_score="cossim")
 
     # Create directories for features if they don't exist
+    # Layout: {dataset}/original/ (shared) + {dataset}/deid/{technique}/ (per technique)
     temp_dir = util.get_temp_dir(args.root_dir, EVALUATION_NAME)
-    temp_features_original_dir= os.path.join(temp_dir, f"{dataset_name}_{technique_name}", "original")
-    temp_features_deid_dir = os.path.join(temp_dir, f"{dataset_name}_{technique_name}", "deid")
+    temp_features_original_dir= os.path.join(temp_dir, dataset_name, "original")
+    temp_features_deid_dir = os.path.join(temp_dir, dataset_name, "deid", technique_name)
     os.makedirs(temp_features_original_dir, exist_ok=True)
     os.makedirs(temp_features_deid_dir, exist_ok=True)
 
@@ -86,7 +87,8 @@ def main():
         return
 
     # Load model with proper device handling
-    _has_cuda = torch.cuda.is_available() and torch.cuda.device_count() > 0
+    _force_cpu = os.environ.get("DEID_FORCE_CPU", "0") in ("1", "true", "yes")
+    _has_cuda = not _force_cpu and torch.cuda.is_available() and torch.cuda.device_count() > 0
     device = torch.device('cuda' if _has_cuda else 'cpu')
     print(f"Device: {device}")
     model = load_pretrained_model('ir_50', device)

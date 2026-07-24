@@ -45,25 +45,23 @@ class EmbeddingCacheNotFoundError(Exception):
 # ---------------------------------------------------------------------------
 
 # Model name → cache subdirectory pattern under root_dir/preprocess/temp/
-# "adaface" → temp/adaface/{ds}_{tech}/original & deid
-# "swinface" → temp/swinface/{ds}_{tech}/original & deid
-# "deepface_vggface" → temp/deepface_vggface/{ds}/aligned & {ds}_{tech}/deid
+# All models: {model}/{dataset}/original/ (shared) + {dataset}/deid/{technique}/ (per technique)
 
 _MODEL_CACHE_CONFIG = {
     "adaface": {
-        "original_key": "{ds}_{tech}",
-        "deid_key": "{ds}_{tech}",
-        "format": "torch_tensor",  # torch.Tensor saved via .cpu(), pickle
+        "original_key": "{ds}/original",      # Shared originals (same as swinface)
+        "deid_key": "{ds}/deid/{tech}",       # Per technique: fri/deid/blur/
+        "format": "torch_tensor",             # torch.Tensor saved via .cpu(), pickle
     },
     "swinface": {
-        "original_key": "{ds}/original",      # Originals cached once per dataset (shared)
-        "deid_key": "{ds}/deid/{tech}",       # De-identified per technique: celeba-test_aligned/deid/blur/
+        "original_key": "{ds}/original",      # Shared originals
+        "deid_key": "{ds}/deid/{tech}",       # Per technique: celeba-test_aligned/deid/blur/
         "format": "torch_dict",               # dict[str, torch.Tensor], key="Recognition"
     },
     "deepface_vggface": {
-        "original_key": "{ds}",  # aligned images shared across techniques
-        "deid_key": "{ds}_{tech}",
-        "format": "numpy",  # raw numpy.ndarray
+        "original_key": "{ds}/original",      # Shared originals
+        "deid_key": "{ds}/deid/{tech}",       # Per technique
+        "format": "numpy",                    # raw numpy.ndarray
     },
 }
 
@@ -146,18 +144,9 @@ def find_cache_dirs(
     orig_key = config["original_key"].format(ds=ds, tech=tech)
     deid_key = config["deid_key"].format(ds=ds, tech=tech)
 
-    # Originals: for deepface_vggface, "aligned" subfolder; others use key as-is
-    if model_name == "deepface_vggface":
-        orig_dir = temp_root / orig_key / "aligned"
-    else:
-        # For swinface, original_key already includes "/original"
-        orig_dir = temp_root / orig_key
-
-    # For swinface: deid_key is "{ds}/deid/{tech}" — use as-is
-    if model_name == "swinface":
-        deid_dir = temp_root / deid_key
-    else:
-        deid_dir = temp_root / deid_key / "deid"
+    # All models share the same cache layout: {ds}/original/ + {ds}/deid/{tech}/
+    orig_dir = temp_root / orig_key   # already "{ds}/original"
+    deid_dir = temp_root / deid_key   # already "{ds}/deid/{tech}"
 
     has_orig = (orig_dir.is_dir() and any(orig_dir.glob("*.pkl")))
     has_deid = (deid_dir.is_dir() and any(deid_dir.glob("*.pkl")))
