@@ -22,7 +22,8 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 AFFECT_NET_PATH = str(SCRIPT_DIR / "weights" / "affecnet8_epoch5_acc0.6209.pth")
 class Model():
     def __init__(self):
-        _has_cuda = torch.cuda.is_available() and torch.cuda.device_count() > 0
+        _force_cpu = os.environ.get("DEID_FORCE_CPU", "0") in ("1", "true", "yes")
+        _has_cuda = not _force_cpu and torch.cuda.is_available() and torch.cuda.device_count() > 0
         self.device = torch.device("cuda:0" if _has_cuda else "cpu")
         self.data_transforms = transforms.Compose([
                                     transforms.Resize((224, 224)),
@@ -70,8 +71,9 @@ def main():
     dataset_name = util.get_dataset_name_from_path(aligned_dataset_path)
     technique_name = util.get_technique_name_from_path(deidentified__dataset_path)
     metrics_df= util.Metrics(name_score="isMatch")
-    
-    files = os.listdir(aligned_dataset_path)
+
+    valid_extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"}
+    files = [f for f in os.listdir(aligned_dataset_path) if Path(f).suffix.lower() in valid_extensions]
 
     model = Model() #initialize the model
     for i, file in enumerate(tqdm(files,total= len(files),  desc=f"dan | {dataset_name}-{technique_name}")):

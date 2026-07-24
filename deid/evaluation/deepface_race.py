@@ -22,8 +22,11 @@ def main():
     ds = util.get_dataset_name_from_path(aligned_path)
     tech = util.get_technique_name_from_path(deid_path)
     metrics_df = util.Metrics(name_score="isMatch")
+    valid_extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"}
 
     for i, file in enumerate(tqdm(files, total=len(files), desc=f"deepface_race | {ds}-{tech}")):
+        if Path(file).suffix.lower() not in valid_extensions:
+            continue
         if util._TEST_SINGLE and i > 0:
             break
         path_a = os.path.join(aligned_path, file)

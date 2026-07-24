@@ -41,7 +41,8 @@ def main():
     #ssim_output_scores_file = util.get_output_filename("ssim", aligned_dataset_path, deidentified_path)
     #msssim_output_scores_file = util.get_output_filename("mssim", aligned_dataset_path, deidentified_path)
 
-    use_gpu = True if torch.cuda.is_available() else False
+    _force_cpu = os.environ.get("DEID_FORCE_CPU", "0") in ("1", "true", "yes")
+    use_gpu = not _force_cpu and torch.cuda.is_available()
 
     from torch import nn
     loss_fn = nn.MSELoss()
