@@ -59,10 +59,8 @@ Python/torch/CUDA environment. **Strictly read-only**: it never writes under
 This work is part of the research project **“Enhancing Biometrics with Diffusion Models
 and Differential Privacy”**.
 
-We are grateful to **NVIDIA Corporation** for the generosity of donating the graphics
-hardware (GPU) used to conduct the computationally
-intensive de-identification generation and evaluation work in this project, under the
-**NVIDIA Academic Grant Program**.
+We are grateful to **NVIDIA Corporation** for the donation of GPU hardware used in
+this work, under the **NVIDIA Academic Grant Program**.
 
 ## SOTA Embedding-Space Evaluators
 
@@ -95,7 +93,13 @@ per-method conda environment, weight sources — is in **`baselines/README.md`**
 > NullFace · RP · AnonNET · iFADIT · PRO-Face
 
 Self-contained (no official repo code needed): **LDFA, RP, PRO-Face** (blur +
-IResNet50-restore configuration). Run each method inside its own conda env.
+IResNet50-restore configuration). Run each method inside its own conda env. The
+two basic built-ins (`deid/techniques/blur.py`, `pixelize.py`) accept the same
+`--input/--output` batch contract (as well as the legacy positional pipeline
+interface), so you can call them exactly like the baseline runners.
+```
+python deid/techniques/blur.py --input <aligned_dir> --output <deid_dir>
+```
 
 ## CLI Reference
 

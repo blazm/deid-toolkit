@@ -1,65 +1,71 @@
+"""Blur a directory of face images using Gaussian blur.
+
+Basic built-in technique (also the default toy example in the docs).
+
+CLI (batch contract, shared with the external de-identification runners in
+`baselines/`):
+
+    python blur.py --input <aligned_dir> --output <deid_dir>
+
+CLI (legacy pipeline interface -- positional, used by `deid run`):
+
+    python blur.py <dataset_path> <dataset_save>
+                   [--dataset_filetype jpg] [--dataset_newtype jpg]
+"""
+import cv2
 import numpy as np
-from scipy.ndimage import gaussian_filter
-import matplotlib.pyplot as plt
-import imageio
-import os
-from tqdm import tqdm
 import argparse
+from pathlib import Path
 
-def blur(img_path, output_path, kernel_size=30):
-    try:
-        # Check if the directory of the output path exists and create it if it doesn't
-        output_dir = os.path.dirname(output_path)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
 
-        img = plt.imread(img_path)
-        if img is None:
-            raise FileNotFoundError(f"Image not found at path: {img_path}")
+def blur_image(img, kernel_size=31, sigma=2):
+    """Apply Gaussian blur to an image to protect the face."""
+    blurred_img = cv2.GaussianBlur(img, (kernel_size, kernel_size), sigma)
+    return blurred_img
 
-        # Check if the image is in the range [0, 1] and convert to [0, 255] if necessary
-        if img.max() <= 1.0:
-            img = (img * 255).astype(np.uint8)
 
-        sigma = kernel_size / 2
-
-        di = gaussian_filter(img, sigma=(sigma, sigma, 0))
-
-        # Convert di to [0, 255] range if necessary
-        if di.max() <= 1.0:
-            di = (di * 255).astype(np.uint8)
-
-        # Determine the file format based on the file extension
-        file_extension = os.path.splitext(output_path)[1][1:]  # Get the extension without the dot
-
-        # Save the blurred image
-        imageio.imwrite(output_path, di, format=file_extension)
-
-        return di
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-_TEST_SINGLE = int(os.environ.get("DEID_TEST_SINGLE", "0"))
-
-def main(dir_path,save_dir):
-        images = os.listdir(dir_path)
-        dataset_name = os.path.basename(dir_path)
-        for i, img in enumerate(tqdm(images, desc=f"Processing {dataset_name}")):
-            if _TEST_SINGLE and i > 0:
-                break
-            input_path = os.path.join(dir_path, img)
-            output_path = os.path.join(save_dir, img)
+def process_files(filepaths, save_dir, source_extension='jpg', destination_extension='png'):
+    """Read images, apply blur, and save them."""
+    for file_path in filepaths:
+        if Path(file_path).suffix.lower() not in ('.jpg', '.jpeg', '.png', '.bmp', '.webp'):
+            continue
+        img = cv2.imread(file_path)
+        if img is not None:
+            blurred_img = blur_image(img)
             try:
-                blur(img_path=input_path, output_path=output_path)
-            except Exception as e:
-                print(f"Error processing image {img} with blur: {e}")
+                cv2.imwrite(str(Path(save_dir) / (file_path.name.rsplit('.', 1)[0] + '.' + destination_extension)), blurred_img)
+            except RuntimeError:
+                pass
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process and anonymize images.")
-    parser.add_argument('dataset_path', type=str, help="Path to the dataset directory")
-    parser.add_argument('dataset_save', type=str, help="Path to the save directory")
-    parser.add_argument('--dataset_filetype', type=str, default='jpg', help="Filetype of the dataset images (default: jpg)")
-    parser.add_argument('--dataset_newtype', type=str, default='jpg', help="Filetype for the anonymized images (default: jpg)")
 
-    args = parser.parse_args()
-    main(args.dataset_path, args.dataset_save)
+def main(dir_path, save_dir, source_extension='jpg', destination_extension='jpg'):
+    """Process all images in a directory, apply blurring, and save the result."""
+    Path(save_dir).mkdir(parents=True, exist_ok=True)
+    filepaths = list(Path(dir_path).glob(f'*.{source_extension}'))
+    process_files(filepaths, save_dir, source_extension, destination_extension)
+
+
+if __name__ == '__main__':
+    ap = argparse.ArgumentParser(
+        description="Blur images (basic built-in technique). "
+                    "Batch contract: --input/--output; legacy pipeline: two positional args.")
+    # Batch-contract interface (same flags as the external baseline runners)
+    ap.add_argument('--input', help='Directory of aligned face images (batch contract)')
+    ap.add_argument('--output', help='Output directory (batch contract)')
+    ap.add_argument('--batch-size', type=int, default=None, help='Accepted for CLI compatibility (no effect)')
+    ap.add_argument('--seed', type=int, default=None, help='Accepted for CLI compatibility (no effect)')
+    ap.add_argument('--out-size', type=int, default=None, help='Accepted for CLI compatibility (no effect)')
+    # Legacy pipeline interface (positional + filetypes)
+    ap.add_argument('dataset_path', nargs='?', type=str)
+    ap.add_argument('dataset_save', nargs='?', type=str)
+    ap.add_argument('--dataset_filetype', type=str, default='jpg')
+    ap.add_argument('--dataset_newtype', type=str, default='jpg')
+    args, _ = ap.parse_known_args()
+
+    if args.input and args.output:
+        main(args.input, args.output)
+    elif args.dataset_path and args.dataset_save:
+        main(args.dataset_path, args.dataset_save,
+             args.dataset_filetype, args.dataset_newtype)
+    else:
+        ap.print_help()

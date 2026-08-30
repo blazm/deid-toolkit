@@ -1,82 +1,74 @@
+"""Pixelize a directory of face images (mosaic / block averaging).
+
+Basic built-in technique (also the default toy example in the docs).
+
+CLI (batch contract, shared with the external de-identification runners in
+`baselines/`):
+
+    python pixelize.py --input <aligned_dir> --output <deid_dir>
+
+CLI (legacy pipeline interface -- positional, used by `deid run`):
+
+    python pixelize.py <dataset_path> <dataset_save>
+                       [--dataset_filetype jpg] [--dataset_newtype jpg]
+"""
+import cv2
 import numpy as np
-from skimage.transform import resize
-import matplotlib.pyplot as plt
-import imageio
-import os
-from tqdm import tqdm
 import argparse
-# weak pixelization size 8 or 16
-def pixelize(img_path, output_path, subs_size=32): # subs_size is fixed, does not change with k (plot straight line!)
+from pathlib import Path
 
-    try:
-        # Check if the directory of the output path exists and create it if it doesn't
-        output_dir = os.path.dirname(output_path)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
 
-        img = plt.imread(img_path)
-        if img is None:
-            raise FileNotFoundError(f"Image not found at path: {img_path}")
+def pixelize_image(img, block_size=10):
+    """Pixelize an image to protect the face."""
+    h, w = img.shape[:2]
+    # Resize the image to a smaller size and then resize it back to the original size
+    small_img = cv2.resize(img, (w // block_size, h // block_size), interpolation=cv2.INTER_AREA)
+    pixelized_img = cv2.resize(small_img, (w, h), interpolation=cv2.INTER_NEAREST)
+    return pixelized_img
 
-        # Check if the image is in the range [0, 1] and convert to [0, 255] if necessary
-        if img.max() <= 1.0:
-            img = (img * 255).astype(np.uint8)
-    
-        h, w, ch = img.shape
 
-        # Compute the exact target dimensions for downsample.
-        # Using the same slicing pattern as `img[::subs_size, ::subs_size]` to keep
-        # the output size deterministic and consistent with previous runs.
-        target_h = (h + subs_size - 1) // subs_size
-        target_w = (w + subs_size - 1) // subs_size
-
-        # Downsample with area interpolation so each output pixel is a proper block
-        # average of the corresponding region in the original image.
-        di = resize(img, (target_h, target_w, ch), order=1, preserve_range=True, anti_aliasing=False)
-
-        # Upscale back to the original size with nearest-neighbor interpolation.
-        # Because we resized down to `target_h x target_w` (the same dimensions a
-        # simple stride-subsample would produce), the subsequent nearest-neighbor
-        # upscale maps each small pixel to a contiguous block without coordinate
-        # drift, eliminating the black-bar artifact on the left/top edges.
-        di = resize(di, (h, w, ch), order=0, preserve_range=True, anti_aliasing=False)
-
-        # `preserve_range=True` keeps values in [0, 255] but as float.
-        # Always cast to uint8 so imageio can write the file reliably.
-        di = np.clip(di, 0, 255).astype(np.uint8)
-
-        # Determine the file format based on the file extension
-        file_extension = os.path.splitext(output_path)[1][1:]  # Get the extension without the dot
-
-        # Save the pixelized image
-        imageio.imwrite(output_path, di, format=file_extension)
-
-        return di
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-_TEST_SINGLE = int(os.environ.get("DEID_TEST_SINGLE", "0"))
-
-def main(dir_path,save_dir):
-        images = os.listdir(dir_path)
-        dataset_name = os.path.basename(dir_path)
-        for i, img in enumerate(tqdm(images, desc=f"Processing {dataset_name}")):
-            if _TEST_SINGLE and i > 0:
-                break
-            input_path = os.path.join(dir_path, img)
-            output_path = os.path.join(save_dir, img)
+def process_files(filepaths, save_dir, source_extension='jpg', destination_extension='png'):
+    """Read images, apply pixelization, and save them."""
+    for file_path in filepaths:
+        if Path(file_path).suffix.lower() not in ('.jpg', '.jpeg', '.png', '.bmp', '.webp'):
+            continue
+        img = cv2.imread(file_path)
+        if img is not None:
+            pixelized_img = pixelize_image(img)
             try:
-                pixelize(img_path=input_path, output_path=output_path)
-            except Exception as e:
-                print(f"Error processing image {img} with pixelization: {e}")
+                cv2.imwrite(str(Path(save_dir) / (file_path.name.rsplit('.', 1)[0] + '.' + destination_extension)), pixelized_img)
+            except RuntimeError:
+                pass
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process and picelize images.")
-    parser.add_argument('dataset_path', type=str, help="Path to the dataset directory")
-    parser.add_argument('dataset_save', type=str, help="Path to the save directory")
-    parser.add_argument('--dataset_filetype', type=str, default='jpg', help="Filetype of the dataset images (default: jpg)")
-    parser.add_argument('--dataset_newtype', type=str, default='jpg', help="Filetype for the anonymized images (default: jpg)")
+def main(dir_path, save_dir, source_extension='jpg', destination_extension='jpg'):
+    """Process all images in a directory, apply pixelization, and save the result."""
+    Path(save_dir).mkdir(parents=True, exist_ok=True)
+    filepaths = list(Path(dir_path).glob(f'*.{source_extension}'))
+    process_files(filepaths, save_dir, source_extension, destination_extension)
 
-    args = parser.parse_args()
-    main(args.dataset_path, args.dataset_save)
+
+if __name__ == '__main__':
+    ap = argparse.ArgumentParser(
+        description="Pixelize images (basic built-in technique). "
+                    "Batch contract: --input/--output; legacy pipeline: two positional args.")
+    # Batch-contract interface (same flags as the external baseline runners)
+    ap.add_argument('--input', help='Directory of aligned face images (batch contract)')
+    ap.add_argument('--output', help='Output directory (batch contract)')
+    ap.add_argument('--batch-size', type=int, default=None, help='Accepted for CLI compatibility (no effect)')
+    ap.add_argument('--seed', type=int, default=None, help='Accepted for CLI compatibility (no effect)')
+    ap.add_argument('--out-size', type=int, default=None, help='Accepted for CLI compatibility (no effect)')
+    # Legacy pipeline interface (positional + filetypes)
+    ap.add_argument('dataset_path', nargs='?', type=str)
+    ap.add_argument('dataset_save', nargs='?', type=str)
+    ap.add_argument('--dataset_filetype', type=str, default='jpg')
+    ap.add_argument('--dataset_newtype', type=str, default='jpg')
+    args, _ = ap.parse_known_args()
+
+    if args.input and args.output:
+        main(args.input, args.output)
+    elif args.dataset_path and args.dataset_save:
+        main(args.dataset_path, args.dataset_save,
+             args.dataset_filetype, args.dataset_newtype)
+    else:
+        ap.print_help()
