@@ -212,3 +212,6 @@ root_dir/datasets/LDFA/
 root_dir/datasets/NullFace/
 root_dir/datasets/RP/
 root_dir/datasets/RiDDLE/
+
+# Generated dataset metadata (regenerate via label_generation_csv/; datasets remain under their own licences)
+root_dir/datasets/labels/*.csv
