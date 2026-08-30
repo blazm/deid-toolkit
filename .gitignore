@@ -222,3 +222,5 @@ sample_*_mug-still.*
 sample_*_st.*
 sample_*.png
 sample_*.pdf
+
+root_dir/datasets/labels/KDEF_provenance_LOCAL.md
