@@ -1,3 +1,11 @@
+# Dataset labels (and the KDEF naming/provenance note below)
+
+Each dataset gets one `{dataset}_labels.csv` here (columns: `Name, Path,
+Identity, Gender_code, ...`), plus optional provenance maps. The CSVs are
+generated locally by the scripts in `label_generation_csv/` (not distributed
+with this repo: every dataset remains under its own license). The note below
+documents the KDEF-specific naming and provenance we used in the study.
+---
 # KDEF naming and provenance
 
 Three naming schemes are in play for KDEF in this repository.
@@ -15,8 +23,8 @@ Three naming schemes are in play for KDEF in this repository.
 
 ## 2. Official KDEF subject IDs (manifest, gender-labeled)
 
-The official release in `C:\Users\b\Downloads\official-kdef-dataset`
-(`kdef_manifest_splits.csv`, sessions A/B) names actors `M01–M35` / `F01–F35`
+The official release (KDEF download, `kdef_manifest_splits.csv`, sessions A/B)
+names actors `M01–M35` / `F01–F35`
 (35 men + 35 women; **not all of them appear in our release**). File names are
 `S<g><g><num><EMO><angle>.JPG` (e.g. `BM08DIFL.JPG` = session B, male 08,
 disgust, F-center angle).
@@ -41,6 +49,6 @@ The remaining 71 actors were labeled by direct visual inspection of frontal
 neutral references. The 70 M / 70 F total (published KDEF composition) acts as
 a checksum on the labeling.
 
-Related files: `kdef_labels.csv` (main labels, backup `kdef_labels.csv.bak_no_gender`),
+Related files: `kdef_labels.csv` (main labels),
 `kdef_gender_provenance.csv` (per-actor gender + source),
 `kdef_actor_gender_tf.csv` (raw matcher output, superset incl. the excluded F26 row).
