@@ -76,6 +76,13 @@ utility on RaFD / MUG-Still / KDEF. Usage, environments, run scripts, and the
 
 ## Baselines — the 20 evaluated approaches (our batch scripts)
 
+**Positioning:** the toolkit itself ships the framework plus the two basic
+built-in techniques (`blur`, `pixelize` — they run out of the box via `deid run`).
+Everything in `baselines/` is *supporting material for the methods evaluated in
+the study*, not part of the toolkit: we offer the batch-runner scripts only —
+running a method on your side means obtaining its official repository and
+weights (linked per method below) and placing them per the manifest.
+
 `baselines/` contains the toolkit's own batch runner for each of the 20
 de-identification approaches evaluated in the study (one `deidentify_batch*.py`
 per method, plus our local helper scripts where needed — e.g. NullFace's
@@ -92,9 +99,14 @@ per-method conda environment, weight sources — is in **`baselines/README.md`**
 > DeepPrivacy2 · G2Face · GANonymization · FADM · DiffPrivate · FAMS · AIDPro ·
 > NullFace · RP · AnonNET · iFADIT · PRO-Face
 
-Self-contained (no official repo code needed): **LDFA, RP, PRO-Face** (blur +
-IResNet50-restore configuration). Run each method inside its own conda env. The
-two basic built-ins (`deid/techniques/blur.py`, `pixelize.py`) accept the same
+To run a method, you need our runner script plus (for 17 of the 20) the method's
+official repository and weights — all linked per method in `baselines/README.md`;
+the weights manifest (`weights_manifest.txt` per method) lists exactly which
+files to place and where. Three runners need **only** the files in `baselines/`
+plus off-the-shelf model weights (no official-repo code): **LDFA** (Stable
+Diffusion 2 inpainting), **RP** (SDXL), and **PRO-Face** (blur + IResNet-50
+restore configuration). Run each method inside its own conda env. The two basic
+built-ins (`deid/techniques/blur.py`, `pixelize.py`) accept the same
 `--input/--output` batch contract (as well as the legacy positional pipeline
 interface), so you can call them exactly like the baseline runners.
 ```
