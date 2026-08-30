@@ -215,3 +215,10 @@ root_dir/datasets/RiDDLE/
 
 # Generated dataset metadata (regenerate via label_generation_csv/; datasets remain under their own licences)
 root_dir/datasets/labels/*.csv
+
+# Sample figures at repo root contain real faces from third-party datasets (kept locally only)
+sample_*_fri.*
+sample_*_mug-still.*
+sample_*_st.*
+sample_*.png
+sample_*.pdf
