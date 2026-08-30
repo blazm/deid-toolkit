@@ -1,0 +1,22 @@
+# Model-weight manifest for FADM (generated 2026-08-30 from the
+# working collection at D:\dev\deid-toolkit_baselines\FADM)
+# NOT shipped with this repository: place these files in the indicated
+# locations before running. Sources: the method's official release repo
+# (Hugging Face / Google Drive / OneDrive links in its README).
+# Total: 6.01 GB across 15 files.
+
+external\ComfyUI\models\checkpoints\v2-1_768-ema-pruned.safetensors	5,215 MB
+external\ComfyUI\models\controlnet\control_v11p_sd21_openposev2.safetensors	728 MB
+external\yolo\yolov8m-seg.pt	55 MB
+external\ComfyUI\custom_nodes\comfyui_controlnet_aux\src\custom_mesh_graphormer\modeling\data\MANO_LEFT.pkl	3 MB
+external\ComfyUI\custom_nodes\comfyui_controlnet_aux\src\custom_mesh_graphormer\modeling\data\MANO_RIGHT.pkl	3 MB
+external\ComfyUI\custom_nodes\comfyui_controlnet_aux\src\custom_mesh_graphormer\modeling\data\J_regressor_h36m_correct.npy	1 MB
+external\ComfyUI\custom_nodes\comfyui_controlnet_aux\src\custom_mesh_graphormer\modeling\data\J_regressor_extra.npy	1 MB
+external\ComfyUI\custom_nodes\comfyui_controlnet_aux\src\custom_mesh_graphormer\modeling\data\smpl_431_adjmat_indices.pt	0 MB
+external\ComfyUI\custom_nodes\comfyui_controlnet_aux\src\custom_mesh_graphormer\modeling\data\mano_195_adjmat_indices.pt	0 MB
+external\ComfyUI\custom_nodes\comfyui_controlnet_aux\src\custom_mesh_graphormer\modeling\data\smpl_431_faces.npy	0 MB
+external\ComfyUI\custom_nodes\comfyui_controlnet_aux\src\custom_mesh_graphormer\modeling\data\smpl_431_adjmat_values.pt	0 MB
+external\ComfyUI\custom_nodes\comfyui_controlnet_aux\src\custom_controlnet_aux\diffusion_edge\taming\modules\autoencoder\lpips\vgg.pth	0 MB
+external\ComfyUI\custom_nodes\comfyui_controlnet_aux\src\custom_mesh_graphormer\modeling\data\mano_195_adjmat_values.pt	0 MB
+external\ComfyUI\custom_nodes\comfyui_controlnet_aux\src\custom_mesh_graphormer\modeling\data\smpl_431_adjmat_size.pt	0 MB
+external\ComfyUI\custom_nodes\comfyui_controlnet_aux\src\custom_mesh_graphormer\modeling\data\mano_195_adjmat_size.pt	0 MB

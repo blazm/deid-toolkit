@@ -1,0 +1,11 @@
+# Model-weight manifest for FAMS (generated 2026-08-30 from the
+# working collection at D:\dev\deid-toolkit_baselines\FAMS)
+# NOT shipped with this repository: place these files in the indicated
+# locations before running. Sources: the method's official release repo
+# (Hugging Face / Google Drive / OneDrive links in its README).
+# Total: 1.00 GB across 4 files.
+
+weights\vae\diffusion_pytorch_model.bin	335 MB
+weights\vae\diffusion_pytorch_model.safetensors	335 MB
+weights\vae\diffusion_pytorch_model.fp16.bin	167 MB
+weights\vae\diffusion_pytorch_model.fp16.safetensors	167 MB

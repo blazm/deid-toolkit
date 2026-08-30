@@ -1,6 +1,14 @@
 # deid-toolkit
 
-A toolkit for running and evaluating privacy-preserving techniques in facial biometrics.
+A framework for running and evaluating privacy-preserving techniques in facial biometrics.
+A reference implementation of state-of-the-art de-identification and face-obfuscation
+techniques together with the framework around them. Results of the research runs are
+stored under `root_dir/`.
+The toolkit itself is the **framework only**: MTCNN alignment, pipeline
+orchestration, built-in evaluation metrics, and the SOTA embedding-space evaluators
+(`sota_evaluators/`). The 20 heavy de-identification baselines are maintained
+separately (one conda env + batch script per method; our runner scripts for each
+method live in `baselines/`) and drop their outputs into `root_dir/datasets/`.
 
 ## Two Modes
 
@@ -13,13 +21,81 @@ A toolkit for running and evaluating privacy-preserving techniques in facial bio
 conda env create -f environment.yml && conda activate deid-toolkit
 pip install -e .
 deid migrate --yes
+deid verify          # NEW: check that your datasets/labels/pairs/technique outputs
+                     # are properly prepared (read-only diagnostics, exit code 1 on FAIL)
 deid list datasets   # e.g. arface lfw fri mug-still
 deid select datasets arface ck+_fix
-deid select techniques deepprivacy2 ksamenet
+deid select techniques deepprivacy2    # one or more by name/index
 deid select evaluation ssim lpips vggface adaface_iv arcface swinface
 deid run all
 deid explore
 ```
+
+Or from the Windows launcher at the repo root (any current directory):
+
+```bat
+run_pipeline.bat           " no argument: runs the FULL pipeline (deid run all)
+run_toolkit.bat            " no argument: runs the full preparation check (deid verify --all)
+run_toolkit.bat verify     " same, explicit (or --all / --quiet / --detail)
+run_toolkit.bat list datasets
+run_toolkit.bat explore
+rem - everything after the script name is passed to the deid CLI
+```
+
+**`deid verify`** — preparation diagnostics before running anything:
+per selected dataset it checks the aligned image count, label-CSV discovery and
+row/path coverage (including whether the gender column is actually filled),
+and sample-validates the genuine/impostor pair files; per selected technique it
+locates the output folder (legacy `deidentified/{tech}/{ds}` or dataset-root
+`datasets/{Technique}/{ds}`) and compares output vs aligned counts (shortfalls
+are WARN — technique failure logs are a supported condition). It also reports
+SOTA-stack artifacts (`root_dir/predictions/`, `root_dir/embeddings/`) and the
+Python/torch/CUDA environment. **Strictly read-only**: it never writes under
+`root_dir/`. Flags: `--all` (every aligned dataset, not just selected),
+`--detail`, `--quiet` (non-PASS lines only).
+
+## Acknowledgments
+
+This work is part of the research project **“Enhancing Biometrics with Diffusion Models
+and Differential Privacy”**.
+
+We are grateful to **NVIDIA Corporation** for the generosity of donating the graphics
+hardware (GPU) used to conduct the computationally
+intensive de-identification generation and evaluation work in this project, under the
+**NVIDIA Academic Grant Program**.
+
+## SOTA Embedding-Space Evaluators
+
+`deid explore` and the built-in `deid select evaluation` metrics below are the
+**lightweight** stack. The main SOTA numbers come from the independent
+embedding-space stack in **`sota_evaluators/`**: two probe models (SwinFace + TransFace)
+feeding verification, cross-condition linkability, identity-mapping structure,
+drift / retrieval / collapse diagnostics, and SwinFace gender + expression attribute
+utility on RaFD / MUG-Still / KDEF. Usage, environments, run scripts, and the
+(junction-based, git-ignored) model-weight layout are documented in
+`sota_evaluators/README.md`. Its outputs land in `root_dir/predictions/` and
+`root_dir/embeddings/`.
+
+## Baselines — the 20 evaluated approaches (our batch scripts)
+
+`baselines/` contains the toolkit's own batch runner for each of the 20
+de-identification approaches evaluated in the study (one `deidentify_batch*.py`
+per method, plus our local helper scripts where needed — e.g. NullFace's
+local face-embedding extractor, RP's SDXL pipeline loader).
+The full official method repos and model weights are **not** shipped (they are
+large); per method you get our script + a `weights_manifest.txt` (exact weight
+files, paths, sizes) to place from the method's official release. All runners
+share the same contract: aligned face crops in `--input` → same-basename PNGs
+in `--output`, skip-existing, failure log, 256² output unless the method's
+protocol dictates otherwise. The full list — paper, required official code,
+per-method conda environment, weight sources — is in **`baselines/README.md`**:
+
+> DeepPrivacy · CLEANIR · IPFA · RiDDLE · AMT-GAN · FALCO · CPP-DeID · LDFA ·
+> DeepPrivacy2 · G2Face · GANonymization · FADM · DiffPrivate · FAMS · AIDPro ·
+> NullFace · RP · AnonNET · iFADIT · PRO-Face
+
+Self-contained (no official repo code needed): **LDFA, RP, PRO-Face** (blur +
+IResNet50-restore configuration). Run each method inside its own conda env.
 
 ## CLI Reference
 
@@ -39,11 +115,13 @@ deid run all                           # Full pipeline (preprocess + techniques 
 deid run preprocess                    # Alignment + pair generation
 deid run techniques                    # Techniques only
 deid run evaluation                    # Evaluation only
+deid run validation                    # Preprocess + evaluation only (aligned as reference)
 deid run selected                      # Resume incomplete stages
 deid run logs                          # Show latest pipeline log
 
 # Config & UI
 deid show                              # Current config
+deid verify [--all] [--detail] [--quiet]  # Dataset/technique preparation diagnostics (read-only)
 deid migrate [--yes]                   # Migrate legacy config.ini → deid-config.yaml
 deid migrate-structure                 # Create workspace dirs with .gitkeep files
 deid explore [--port 8501]             # Launch Streamlit web UI
@@ -101,7 +179,7 @@ deid migrate-structure
 
 # 2. Edit config or use CLI to select
 deid select datasets fri mug-still
-deid select techniques blur pixelize deepprivacy2
+deid select techniques blur pixelize
 deid select evaluation ssim lpips arcface adaface_iv swinface \
                        deepface_gender deepface_expression deepface_age dan
 
@@ -117,8 +195,8 @@ deid explore
 ## Pipeline Flow
 
 1. **Preprocess**: MTCNN alignment (`align_face_mtcnn.py`) + pair generation (`generate_img_pairs_all.py`)
-2. **Techniques**: Runs each technique script (blurs, pixelation, GANs, etc.)
-3. **Evaluations**: Runs selected eval scripts on each dataset/technique combo
+2. **Techniques**: Runs each technique script (user scripts in `root_dir/techniques/` first, then the basic built-in scripts in `deid/techniques/` — `blur`, `pixelize`; the heavyweight baselines run via the external scripts documented in `baselines/README.md`, and their outputs are consumed from `root_dir/datasets/`)
+3. **Evaluations**: Runs selected eval scripts on each dataset/technique combo (lightweight stack; the SOTA stack lives in `sota_evaluators/`)
 4. **Validation**: Always runs evaluations on aligned images as reference baseline (`results/validation/{ds}/`)
 5. **Reports**: Auto-generates PDF reports via `deid.reports.pdf_export`
 
@@ -132,9 +210,18 @@ deid explore
 | Labels | `root_dir/datasets/labels/{dataset_name}_labels.csv` |
 | Pairs | `root_dir/datasets/pairs/{dataset_name}_{impostor\|genuine}_pairs.txt` |
 | Results (evaluation) | `root_dir/results/{technique}/{dataset}/{metric}.csv` |
+| Results (SOTA predictions) | `root_dir/predictions/{dataset}/` (per-technique gender/expression CSVs — paper data) |
+| Results (SOTA embeddings) | `root_dir/embeddings/{SwinFace,TransFace}/` |
 | Results (visualization) | `root_dir/results/viz/{dataset}_{model}/` |
 | Embedding cache | `root_dir/preprocess/temp/{model}/{dataset}/` |
 | Config | `root_dir/deid-config.yaml` |
+
+`root_dir/` is the project's research data/results store (datasets, labels, pairs,
+predictions, embeddings, results, logs). It is a **no-touch zone for toolkit code**:
+nothing in `deid/` or `sota_evaluators/` may move, rename, or delete files under it.
+Binary contents (original/aligned images, per-baseline de-identified sets, technique
+outputs, prediction CSVs, embedding caches) are git-ignored; only small structural
+files (labels, .gitkeep, the workspace README) are committed.
 
 ## CSV Result Format
 
@@ -213,8 +300,7 @@ logs_dir: logs
 datasets:
   selected: [arface, ck+_fix]
 techniques:
-  selected: [deepprivacy2, ksamenet]
-  args: {ksamenet: "--postprocessing_alignment yes"}
+  selected: [blur, pixelize]
 evaluation:
   selected: [ssim, lpips, arcface, adaface_iv, deepface_gender]
 ```

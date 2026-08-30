@@ -1,0 +1,14 @@
+# Model-weight manifest for iFADIT (generated 2026-08-30 from the
+# working collection at D:\dev\deid-toolkit_baselines\ProFace/FacePrivacy/iFADIT)
+# NOT shipped with this repository: place these files in the indicated
+# locations before running. Sources: the method's official release repo
+# (Hugging Face / Google Drive / OneDrive links in its README).
+# Total: 2.63 GB across 7 files.
+
+pretrained_drive\attr_best.pth	959 MB
+pretrained_drive\550000.pt	827 MB
+pretrained_drive\deghosting_weight_1_140.pth	627 MB
+pretrained_drive\model_ir_se50.pth	175 MB
+pretrained_drive\fuse_mlp_ffhq15INN607_20_202528.pth	21 MB
+pretrained_drive\G_net_ffhq15INN607_20_202528.pth	15 MB
+pretrained_drive\mlp_best.pth	3 MB

@@ -142,7 +142,11 @@ def align_face(filepath):
     quad = np.stack([c - x - y, c - x + y, c + x + y, c + x - y])
     qsize = np.hypot(*x) * 2
 
-    img = PIL.Image.open(filepath)
+    # Use cv2 to load (avoids Pillow issues with Unicode paths and RGBA/JPEG)
+    _img_cv = cv2.imread(filepath)
+    if _img_cv is None:
+        raise ValueError(f"Image not found or could not be loaded: {filepath}")
+    img = PIL.Image.fromarray(cv2.cvtColor(_img_cv, cv2.COLOR_BGR2RGB))
 
     output_size = 1024
     transform_size = 4096
@@ -154,7 +158,7 @@ def align_face(filepath):
             int(np.rint(float(img.size[0]) / shrink)),
             int(np.rint(float(img.size[1]) / shrink)),
         )
-        img = img.resize(rsize, PIL.Image.ANTIALIAS)
+        img = img.resize(rsize, PIL.Image.Resampling.LANCZOS)
         quad /= shrink
         qsize /= shrink
 
@@ -213,7 +217,7 @@ def align_face(filepath):
         PIL.Image.BILINEAR,
     )
     if output_size < transform_size:
-        img = img.resize((output_size, output_size), PIL.Image.ANTIALIAS)
+        img = img.resize((output_size, output_size), PIL.Image.Resampling.LANCZOS)
 
     return img
 

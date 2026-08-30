@@ -1,0 +1,12 @@
+# Model-weight manifest for DeepPrivacy (generated 2026-08-30 from the
+# working collection at D:\dev\deid-toolkit_baselines\DeepPrivacy)
+# NOT shipped with this repository: place these files in the indicated
+# locations before running. Sources: the method's official release repo
+# (Hugging Face / Google Drive / OneDrive links in its README).
+# Total: 1.29 GB across 5 files.
+
+weights\WIDERFace_DSFD_RES152.pth	481 MB
+weights\keypointrcnn_resnet50_fpn_coco-fc266e95.pth	237 MB
+outputs\fdf\512\checkpoints\fdf128_model512.ckpt	190 MB
+outputs\fdf\512_dsfd\checkpoints\fdf128_model512.ckpt	190 MB
+weights\fdf128_model512.ckpt	190 MB

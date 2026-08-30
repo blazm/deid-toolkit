@@ -1,0 +1,31 @@
+# Model-weight manifest for G2Face (generated 2026-08-30 from the
+# working collection at D:\dev\deid-toolkit_baselines\G2Face)
+# NOT shipped with this repository: place these files in the indicated
+# locations before running. Sources: the method's official release repo
+# (Hugging Face / Google Drive / OneDrive links in its README).
+# Total: 2.90 GB across 24 files.
+
+weights\G2Face.pth	1,370 MB
+pretrained\face_recon_feat0.2_augment-20260729T085050Z-1-001\face_recon_feat0.2_augment\epoch_20.pth	289 MB
+weights\epoch_20.pth	289 MB
+pretrain\ms1mv3_arcface_r50.pth	175 MB
+pretrained\ms1mv3_arcface_r50_fp16\backbone.pth	175 MB
+pretrained\ms1mv3_arcface_r50_fp16\ms1mv3_arcface_r50_fp16\ijbc.npy	125 MB
+model\d3dfr\BFM\Exp_Pca.bin	51 MB
+weights\BFM\Exp_Pca.bin	51 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_0_softmax_weight.pt	23 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_0_softmax_weight_mom.pt	23 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_1_softmax_weight.pt	23 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_1_softmax_weight_mom.pt	23 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_2_softmax_weight.pt	23 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_2_softmax_weight_mom.pt	23 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_3_softmax_weight.pt	23 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_3_softmax_weight_mom.pt	23 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_4_softmax_weight.pt	23 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_4_softmax_weight_mom.pt	23 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_5_softmax_weight.pt	23 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_5_softmax_weight_mom.pt	23 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_6_softmax_weight.pt	23 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_6_softmax_weight_mom.pt	23 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_7_softmax_weight.pt	23 MB
+pretrained\ms1mv3_arcface_r50_fp16\rank_7_softmax_weight_mom.pt	23 MB

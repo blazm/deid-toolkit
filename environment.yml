@@ -11,7 +11,8 @@ dependencies:
   - torchvision
   - torchaudio
   - pytorch-cuda=12.1
-  - opencv>=4.8
+  - numpy<2                      # dlib incompatible with numpy >= 2.0
+  - opencv>=4.8,<5               # must be built against numpy < 2
   - mtcnn>=0.1
   - dlib>=19.24
   - scikit-learn>=1.3

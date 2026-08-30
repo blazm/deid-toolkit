@@ -1,0 +1,35 @@
+# Model-weight manifest for IPFA (generated 2026-08-30 from the
+# working collection at D:\dev\deid-toolkit_baselines\IPFA)
+# NOT shipped with this repository: place these files in the indicated
+# locations before running. Sources: the method's official release repo
+# (Hugging Face / Google Drive / OneDrive links in its README).
+# Total: 3.13 GB across 28 files.
+
+pretrained\FaceParser.ckpt	476 MB
+pretrained\ArcFace-CelebA-R50-10177.pth	196 MB
+pretrained\celeba-256x256-5attrs\200000-D.ckpt	180 MB
+pretrained\200000-D.ckpt	179 MB
+pretrained\Facial_Attributes_Obfuscation\stargan_celeba\models\100000-D.ckpt	179 MB
+pretrained\Facial_Attributes_Obfuscation\stargan_celeba\models\150000-D.ckpt	179 MB
+pretrained\Facial_Attributes_Obfuscation\stargan_celeba\models\200000-D.ckpt	179 MB
+pretrained\Facial_Attributes_Obfuscation\stargan_vgg\models\100000-D.ckpt	179 MB
+pretrained\Facial_Attributes_Obfuscation\stargan_vgg\models\150000-D.ckpt	179 MB
+pretrained\Facial_Attributes_Obfuscation\stargan_vgg\models\200000-D.ckpt	179 MB
+pretrained\celeba-128x128-5attrs\200000-D.ckpt	179 MB
+pretrained\Facial_Attributes_Obfuscation\senet50_scratch_dag.pth	175 MB
+pretrained\senet50_scratch_dag.pth	175 MB
+pretrained\Face-Attributes2.pth	95 MB
+pretrained\AttributeNet-VGGFace2.pkl	95 MB
+pretrained\200000-G.ckpt	34 MB
+pretrained\Facial_Attributes_Obfuscation\stargan_celeba\models\100000-G.ckpt	34 MB
+pretrained\Facial_Attributes_Obfuscation\stargan_celeba\models\150000-G.ckpt	34 MB
+pretrained\Facial_Attributes_Obfuscation\stargan_celeba\models\200000-G.ckpt	34 MB
+pretrained\Facial_Attributes_Obfuscation\stargan_vgg\models\100000-G.ckpt	34 MB
+pretrained\Facial_Attributes_Obfuscation\stargan_vgg\models\150000-G.ckpt	34 MB
+pretrained\Facial_Attributes_Obfuscation\stargan_vgg\models\200000-G.ckpt	34 MB
+pretrained\celeba-128x128-5attrs\200000-G.ckpt	34 MB
+pretrained\celeba-256x256-5attrs\200000-G.ckpt	34 MB
+mtcnn\src\weights\onet.npy	2 MB
+mtcnn\src\weights\rnet.npy	1 MB
+mtcnn\src\weights\pnet.npy	0 MB
+Generator\metrics\lpips_weights.ckpt	0 MB

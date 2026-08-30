@@ -24,6 +24,9 @@ app.command(name="migrate")(commands.cmd_migrate)
 app.command(name="migrate-structure")(commands.cmd_migrate_structure)
 app.command(name="explore")(commands.cmd_explore)
 
+from deid.cli import verify as verify_cmd
+app.command(name="verify")(verify_cmd.main)
+
 from deid.cli import serve
 app.add_typer(serve.app, name="serve")
 

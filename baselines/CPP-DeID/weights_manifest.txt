@@ -1,0 +1,47 @@
+# Model-weight manifest for CPP-DeID (generated 2026-08-30 from the
+# working collection at D:\dev\deid-toolkit_baselines\CPP-DeID)
+# NOT shipped with this repository: place these files in the indicated
+# locations before running. Sources: the method's official release repo
+# (Hugging Face / Google Drive / OneDrive links in its README).
+# Total: 5.19 GB across 42 files.
+
+content\encoder4editing\pretrained_models\e4e_ffhq_encode.pt	1,202 MB
+e4e_local\pretrained_models\e4e_ffhq_encode.pt	1,202 MB
+stylegan-encoder\karras2019stylegan-ffhq-1024x1024.pkl	325 MB
+e4e_local\pretrained_models\affectnet_expression_acc-0.88_step-89910_final.pth	175 MB
+e4e_local\pretrained_models\gender_celeba_accuracy-0.60_step-7560_final.pth	175 MB
+e4e_local\pretrained_models\model_rafd_acc-0.98_step-680_final.pth	175 MB
+e4e_local\pretrained_models\model_xm2vts_acc-1.0_step-260_final.pth	175 MB
+pretrained_models\affectnet_expression_acc-0.88_step-89910_final.pth	175 MB
+pretrained_models\gender_celeba_accuracy-0.60_step-7560_final.pth	175 MB
+pretrained_models\model_rafd_acc-0.98_step-680_final.pth	175 MB
+pretrained_models\model_xm2vts_acc-1.0_step-260_final.pth	175 MB
+e4e_local\pretrained_models\model_ir_se50.pth	175 MB
+pretrained_models\model_ir_se50.pth	175 MB
+e4e_local\pretrained_models\stylegan2-ffhq-config-f.pt	133 MB
+pretrained_models\stylegan2-ffhq-config-f.pt	133 MB
+pretrained_models\ffhq-256-config-f.pt	121 MB
+e4e_local\pretrained_models\affectnet_EX_accuracy-0.878_step-18900.pth	72 MB
+e4e_local\pretrained_models\celeba_GD_accuracy-0.889_step-12600.pth	72 MB
+pretrained_models\affectnet_EX_accuracy-0.878_step-18900.pth	72 MB
+pretrained_models\celeba_GD_accuracy-0.889_step-12600.pth	72 MB
+global_directions\npy\ffhq\fs3.npy	6 MB
+hyperstyle_local\editing\styleclip\global_directions\ffhq\fs3.npy	6 MB
+global_directions\npy\afhqcat\fs3.npy	6 MB
+global_directions\npy\afhqdog\fs3.npy	6 MB
+global_directions\data\ffhq\w_plus.npy	3 MB
+hyperstyle_local\models\mtcnn\mtcnn_pytorch\src\weights\onet.npy	2 MB
+hyperstyle_local\models\mtcnn\mtcnn_pytorch\src\weights\rnet.npy	1 MB
+content\encoder4editing\editings\ganspace_pca\cars_pca.pt	0 MB
+content\encoder4editing\editings\ganspace_pca\ffhq_pca.pt	0 MB
+hyperstyle_local\editing\ganspace_directions\cars_pca.pt	0 MB
+stylegan-encoder\ffhq_dataset\latent_directions\age.npy	0 MB
+stylegan-encoder\ffhq_dataset\latent_directions\gender.npy	0 MB
+stylegan-encoder\ffhq_dataset\latent_directions\smile.npy	0 MB
+hyperstyle_local\models\mtcnn\mtcnn_pytorch\src\weights\pnet.npy	0 MB
+content\encoder4editing\editings\interfacegan_directions\pose.pt	0 MB
+hyperstyle_local\editing\interfacegan_directions\pose.pt	0 MB
+stylegan-encoder\ffhq_dataset\latent_representations\donald_trump_01.npy	0 MB
+stylegan-encoder\ffhq_dataset\latent_representations\hillary_clinton_01.npy	0 MB
+content\encoder4editing\editings\interfacegan_directions\age.pt	0 MB
+content\encoder4editing\editings\interfacegan_directions\smile.pt	0 MB

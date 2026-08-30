@@ -1,0 +1,16 @@
+name: transface
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - numpy
+  - opencv<4.10
+  - pip
+  - matplotlib
+  - pip:
+    - torch>=2.4 --index-url https://download.pytorch.org/whl/cu126
+    - torchvision --index-url https://download.pytorch.org/whl/cu126
+    - timm>=1.0.0
+    - easydict
+    - scikit-learn

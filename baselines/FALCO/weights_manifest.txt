@@ -1,0 +1,16 @@
+# Model-weight manifest for FALCO (generated 2026-08-30 from the
+# working collection at D:\dev\deid-toolkit_baselines\FALCO)
+# NOT shipped with this repository: place these files in the indicated
+# locations before running. Sources: the method's official release repo
+# (Hugging Face / Google Drive / OneDrive links in its README).
+# Total: 3.87 GB across 9 files.
+
+models\pretrained\e4e\e4e_ffhq_encode.pt	1,202 MB
+models\pretrained\farl\FaRL-Base-Patch16-LAIONFace20M-ep16.pth	652 MB
+models\pretrained\farl\FaRL-Base-Patch16-LAIONFace20M-ep64.pth	652 MB
+models\pretrained\genforce\stylegan2_ffhq1024.pth	381 MB
+models\pretrained\genforce\stylegan2_ffhq512.pth	364 MB
+models\pretrained\arcface\InsightFace_Pytorch+model_ir_se50.pth	175 MB
+models\pretrained\arcface\model_ir_se50.pth	175 MB
+models\pretrained\e4e\model_ir_se50.pth	175 MB
+models\pretrained\sfd\s3fd-619a316812.pth	90 MB

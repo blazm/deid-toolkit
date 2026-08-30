@@ -140,3 +140,75 @@ raw_visualisations_to_port/
 DAEMON.md
 
 deid/evaluation/identity_verification/vgg-face.pytorch/
+
+# ── Research data & SOTA stack (local only, never commit) ──────────────
+# root_dir is the research data/results store (no-touch zone for code)
+root_dir/predictions/
+root_dir/embeddings/
+root_dir/preprocess/
+root_dir/results/viz/
+# FRI toy dataset names real people — never commit its labels
+root_dir/datasets/labels/fri_labels.csv
+# SOTA model weights are local junctions/copies (see sota_evaluators/README.md)
+sota_evaluators/models/
+
+# ── Personal / machine-specific ───────────────────────────
+.deid-users.yaml
+.vscode/
+.claude/
+align_fri.bat
+align_fri_dlib.py
+align_images_stylegan.py
+debug_align.py
+# FRI sample figures contain real (non-public) faces
+sample_*_fri.*
+sample_attack_surface_fri.*
+
+# FRI labels & pairs are private (real people, names)
+root_dir/datasets/labels/fri_labels.csv
+root_dir/datasets/pairs/fri_genuine_pairs.txt
+root_dir/datasets/pairs/fri_impostor_pairs.txt
+label_generation_csv/FRI_labels.py
+
+# ── Dev docs not release-ready (kept locally) ──────────────────────
+CLAUDE.md
+CONTRIBUTIONS.md
+EXPERIMENT_DESIGN.md
+PUBLICATION_MOTIVATION.md
+TODO.md
+REPO_AUDIT.md
+
+# ── Scratch ──────────────────────────────────
+*.bak
+nul
+_probe.txt
+# stale nested duplicate dir at repo root + emptied submodule file
+deid-toolkit/
+.gitmodules
+
+# ── Dev-only (added pre-release) ───────────────────────────
+paper-planning/
+run_kdef_align.py
+_probe*.bat
+deid/evaluation/vggface.py
+deid/evaluation/vggface_optimized.py
+*.bak_no_gender
+
+# ── Baseline technique outputs (large; generated in place) ──
+root_dir/datasets/AIDPro/
+root_dir/datasets/AMT-GAN/
+root_dir/datasets/CLEANIR/
+root_dir/datasets/CPP-DeID/
+root_dir/datasets/DeepPrivacy/
+root_dir/datasets/DeepPrivacy2/
+root_dir/datasets/DiffPrivate/
+root_dir/datasets/FADM/
+root_dir/datasets/FALCO/
+root_dir/datasets/FAMS/
+root_dir/datasets/G2Face/
+root_dir/datasets/GANonymization/
+root_dir/datasets/IPFA/
+root_dir/datasets/LDFA/
+root_dir/datasets/NullFace/
+root_dir/datasets/RP/
+root_dir/datasets/RiDDLE/
