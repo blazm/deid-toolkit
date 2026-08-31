@@ -69,9 +69,9 @@ repos (and summarized per method in `weights_manifest.txt`).
 | **AIDPro** | IEEE TIFS 2025 | [daizigege/AIDPro](https://github.com/daizigege/AIDPro) | `deidentify_batch.py` | torch | 0.7 GB |
 | **NullFace** | ICFAI 2026 | [hanweikung/nullface](https://github.com/hanweikung/nullface) | `deidentify_batch.py`, `anonymize_face.py`, `utils/face_embedding.py`, `utils/sample_vector.py`, `fix_nullface_failures.py` (gap-filler for undetected faces, e.g. profiles) | py-torch 2.11 + cu128, diffusers | SD 1.5 (official release) + InsightFace models (~0.6 GB) |
 | **RP** (Reverse Personalization) | WACV 2026 | [hanweikung/reverse-personalization](https://github.com/hanweikung/reverse-personalization) | `deidentify_batch_rp.py`, `anonymize_local.py` (local SDXL pipeline loader), `resize_to_256.py` | py3.12, torch 2.11.0+cu128, diffusers 0.30.0 | 13.4 GB local (pruned fp16 SDXL, canonical filenames) |
-| **AnonNET** | ICCVW 2025 (CV4BIOM) | [anilegin/AnonNET](https://github.com/anilegin/AnonNET) | `deidentify_batch_anonnet.py` (local weight redirection + BiSeNet hub patch + DeepFace prompt protocol) | py3.9, torch 2.7.1+cu128, **TensorFlow 2.15** (DeepFace stack), deepface 0.0.93 | 28.8 GB (SD1.5 Realistic-Vision, 3 ControlNets, SV2 VAE, annotators, DeepFace weights) |
+| **AnonNET** | ICCVW 2025 (CV4BIOM) | [anilegin/AnonNET](https://github.com/anilegin/AnonNET) | `deidentify_batch_anonnet.py` (local weight redirection + BiSeNet hub patch + DeepFace prompt protocol); **apply `patches/0001-strength-retry-list-arithmetic.patch` to the official checkout** (fixes a crash in the self-verification retry whenever a list `--strength` is used) | py3.9, torch 2.7.1+cu128, **TensorFlow 2.15** (DeepFace stack), deepface 0.0.93 | 28.8 GB (SD1.5 Realistic-Vision, 3 ControlNets, SV2 VAE, annotators, DeepFace weights) |
 | **iFADIT** | Pattern Recognition 2025 | [lixionga/ProFace](https://github.com/lixionga/ProFace) (`FacePrivacy/iFADIT`) + [official checkpoint folder (Google Drive)](https://drive.google.com/drive/folders/1XIE9_3LXKiIJNdtroyZvwCKaKnu-x12O) | `deidentify_batch_ifadit.py` (reconstructs the released test.py protocol; mmcv ops stubbed — never used at inference) | py3.10, torch 2.7.1+cu128, `freia`, scipy | 2.6 GB (official Google-Drive weight folder) |
-| **PRO-Face** | ACM MM 2022 | [lixionga/ProFace](https://github.com/lixionga/ProFace) (`FacePrivacy/PRO-Face`; optional for the FaceShifter/SimSwap variants — not deployed) | `deidentify_batch_proface.py` + `embedder.py` (restoration net, vendored — the deployed configuration is **fully self-contained**) | py3.10, torch 2.11.0+cu128 | in-repo restoration checkpoints (0.2 MB); 112-native output, upscaled to 256 per our protocol |
+| **PRO-Face** | ACM MM 2022 | [lixionga/ProFace](https://github.com/lixionga/ProFace) (`FacePrivacy/PRO-Face`) | `deidentify_batch_proface.py` + `embedder.py` (restoration net, vendored) with **SimSwap face-swap obfuscation** (`--obf simswap`) + IResNet50-trained restoration | py3.10, torch 2.11.0+cu128 | restore checkpoint in-repo; SimSwap generator + ArcFace weights (official SimSwap release, ~465 MB) must be placed under `SimSwap/`; output 112/224-native, upscaled to 256 per our protocol |
 
 Notes:
 
@@ -84,6 +84,7 @@ Notes:
   approaches ≈ 95 GB locally on the research machine.
 - The working collection with full official repos, bats, and build records lives
   separately (`deid-toolkit_baselines`); this folder is the publishable subset.
-- PRO-Face *S* (arXiv 2023) and PRO-Face *C* (classification-side only) were evaluated
-  during the setup and rejected for reasons documented in the baselines handover; the
-  MM'22 framework above is the one reported in the paper.
+- PRO-Face *S* (Yuan et al., IEEE TCSVT 2024, doi:10.1109/TCSVT.2023.3344809) was evaluated
+  during the setup and rejected: its official weights are Baidu-only and the alternate mirrors
+  are dead. PRO-Face *C* (classification-side only) is out of scope. The MM'22 framework above,
+  with SimSwap obfuscation, is the one reported in the paper.
