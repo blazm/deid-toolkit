@@ -1,35 +1,22 @@
-# Model-weight manifest for PRO-Face (generated 2026-08-30 from the
-# working collection at D:\dev\deid-toolkit_baselines\ProFace/FacePrivacy/PRO-Face)
-# NOT shipped with this repository: place these files in the indicated
-# locations before running. Sources: the method's official release repo
-# (Hugging Face / Google Drive / OneDrive links in its README).
-# Total: 0.02 GB across 28 files.
-
-FaceShifter\face_modules\mtcnn_pytorch\src\weights\onet.npy	2 MB
-checkpoints\blur_31_2_8_InceptionResNet_ep12_BEST.pth	1 MB
-checkpoints\blur_31_2_8_IResNet100_ep14_BEST.pth	1 MB
-checkpoints\blur_31_2_8_IResNet50_ep13_BEST.pth	1 MB
-checkpoints\blur_31_2_8_MobileFaceNet_ep8_BEST.pth	1 MB
-checkpoints\blur_31_2_8_SEResNet50_ep12_BEST.pth	1 MB
-checkpoints\faceshifter_InceptionResNet_ep14_BEST.pth	1 MB
-checkpoints\faceshifter_IResNet100_ep12_BEST.pth	1 MB
-checkpoints\faceshifter_IResNet50_ep18_BEST.pth	1 MB
-checkpoints\faceshifter_MobileFaceNet_ep10_BEST.pth	1 MB
-checkpoints\faceshifter_SEResNet50_ep18_BEST.pth	1 MB
-checkpoints\pixelate_7_InceptionResNet_ep11_BEST.pth	1 MB
-checkpoints\pixelate_7_IResNet100_ep12_BEST.pth	1 MB
-checkpoints\pixelate_7_IResNet50_ep8_BEST.pth	1 MB
-checkpoints\pixelate_7_MobileFaceNet_ep10_BEST.pth	1 MB
-checkpoints\pixelate_7_SEResNet50_ep8_BEST.pth	1 MB
-checkpoints\simswap_InceptionResNet_ep9_BEST.pth	1 MB
-checkpoints\simswap_IResNet100_ep12_BEST.pth	1 MB
-checkpoints\simswap_IResNet50_ep14_BEST.pth	1 MB
-checkpoints\simswap_on_MobileFaceNet_ep10_BEST.pth	1 MB
-checkpoints\simswap_SEResNet50_ep7_BEST.pth	1 MB
-FaceShifter\face_modules\mtcnn_pytorch\src\weights\rnet.npy	1 MB
-FaceShifter\face_modules\mtcnn_pytorch\src\weights\pnet.npy	0 MB
-.idea\deployment.xml	0 MB
-.idea\modules.xml	0 MB
-.idea\misc.xml	0 MB
-.idea\vcs.xml	0 MB
-.idea\inspectionProfiles\profiles_settings.xml	0 MB
+# Model-weight manifest for PRO-Face (ACM MM 2022), deployed configuration:
+#   --obf simswap --rec-name IResNet50
+# (face-swap obfuscation + IResNet50-trained restoration)
+#
+# NOT shipped with this repository (gitignored): place these files in the
+# indicated locations before running. Sources:
+#   - restore checkpoints: official PRO-Face repo (checked in / release assets)
+#   - SimSwap engine weights: official SimSwap release (neuralchen/SimSwap
+#     README, Google Drive folder; the Apr-2023 fixed arcface_checkpoint.tar)
+#
+# Required (deployed IResNet50/simswap configuration):
+checkpoints\simswap_IResNet50_ep14_BEST.pth            1 MB   (official PRO-Face repo)
+SimSwap\models\checkpoints\people\latest_net_G.pth   211 MB   (official SimSwap release)
+SimSwap\models\checkpoints\people\latest_net_D1.pth   27 MB   (official SimSwap release)
+SimSwap\models\checkpoints\people\latest_net_D2.pth   27 MB   (official SimSwap release)
+SimSwap\arcface_model\arcface_checkpoint.tar         200 MB   (official SimSwap release, 2023-04-25 fixed archive)
+#
+# The official PRO-Face repo also ships restore checkpoints for the other
+# obfuscation families (blur_31_2_8, pixelate_7, faceshifter) and recognizers
+# (IResNet100, SEResNet50, MobileFaceNet, InceptionResNet); they are loaded
+# only if you switch --obf/--rec-name. Total repo weight set: ~0.46 GB for the
+# deployment above, ~0.7 GB with the full official PRO-Face checkpoint set.
