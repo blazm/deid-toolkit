@@ -251,11 +251,38 @@ def generate_html_report(results, output_path):
     ax.set_ylim(-1, 101)
     ax.grid(True, alpha=0.25, linestyle="-", linewidth=0.8)
 
-    # Legend — always 2 columns for readability with many techniques
-    ax.legend(loc="lower right", fontsize=11, ncol=2, framealpha=0.95,
-              edgecolor="#888888", handlelength=1.5, handletextpad=0.6)
-
+    # Legend — spans the whole lower-right quadrant: all ROC curves run above the
+    # diagonal, so that quadrant stays empty. Box is anchored at the corner and
+    # sized so the box approaches a square in display units: with an anchored
+    # corner at the axes' lower-right, a square legend fills that quadrant.
+    # Legend: larger fonts (13 pt, 2 cols, with per-technique AUC). The box is
+    # anchored at the lower-right corner and extends left past mid-x (all ROC
+    # curves run above the diagonal, so the region below the diagonal is empty).
+    ax.legend(loc="lower right", fontsize=13, ncol=2, framealpha=0.95,
+              edgecolor="#888888", handlelength=1.5, handletextpad=0.6,
+              columnspacing=1.0, borderpad=0.8, labelspacing=0.3)
     fig.tight_layout()
+    # Margin guard: verify no curve passes below the legend top within the
+    # legend's x-range (should hold: all curves are above the diagonal there).
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    lb = ax.get_legend().get_window_extent(renderer)
+    axb = ax.get_window_extent(renderer)
+    span = (axb.width, axb.height)
+    to_x = lambda px: -1 + (px - axb.x0) / span[0] * 102
+    to_y = lambda py: -1 + (py - axb.y0) / span[1] * 102
+    lx0, ly1 = to_x(lb.x0), to_y(lb.y1)
+    worst = 101.0
+    for r in sorted_results:
+        if r.get("fpr") is None or len(r["fpr"]) < 2:
+            continue
+        xs = r["fpr"] * 100
+        mask = xs >= lx0
+        if mask.any():
+            worst = min(worst, float(np.min(r["tpr"][mask]) * 100))
+    print(f"  [legend] top edge y={ly1:.1f}%, lowest curve over x>={lx0:.1f}% is at {worst:.1f}% "
+          f"(clearance {worst - ly1:.1f} percentage points)")
+    assert worst - ly1 > 1.0, "legend would overlap a ROC curve - shrink font/spacing"
 
     # High-DPI export for manuscript (PNG + PDF + SVG vector + PNG thumbnail)
     base = os.path.splitext(output_path)[0] + "_roc"

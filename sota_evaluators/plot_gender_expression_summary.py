@@ -28,6 +28,21 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
+def _read_csv_rows(path):
+    """Read CSV lines with an explicit encoding fallback (utf-8 then cp1252)."""
+    data = open(path, "rb").read()
+    text = None
+    for enc in ("utf-8", "cp1252"):
+        try:
+            text = data.decode(enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    if text is None:
+        text = data.decode("utf-8", errors="replace")
+    return list(csv.DictReader(text.splitlines()))
+
+
 def read_gender_csv(path):
     """Read gender_results.csv and return list of (technique, aligned_acc, deid_acc, preservation) dicts.
 
@@ -38,9 +53,7 @@ def read_gender_csv(path):
         print(f"  WARNING: File not found: {path}")
         return None  # no data available
 
-    with open(path, "r") as f:
-        reader = csv.DictReader(f)
-        rows = list(reader)
+    rows = _read_csv_rows(path)
 
     if not rows:
         return None
@@ -82,9 +95,7 @@ def read_expression_csv(path):
         print(f"  WARNING: File not found: {path}")
         return None, None
 
-    with open(path, "r") as f:
-        reader = csv.DictReader(f)
-        rows = list(reader)
+    rows = _read_csv_rows(path)
 
     if not rows:
         return None, None
@@ -114,72 +125,76 @@ def read_expression_csv(path):
     return baseline_row, results
 
 
-def plot_gender_grouped(results_rafd, baseline_rafd, results_celeba, baseline_celeba, output_prefix):
-    """Grouped bar chart — RaFD vs CelebA gender accuracy per technique.
+def plot_gender_grouped(dataset_list, output_prefix):
+    """Grouped bar chart — de-identified gender accuracy per technique, one bar per dataset.
 
-    Only plots techniques present in BOTH datasets; reports missing ones.
+    dataset_list: [(label, results, baseline_row), ...] in display order
+    (e.g. RaFD, MUG, KDEF, CelebA-test). Plots techniques present in ALL datasets.
     """
-    names_rafd = set(r["name"] for r in results_rafd)
-    names_celeba = set(r["name"] for r in results_celeba)
-    shared = sorted(names_rafd & names_celeba)
+    DS_COLORS = ["#4e79a7", "#f28e2b", "#59a14f", "#e15759"]
 
+    name_sets = [set(r["name"] for r in res) for _, res, _ in dataset_list]
+    shared = sorted(set.intersection(*name_sets)) if name_sets else []
     if not shared:
-        print("No common techniques between RaFD and CelebA to plot.")
+        print("No common techniques between datasets to plot.")
         return
+    for (label, res, _), ns in zip(dataset_list, name_sets):
+        missing = ns - set(shared)
+        if missing:
+            print(f"  Technique(s) without {label} (skipped): {sorted(missing)}")
 
-    missing_rafd = names_celeba - names_rafd
-    missing_celeba = names_rafd - names_celeba
-    if missing_rafd:
-        print(f"  Technique(s) only in CelebA (skipped from bar chart): {sorted(missing_rafd)}")
-    if missing_celeba:
-        print(f"  Technique(s) only in RaFD (skipped from bar chart): {sorted(missing_celeba)}")
-
-    # Build lookup maps for fast access
-    map_rafd = {r["name"]: r["deid_acc"] for r in results_rafd}
-    map_celeba = {r["name"]: r["deid_acc"] for r in results_celeba}
-
+    maps = {label: {r["name"]: r["deid_acc"] for r in res}
+            for label, res, _ in dataset_list}
+    n_ds = len(dataset_list)
     techniques = shared
 
-    deid_acc_rafd = [map_rafd[t] for t in techniques]
-    deid_acc_celeba = [map_celeba[t] for t in techniques]
+    # Wide two-column layout: single row, ordered by the first dataset's
+    # de-identified accuracy (matches the tab:gender_all_datasets row order)
+    wide = len(techniques) > 12
+    if wide:
+        first = maps[dataset_list[0][0]]
+        order = sorted(range(len(techniques)), key=lambda i: first[techniques[i]], reverse=True)
+        techniques = [techniques[i] for i in order]
 
     x = np.arange(len(techniques))
-    width = 0.35
+    width = 0.8 / n_ds
+    fig, ax_row = plt.subplots(1, 1, figsize=(16.8 if wide else 11, 5.2))
 
-    fig, ax = plt.subplots(figsize=(len(techniques) * 1.2, 5),
-                           gridspec_kw={"hspace": 0.3})
+    def bar_values(label):
+        return [maps[label].get(t) for t in techniques]
 
-    bars_rafd = ax.bar(x - width / 2, deid_acc_rafd, width, label="RaFD", color="#4e79a7", edgecolor="#333")
-    bars_celeba = ax.bar(x + width / 2, deid_acc_celeba, width, label="CelebA (test)", color="#e15759", edgecolor="#333")
+    for k, (label, res, baseline_row) in enumerate(dataset_list):
+        vals = bar_values(label)
+        pos = x + (k - (n_ds - 1) / 2.0) * width
+        ax_row.bar(pos, vals, width, label=label,
+                   color=DS_COLORS[k % len(DS_COLORS)], edgecolor="#333")
+        bv = baseline_row.get("aligned_acc") if baseline_row else None
+        if bv:
+            ax_row.axhline(y=bv, color=DS_COLORS[k % len(DS_COLORS)],
+                           linestyle="--", linewidth=1.2, alpha=0.55)
 
-    # Baseline reference lines
-    baseline_rafd_val = baseline_rafd["aligned_acc"] if baseline_rafd and baseline_rafd.get("aligned_acc") else None
-    baseline_celeba_val = baseline_celeba["aligned_acc"] if baseline_celeba and baseline_celeba.get("aligned_acc") else None
+    # Value labels, staggered vertically per bar so adjacent bars never collide
+    for k in range(n_ds):
+        for i, v in enumerate(bar_values(dataset_list[k][0])):
+            if v is None:
+                continue
+            offset = 1.0 if k % 2 == 0 else 3.6
+            ax_row.text(x[i] + (k - (n_ds - 1) / 2.0) * width, v + offset,
+                        f"{v:.0f}%", ha="center", va="bottom",
+                        fontsize=7.5, fontweight="bold")
 
-    ax.axhline(y=baseline_rafd_val, color="#4e79a7", linestyle="--", linewidth=1.5, alpha=0.6)
-    ax.axhline(y=baseline_celeba_val, color="#e15759", linestyle="--", linewidth=1.5, alpha=0.6)
+    ax_row.set_xlabel("")  # no label -- caption covers it
+    ax_row.set_xticks(x)
+    ax_row.set_xticklabels(techniques, rotation=45, ha="right", fontsize=9.5)
+    ax_row.set_xlim(-0.5, len(techniques) - 0.5)  # bars flush with both axes edges (no inner gap)
+    ax_row.set_ylim(0, 110)
+    ax_row.grid(axis="y", alpha=0.2)
+    ax_row.set_ylabel("De-identified Gender Accuracy (%)", fontsize=12, fontweight="bold")
+    # legend: upper-right is empty for the wide plot (tallest bars are mid-plot)
+    ax_row.legend(loc="upper right" if wide else "lower right",
+                  fontsize=9, ncol=(n_ds if wide else 1))
 
-    ax.set_xlabel("")  # no label — caption covers it
-    ax.set_ylabel("De-identified Gender Accuracy (%)", fontsize=12, fontweight="bold")
-    # No suptitle — caption describes the figure instead
-    ax.set_xticks(x)
-    ax.set_xticklabels(techniques, rotation=45, ha="right", fontsize=9)
-    ax.legend(loc="lower right", fontsize=10)
-    ax.set_ylim(0, 105)
-    ax.grid(axis="y", alpha=0.2)
-
-    # Value labels on bars (only for non-None values)
-    for bar in bars_rafd:
-        if bar.get_height() is not None and bar.get_height() > 0:
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.5,
-                    f"{bar.get_height():.0f}%", ha="center", va="bottom", fontsize=8, fontweight="bold")
-
-    for bar in bars_celeba:
-        if bar.get_height() is not None and bar.get_height() > 0:
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.5,
-                    f"{bar.get_height():.0f}%", ha="center", va="bottom", fontsize=8, fontweight="bold")
-
-    fig.subplots_adjust(top=0.92, right=0.96, bottom=0.12)
+    fig.subplots_adjust(top=0.93, left=0.045, right=0.975, bottom=0.10)
 
     # Save PNG + PDF
     fig.savefig(f"{output_prefix}_gender_accuracy.png", dpi=300, bbox_inches="tight")
@@ -188,36 +203,20 @@ def plot_gender_grouped(results_rafd, baseline_rafd, results_celeba, baseline_ce
     print(f"Gender chart: {output_prefix}_gender_accuracy.png | .pdf")
 
     # ── Caption ───────────────────────────────────────────────────────
-    caption_lines = []
-    caption_lines.append("De-identified gender classification accuracy for each anonymization technique on the RaFD and CelebA (test) datasets.")
-    caption_lines.append(f"SwinFace achieves {baseline_rafd_val:.0f}% aligned accuracy on RaFD")
-    caption_lines.append(f"and {baseline_celeba_val:.0f}% on CelebA (test), serving as baseline reference levels shown as dashed lines in the plot.")
-
-    # Stats — use the map dicts directly for correct technique-name lookup
-    ra_fd_vals = [(t, v) for t, v in zip(techniques, deid_acc_rafd)]
-    cel_vals = [(t, v) for t, v in zip(techniques, deid_acc_celeba)]
-
-    if ra_fd_vals:
-        worst_rf = min(ra_fd_vals, key=lambda x: x[1])
-        best_rf = max(ra_fd_vals, key=lambda x: x[1])
-    else:
-        worst_rf = best_rf = (None, None)
-
-    if cel_vals:
-        cel_min = min(v for _, v in cel_vals)
-        cel_max = max(v for _, v in cel_vals)
-    else:
-        cel_min = cel_max = None
-
-    if worst_rf[0]:
-        caption_lines.append(f"Post-anonymization accuracy ranges from {worst_rf[0]} ({worst_rf[1]:.0f}%) to {best_rf[0]} ({best_rf[1]:.0f}%) on RaFD")
-    if cel_min is not None:
-        caption_lines.append(f"and from {min(v for v in deid_acc_celeba if v is not None):.0f}% to {max(v for v in deid_acc_celeba if v is not None):.0f}% on CelebA.")
-    caption_lines.append(f"Dashed lines indicate the aligned (original) baseline accuracy for each dataset.")
+    caption_lines = ["De-identified gender classification accuracy for each anonymization technique:"]
+    parts = []
+    for k, (label, res, baseline_row) in enumerate(dataset_list):
+        vals = [v for v in bar_values(label) if v is not None]
+        bv = baseline_row.get("aligned_acc") if baseline_row else None
+        if vals and bv:
+            parts.append(f"{label} {min(vals):.0f}–{max(vals):.0f}% (aligned {bv:.0f}%)")
+    caption_lines.append("; ".join(parts) + ".")
+    caption_lines.append("Dashed lines indicate the aligned (original) baseline accuracy for each dataset.")
 
     with open(f"{output_prefix}_gender_accuracy_caption.txt", "w", encoding="utf-8") as f:
         f.write(" ".join(caption_lines))
     print(f"Caption saved: {output_prefix}_gender_accuracy_caption.txt")
+
 
 
 def write_expression_table(results_dict, output_file):
@@ -399,9 +398,21 @@ def main():
     baseline_celeba, tech_celeba = read_gender_csv(os.path.join(args.celeba_dir, "gender_results.csv"))
     print(f"  {len(tech_celeba)} technique(s), aligned baseline: {baseline_celeba['aligned_acc'] if baseline_celeba and baseline_celeba.get('aligned_acc') else 'N/A'}%")
 
+    print("MUG gender results...")
+    baseline_mug, tech_mug = read_gender_csv(os.path.join(args.mug_dir, "gender_results.csv"))
+    print(f"  {len(tech_mug)} technique(s), aligned baseline: {baseline_mug['aligned_acc'] if baseline_mug and baseline_mug.get('aligned_acc') else 'N/A'}%")
+
+    print("KDEF gender results...")
+    baseline_kdef, tech_kdef = read_gender_csv(os.path.join(args.kdef_dir, "gender_results.csv"))
+    print(f"  {len(tech_kdef)} technique(s), aligned baseline: {baseline_kdef['aligned_acc'] if baseline_kdef and baseline_kdef.get('aligned_acc') else 'N/A'}%")
+
     # ── Gender grouped bar chart ──────────────────────────────────────
     print("\nGenerating gender grouped bar chart...")
-    plot_gender_grouped(tech_rafd, baseline_rafd, tech_celeba, baseline_celeba, args.output)
+    plot_gender_grouped([("RaFD", tech_rafd, baseline_rafd),
+                         ("MUG", tech_mug, baseline_mug),
+                         ("KDEF", tech_kdef, baseline_kdef),
+                         ("CelebA (test)", tech_celeba, baseline_celeba)],
+                        args.output)
 
     # ── Expression accuracy table ─────────────────────────────────────
     print("\nBuilding expression accuracy table across RaFD/MUG/KDEF...")

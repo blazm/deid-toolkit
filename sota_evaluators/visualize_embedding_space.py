@@ -54,7 +54,7 @@ def load_embeddings(folder):
 
 
 def _density_kde(ax, x, y, cmap_name, title="", xlabel="UMAP 1", ylabel="UMAP 2",
-                 x_bounds=None, y_bounds=None):
+                 x_bounds=None, y_bounds=None, show_labels=True):
     """Render a continuous 2D density map via Gaussian KDE surface (imshow).
 
     If x_bounds/y_bounds are given, the KDE grid spans those fixed coordinates
@@ -93,17 +93,21 @@ def _density_kde(ax, x, y, cmap_name, title="", xlabel="UMAP 1", ylabel="UMAP 2"
 
     # Contour lines for shape definition
     try:
-        cs = ax.contour(X, Y, Z, levels=6, colors="black", alpha=0.25, linewidths=0.5)
+        cs = ax.contour(X, Y, Z, levels=10, colors="black", alpha=0.25, linewidths=0.5)
     except Exception:
         pass
 
     if title:
         ax.set_title(title, fontsize=10, fontweight="bold")
-    ax.set_xlabel(xlabel, fontsize=9)
-    ax.set_ylabel(ylabel, fontsize=9)
+    if show_labels:
+        ax.set_xlabel(xlabel, fontsize=9)
+        ax.set_ylabel(ylabel, fontsize=9)
 
 
-def generate_plots(all_data, sample_names, techniques, output_path, clean=False):
+
+
+def generate_plots(all_data, sample_names, techniques, output_path, clean=False,
+                  use_cache=False, aligned_panel=False):
     """Generate UMAP projection density plots using ALL embeddings.
 
     Parameters
@@ -157,11 +161,24 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False)
     # ── UMAP fit on ALL aligned embeddings ────────────────────────────
     print(f"[3/9] Fitting UMAP on {n_aligned} aligned embeddings (n_neighbors=30)...")
     import time as _t0
+    cache_path = Path(str(output_path).replace(".html", ".umap_cache.pkl"))
     t_umap = _t0.time()
-    reducer = umap.UMAP(n_components=2, random_state=42, metric="cosine",
-                        n_neighbors=30, min_dist=0.1)
-    aligned_2d = reducer.fit_transform(aligned_mat)  # (N_aligned, 2)
-    print(f"      UMAP done in {_t0.time()-t_umap:.1f}s")
+    if use_cache and cache_path.exists():
+        import pickle
+        with open(cache_path, "rb") as _cf:
+            _c = pickle.load(_cf)
+        reducer, aligned_2d = _c["reducer"], _c["aligned_2d"]
+        print(f"      UMAP loaded from cache in {_t0.time()-t_umap:.1f}s ({cache_path.name}); "
+              f"remove the .umap_cache.pkl to refit")
+    else:
+        reducer = umap.UMAP(n_components=2, random_state=42, metric="cosine",
+                            n_neighbors=30, min_dist=0.1)
+        aligned_2d = reducer.fit_transform(aligned_mat)  # (N_aligned, 2)
+        print(f"      UMAP done in {_t0.time()-t_umap:.1f}s")
+        import pickle
+        with open(cache_path, "wb") as _cf:
+            pickle.dump({"reducer": reducer, "aligned_2d": aligned_2d}, _cf)
+        print(f"      UMAP cache saved: {cache_path.name}")
 
     # Global axis limits from the aligned embedding space (+ 10% margin)
     x_margin = (aligned_2d[:, 0].max() - aligned_2d[:, 0].min()) * 0.10 + 1e-6
@@ -204,16 +221,20 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False)
     for i, t in enumerate(tech_order):
         if t != "aligned":
             TECH_COLORS[t] = PALETTE[i % len(PALETTE)]
-    # Explicit overrides (palette position is alphabetical; FALCO falls on yellow-orange)
-    TECH_COLORS["FALCO"] = "#17becf"   # teal — ColorBrewer
+    # explicit overrides (palette position is alphabetical)
+    TECH_COLORS["FALCO"] = "#17becf"   # teal - ColorBrewer
+    TECH_COLORS["FADM"] = "#1abc9c"    # HEXMAP maps teal -> "YlOrRd" (light cream -> dark red)
+    TECH_COLORS["DeepPrivacy2"] = "#21618c"  # "Blues" light blue -> deep blue (was charcoal
+                                             # "Greys", which clashed with the gray aligned reference)
 
     HEXMAP = {
         "#777777": "Greys",  "#e74c3c": "Reds",   "#2980b9": "Blues",
         "#27ae60": "Greens", "#8e44ad": "PuRd",    "#d35400": "Oranges",
         "#16a085": "GnBu",   "#c0392b": "Reds",    "#2c3e50": "Greys",
-        "#f39c12": "YlOrBr", "#1abc9c": "turbo",   "#e84393": "Purples",
+        "#f39c12": "YlOrBr", "#1abc9c": "YlOrRd",   "#e84393": "Purples",
         "#6c5ce7": "BuPu",   "#fdcb6e": "YlGn",    "#00b894": "Greens",
         "#d63031": "Reds",   "#17becf": "PuBu",    # FALCO override: teal
+        "#21618c": "Blues",  # DeepPrivacy2 override (light blue -> deep blue)
     }
 
     n_techs = len([t for t in tech_order if t != "aligned"])
@@ -226,16 +247,53 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False)
     # Density panel renderer — shared code for all grid variants
     # ===================================================================
     from scipy.stats import gaussian_kde as _gkde_ref
-    ref_xs = np.linspace(GLOBAL_XLIM[0], GLOBAL_XLIM[1], 150)
-    ref_ys = np.linspace(GLOBAL_YLIM[0], GLOBAL_YLIM[1], 150)
-    ref_X, ref_Y = np.meshgrid(ref_xs, ref_ys)
     try:
-        Zref = _gkde_ref(np.vstack([aligned_2d[:, 0], aligned_2d[:, 1]]),
-                         bw_method=0.3)(np.vstack([ref_X.ravel(), ref_Y.ravel()])).reshape(ref_X.shape)
+        _REF_KDE = _gkde_ref(np.vstack([aligned_2d[:, 0], aligned_2d[:, 1]]),
+                             bw_method=0.3)
     except Exception:
-        Zref = None
+        _REF_KDE = None
+
+    # Data-centred per-panel framing (same rule as the arrows plate): keep the
+    # global span for a comparable scale, but center each panel window on the
+    # midpoint of the aligned centroid and the technique's cloud centroid.
+    AC_X = float(aligned_2d[:, 0].mean()); AC_Y = float(aligned_2d[:, 1].mean())
+    GX_HALF = (GLOBAL_XLIM[1] - GLOBAL_XLIM[0]) / 2.0
+    GY_HALF = (GLOBAL_YLIM[1] - GLOBAL_YLIM[0]) / 2.0
+
+    def _panel_bounds(px, py):
+        """Union-fit frame: fully contains BOTH the aligned cloud (global
+        extent) and the technique cloud (dashed reference never clipped),
+        centred on their combined centre, never smaller than the global span
+        (comparable scale across panels, global aspect kept)."""
+        u0x, u1x = GLOBAL_XLIM
+        u0y, u1y = GLOBAL_YLIM
+        if len(px):
+            u0x = min(u0x, float(np.min(px)) - 0.5)
+            u1x = max(u1x, float(np.max(px)) + 0.5)
+            u0y = min(u0y, float(np.min(py)) - 0.5)
+            u1y = max(u1y, float(np.max(py)) + 0.5)
+        cx = 0.5 * (u0x + u1x)
+        cy = 0.5 * (u0y + u1y)
+        w = max(GLOBAL_XLIM[1] - GLOBAL_XLIM[0], u1x - u0x)
+        h = max(GLOBAL_YLIM[1] - GLOBAL_YLIM[0], u1y - u0y)
+        ar = (GLOBAL_XLIM[1] - GLOBAL_XLIM[0]) / max(GLOBAL_YLIM[1] - GLOBAL_YLIM[0], 1e-9)
+        w = max(w, h * ar)
+        h = max(h, w / ar)
+        return ((cx - w / 2.0, cx + w / 2.0), (cy - h / 2.0, cy + h / 2.0))
+
+    def _ref_on_grid(bx, by):
+        """Aligned-reference KDE contours re-gridded for a panel's bounds."""
+        if _REF_KDE is None:
+            return None, None, None
+        xs = np.linspace(bx[0], bx[1], 150)
+        ys = np.linspace(by[0], by[1], 150)
+        X, Y = np.meshgrid(xs, ys)
+        Z = _REF_KDE(np.vstack([X.ravel(), Y.ravel()])).reshape(X.shape)
+        return X, Y, Z
 
     anon_techs_only = [t for t in tech_order if t != "aligned"]
+    # Panel order: optionally the aligned distribution as its own first panel
+    panel_order = (["aligned"] if aligned_panel else []) + anon_techs_only
 
     def _render_density_panels(fig, axes, nrows, ncols, title_text=None):
         """Render per-technique density panels into a pre-sized (nrows×ncols) figure.
@@ -250,28 +308,57 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False)
             axes = axes.reshape(-1, 1)
 
         flat_idx = 0
-        for tech in anon_techs_only:
+        for tech in panel_order:
             if flat_idx >= nrows * ncols:
                 break
             row, col = divmod(flat_idx, ncols)
             ax = axes[row, col]
+
+            if tech == "aligned":
+                # Standalone aligned-distribution panel (reference)
+                bx, by = _panel_bounds(aligned_2d[:, 0], aligned_2d[:, 1])
+                _density_kde(ax, aligned_2d[:, 0], aligned_2d[:, 1], "Greys", title="",
+                             x_bounds=bx,
+                             y_bounds=by,
+                             show_labels=not clean)
+                ax.set_aspect("equal", adjustable="box")
+                if clean:
+                    ax.set_xticks([]); ax.set_yticks([])
+                    for sp in ax.spines.values():
+                        sp.set_visible(True)
+                        sp.set_color("black")
+                        sp.set_linewidth(1.0)
+                else:
+                    ax.grid(True, alpha=0.15)
+                ax.text(0.02, 0.96, "Reference", transform=ax.transAxes,
+                        fontsize=10, fontweight="bold", va="top", ha="left", color="#777777")
+                flat_idx += 1
+                continue
+
             px, py = projections.get(tech, (np.zeros((0,)), np.zeros((0,))))
 
             cmap_name = HEXMAP.get(TECH_COLORS[tech], "Greys")
+            bx, by = _panel_bounds(px, py)
 
-            # Original dashed contour background
+            # Original dashed contour background (re-gridded for the panel)
+            ref_X, ref_Y, Zref = _ref_on_grid(bx, by)
             if Zref is not None:
-                ax.contour(ref_X, ref_Y, Zref, levels=12, colors="#555555", alpha=0.6,
+                ax.contour(ref_X, ref_Y, Zref, levels=10, colors="#555555", alpha=0.6,
                            linewidths=1.0, linestyles="--")
 
             _density_kde(ax, px, py, cmap_name, title="",
-                         x_bounds=(GLOBAL_XLIM[0], GLOBAL_XLIM[1]),
-                         y_bounds=(GLOBAL_YLIM[0], GLOBAL_YLIM[1]))
+                         x_bounds=bx,
+                         y_bounds=by,
+                         show_labels=not clean)
 
             ax.set_aspect("equal", adjustable="box")
             if clean:
                 ax.set_xticks([])
                 ax.set_yticks([])
+                for sp in ax.spines.values():
+                    sp.set_visible(True)
+                    sp.set_color("black")
+                    sp.set_linewidth(1.0)
             else:
                 ax.grid(True, alpha=0.15)
 
@@ -285,12 +372,14 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False)
         for r in range(nrows):
             for c in range(ncols):
                 cell = r * ncols + c
-                if cell >= n_techs:
+                if cell >= len(panel_order):
                     axes[r, c].set_visible(False)
 
         if title_text:
             fig.suptitle(title_text, fontsize=14, fontweight="bold", y=1.01)
-        fig.tight_layout(rect=[0, 0, 1, 0.96])
+            fig.tight_layout(rect=[0, 0, 1, 0.96])
+        else:
+            fig.tight_layout()
         return fig
 
     # ===================================================================
@@ -298,13 +387,21 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False)
     # ===================================================================
     density_path = os.path.splitext(output_path)[0] + "_density.png"
 
-    # Start with the standard 4x4 layout
-    density_layouts = [(4, 4)]
-
-    # Add fixed 2×8 (landscape) and 8×2 (portrait) variants when there are >9 techniques
-    if n_techs > 9:
-        density_layouts.append((2, 8))   # landscape: 2 rows × 8 cols
-        density_layouts.append((8, 2))   # portrait:  8 rows × 2 cols
+    if aligned_panel:
+        # 1 (aligned) + n_techs technique panels
+        n_panels = 1 + n_techs
+        density_layouts = [(7, 3), (3, 7)]   # portrait 7r×3c + landscape 3r×7c
+        if n_panels > 21:
+            density_layouts = [(4, 6), (6, 4)]
+    elif n_techs <= 16:
+        density_layouts = [(4, 4)]
+        # Add fixed 2×8 (landscape) and 8×2 (portrait) variants when there are >9 techniques
+        if n_techs > 9:
+            density_layouts.append((2, 8))   # landscape: 2 rows × 8 cols
+            density_layouts.append((8, 2))   # portrait:  8 rows × 2 cols
+    else:
+        # >16 techniques: full-grid landscape/portrait variants (no truncation)
+        density_layouts = [(4, 5), (5, 4)]
 
     print(f"[5/9] Rendering density panels ({len(density_layouts)} layout variant(s))...")
 
@@ -326,15 +423,18 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False)
 
     for idx, (rows, cols) in enumerate(density_layouts):
         if clean:
-            fig1, axes1 = plt.subplots(rows, cols, figsize=(2.6 * cols, 2.4 * rows))
+            # aspect-exact cells (clean plates): cell w:h equals the data
+            # window's aspect so each density fills/centres its box exactly
+            ar_g = (GLOBAL_XLIM[1] - GLOBAL_XLIM[0]) / (GLOBAL_YLIM[1] - GLOBAL_YLIM[0])
+            fig1, axes1 = plt.subplots(rows, cols, figsize=(2.6 * cols, (2.6 / ar_g) * rows))
         else:
             fig1, axes1 = plt.subplots(rows, cols, figsize=(3.4 * cols, 3.0 * rows))
 
         _render_density_panels(fig1, axes1, rows, cols)
 
+        # Always suffix with layout dimensions when multiple variants exist
         if len(density_layouts) > 1:
-            # Suffix with layout dimensions when multiple variants exist (e.g. density_2x8.png)
-            suffix = f"_{rows}x{cols}" if idx > 0 else ""
+            suffix = f"_{rows}x{cols}"
         else:
             suffix = ""
 
@@ -411,18 +511,18 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False)
     for i, tech in enumerate(anon_techs_list[:4]):
         ax = axes2[i]
 
-        # Original contour in background
-        if Zref is not None and ref_X is not None:
+        # Original contour in background (per-panel, data-centred bounds)
+        px, py = projections.get(tech, (np.zeros((0,)), np.zeros((0,))))
+        bx, by = _panel_bounds(px, py)
+        ref_X, ref_Y, Zref = _ref_on_grid(bx, by)
+        if Zref is not None:
             ax.contour(ref_X, ref_Y, Zref, levels=3,
                        colors="#aaaaaa", alpha=0.25, linewidths=0.7, linestyles="--")
 
         # Technique density + drift arrows
-        px, py = projections.get(tech, (np.zeros((0,)), np.zeros((0,))))
         if len(px) > 0:
             cmap_name = HEXMAP.get(TECH_COLORS[tech], "Greys")
-            _density_kde(ax, px, py, cmap_name, title="",
-                         x_bounds=(GLOBAL_XLIM[0], GLOBAL_XLIM[1]),
-                         y_bounds=(GLOBAL_YLIM[0], GLOBAL_YLIM[1]))
+            _density_kde(ax, px, py, cmap_name, title="", x_bounds=bx, y_bounds=by)
 
         # Build global_idx -> projection mapping for this technique
         tech_proj_map_local = {}
@@ -581,6 +681,12 @@ def main():
                         help="Path to datasets root with technique/celeba-test folders")
     parser.add_argument("--output", type=str, default="embedding_projection.html",
                         help="Output HTML report path")
+    parser.add_argument("--use-cache", action="store_true", default=False,
+                        help="Reuse a cached fitted UMAP (faster figures-only re-render; "
+                             "coordinates identical since random_state is fixed)")
+    parser.add_argument("--aligned-panel", action="store_true", default=False,
+                        help="Render the aligned distribution as its own first panel "
+                             "(grid becomes 7x3 + 3x7)")
     parser.add_argument("--clean", action="store_true", default=False,
                         help="Tightest layout: no ticks/labels/grid, minimal spacing (for manuscript plates)")
 
@@ -632,7 +738,8 @@ def main():
     if len(techniques) < 2:
         print("ERROR: Need at least aligned + one technique."); sys.exit(1)
 
-    generate_plots(all_data, sample_names, techniques, args.output, clean=args.clean)
+    generate_plots(all_data, sample_names, techniques, args.output, clean=args.clean,
+                  use_cache=args.use_cache, aligned_panel=args.aligned_panel)
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ A. COMPASS (swinface): one radial tick per technique from the center along
 
 B. DENSITY+ARROWS (transface, 4x4): exact reproduction of the manuscript's
    embedding_projection_transface_density style (KDE imshow + black 6-level
-   contours, 12-level gray dashed aligned background, clean, colored name
+   contours, 10-level gray dashed aligned background (equal levels to technique solid), clean, colored name
    labels), PLUS one white mean-displacement arrow per panel (aligned 2-D
    centroid -> technique 2-D centroid, dark under-outline for contrast).
 
@@ -48,9 +48,10 @@ HEXMAP = {
     "#777777": "Greys",  "#e74c3c": "Reds",   "#2980b9": "Blues",
     "#27ae60": "Greens", "#8e44ad": "PuRd",    "#d35400": "Oranges",
     "#16a085": "GnBu",   "#c0392b": "Reds",   "#2c3e50": "Greys",
-    "#f39c12": "YlOrBr", "#1abc9c": "turbo",  "#e84393": "Purples",
+    "#f39c12": "YlOrBr", "#1abc9c": "YlOrRd",  "#e84393": "Purples",
     "#6c5ce7": "BuPu",   "#fdcb6e": "YlGn",   "#00b894": "Greens",
     "#d63031": "Reds",   "#17becf": "Blues",
+    "#21618c": "Blues",  # DeepPrivacy2 override (light blue -> deep blue)
 }
 
 
@@ -80,6 +81,11 @@ def setup(probe):
         # so technique i (alphabetical, 0-based) falls on PALETTE[(i+1) % 15]
         colors[t] = PALETTE[(i + 1) % len(PALETTE)]
     colors["FALCO"] = "#17becf"  # explicit override (same as original run)
+    colors["DeepPrivacy2"] = "#21618c"  # was charcoal "Greys" (clashed with the gray
+                                 # aligned reference); now light blue -> deep blue.
+    colors["FADM"] = "#1abc9c"   # HEXMAP maps teal -> "YlOrRd" (light cream -> dark red: light
+                                 # YlOrBr would clash with GANonymization’s YlGn;
+                                 # turbo’s dark navy low end read as a dark panel.
 
     tech = {}
     for t in techs:
@@ -187,37 +193,91 @@ def compass(probe):
     print(f"Compass v3 saved: {out}.png/.pdf (+ manuscript figs/ copy)")
 
 
-def density_arrows(probe):
+def density_arrows(probe, cols=5, ref_panel=False):
     A, stems, aligned_2d, tech, colors = setup(probe)
+
+    n = len(tech)
+    import math
+    n_cells = n + (1 if ref_panel else 0)
+    rows = math.ceil(n_cells / cols)
+    if not ref_panel and rows * cols <= 16 and n == rows * cols:
+        cols, rows = 4, 4  # legacy square layout when it fits exactly (≤16)
 
     # Global fixed bounds like the original 4x4 (aligned cloud + margin,
     # same for all panels)
     xlo, xhi = aligned_2d[:, 0].min() - 0.5, aligned_2d[:, 0].max() + 0.5
     ylo, yhi = aligned_2d[:, 1].min() - 0.5, aligned_2d[:, 1].max() + 0.5
 
-    fig, axes = plt.subplots(4, 4, figsize=(2.6 * 4, 2.4 * 4))
-    gx = np.linspace(xlo, xhi, 160)
-    gy = np.linspace(ylo, yhi, 160)
-    GX, GY = np.meshgrid(gx, gy)
-    Zref = gaussian_kde(np.vstack([aligned_2d[:, 0], aligned_2d[:, 1]]),
-                        bw_method=0.3)(
-        np.vstack([GX.ravel(), GY.ravel()])).reshape(GX.shape)
-
+    # aspect-exact cells: cell w:h equals the data window's (global) aspect so
+    # aspect="equal" fills each box with no letterbox -> every density is
+    # exactly centred in its panel
+    ar_g = (xhi - xlo) / (yhi - ylo)
+    fig, axes = plt.subplots(rows, cols, figsize=(2.6 * cols, (2.6 / ar_g) * rows))
+    # Union-fit per-panel framing: every panel window fully contains BOTH the
+    # aligned cloud (global extent) and this technique's cloud, so the dashed
+    # reference is never clipped; centered on the combined centre of the two
+    # clouds; never smaller than the global span (comparable scale across panels).
+    _REF_KDE = gaussian_kde(np.vstack([aligned_2d[:, 0], aligned_2d[:, 1]]),
+                            bw_method=0.3)
     acx, acy = aligned_2d[:, 0].mean(), aligned_2d[:, 1].mean()
-    extent = (xlo, xhi, ylo, yhi)
 
     flat = 0
+    if ref_panel:
+        # Standalone aligned (reference) distribution panel: same global
+        # window as the other panels, grayscale, solid 10-level contours,
+        # no arrow overlays. This is the ONLY extra content vs 4x5/5x4.
+        ax = axes[0, 0]
+        gx = np.linspace(xlo, xhi, 160)
+        gy = np.linspace(ylo, yhi, 160)
+        GX, GY = np.meshgrid(gx, gy)
+        Zref0 = _REF_KDE(np.vstack([GX.ravel(), GY.ravel()])).reshape(GX.shape)
+        Zn = (Zref0 - Zref0.min()) / (Zref0.max() - Zref0.min() + 1e-12)
+        ax.imshow(Zn, extent=(xlo, xhi, ylo, yhi), origin="lower",
+                  cmap="Greys", aspect="equal", alpha=0.95)
+        ax.tick_params(left=False, bottom=False, labelleft=False,
+                       labelbottom=False)
+        for sp in ax.spines.values():
+            sp.set_visible(True)
+            sp.set_color("black")
+            sp.set_linewidth(1.0)
+        ax.contour(GX, GY, Zref0, levels=10, colors="black", alpha=0.5,
+                   linewidths=0.8)
+        ax.text(0.02, 0.96, "Reference", transform=ax.transAxes,
+                fontsize=10, fontweight="bold", va="top", ha="left",
+                color="#777777")
+        flat = 1
     for t, td in tech.items():
-        ax = axes[(flat // 4), flat % 4]
+        ax = axes[(flat // cols), flat % cols]
         px, py = td["d2"][:, 0], td["d2"][:, 1]
+        # Per-panel bounds (union-fit)
+        u0x, u1x = xlo, xhi
+        u0y, u1y = ylo, yhi
+        if px.size:
+            u0x = min(u0x, float(px.min()) - 0.5)
+            u1x = max(u1x, float(px.max()) + 0.5)
+            u0y = min(u0y, float(py.min()) - 0.5)
+            u1y = max(u1y, float(py.max()) + 0.5)
+        cx = 0.5 * (u0x + u1x)
+        cy = 0.5 * (u0y + u1y)
+        w = max(xhi - xlo, u1x - u0x)
+        h = max(yhi - ylo, u1y - u0y)
+        ar = (xhi - xlo) / (yhi - ylo)   # keep the global aspect ratio
+        w = max(w, h * ar)
+        h = max(h, w / ar)
+        xlo_p, xhi_p = cx - w / 2.0, cx + w / 2.0
+        ylo_p, yhi_p = cy - h / 2.0, cy + h / 2.0
+        gx = np.linspace(xlo_p, xhi_p, 160)
+        gy = np.linspace(ylo_p, yhi_p, 160)
+        GX, GY = np.meshgrid(gx, gy)
+        Zref = _REF_KDE(np.vstack([GX.ravel(), GY.ravel()])).reshape(GX.shape)
         Zt = gaussian_kde(np.vstack([px, py]), bw_method=0.3)(
             np.vstack([GX.ravel(), GY.ravel()])).reshape(GX.shape)
         Znorm = (Zt - Zt.min()) / (Zt.max() - Zt.min() + 1e-12)
         cmap = HEXMAP.get(td["color"], "Greys")
         if cmap == "GnBu":
             cmap = "Greens"  # GnBu renders two hues (green->blue); keep mono
-        ax.imshow(Znorm, extent=extent, origin="lower", cmap=cmap,
-                  aspect="equal", alpha=0.95)
+        ax.imshow(Znorm, extent=(xlo_p, xhi_p, ylo_p, yhi_p), origin="lower",
+                  cmap=cmap, aspect="equal", alpha=0.95)
         # black frame per panel, no ticks, no UMAP axis labels
         ax.tick_params(left=False, bottom=False, labelleft=False,
                        labelbottom=False)
@@ -226,11 +286,11 @@ def density_arrows(probe):
             sp.set_color("black")
             sp.set_linewidth(1.0)
         try:
-            ax.contour(GX, GY, Zt, levels=6, colors="black", alpha=0.25,
+            ax.contour(GX, GY, Zt, levels=10, colors="black", alpha=0.25,
                        linewidths=0.5)
         except Exception:
             pass
-        ax.contour(GX, GY, Zref, levels=12, colors="#555555", alpha=0.6,
+        ax.contour(GX, GY, Zref, levels=10, colors="#555555", alpha=0.6,
                    linewidths=1.0, linestyles="--")
         ax.text(0.02, 0.96, t, transform=ax.transAxes, fontsize=10,
                 fontweight="bold", va="top", ha="left", color=td["color"])
@@ -270,7 +330,22 @@ def density_arrows(probe):
         flat += 1
 
     fig.tight_layout()
-    base = f"embedding_projection_{probe}_density_arrows_v3"
+    # Figure-level legend: explain the dot / ring / arrow used in every panel
+    from matplotlib.lines import Line2D
+    leg_handles = [
+        Line2D([0], [0], marker="o", color="none", markerfacecolor="#1a1a1a",
+               markeredgecolor="#1a1a1a", markersize=5.5,
+               label="Aligned (original) centroid"),
+        Line2D([0], [0], marker="o", color="none", markerfacecolor="white",
+               markeredgecolor="#1a1a1a", markeredgewidth=1.8, markersize=7.5,
+               label="De-identified centroid (true, unscaled position)"),
+        Line2D([0], [0], color="#1a1a1a", lw=2.6,
+               label="Mean displacement arrow (length scaled by mean drift)"),
+    ]
+    leg = fig.legend(handles=leg_handles, loc="lower center", ncol=3,
+                     frameon=False, fontsize=8.5, bbox_to_anchor=(0.5, -0.012))
+    tag = "v3" if (rows, cols) == (4, 4) else f"v4_{rows}x{cols}"
+    base = f"embedding_projection_{probe}_density_arrows_{tag}"
     out = EVAL / base
     fig.savefig(out.with_suffix(".png"), dpi=200, bbox_inches="tight")
     fig.savefig(out.with_suffix(".pdf"), bbox_inches="tight")
@@ -284,8 +359,13 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--probe", required=True, choices=["swinface", "transface"])
     ap.add_argument("--what", required=True, choices=["compass", "density"])
+    ap.add_argument("--cols", type=int, default=5,
+                    help="columns per grid (rows auto)")
+    ap.add_argument("--ref-panel", action="store_true",
+                    help="prepend a standalone aligned reference panel "
+                         "(21 cells: --cols 3 -> 7x3, --cols 7 -> 3x7)")
     a = ap.parse_args()
     if a.what == "compass":
         compass(a.probe)
     else:
-        density_arrows(a.probe)
+        density_arrows(a.probe, cols=a.cols, ref_panel=a.ref_panel)

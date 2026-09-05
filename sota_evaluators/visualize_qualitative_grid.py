@@ -353,9 +353,9 @@ def main():
 
             images_grid_v.append(row_imgs)
 
-        # Row labels = baseline names, top labels = ["Reference"] + subjects
-        col_labels_v = ["Reference"] + list(subject_stems)
-        canvas = assemble_grid(images_grid_v, baseline_names, subject_stems,
+        # Row labels = baseline display names ("aligned" → "Reference"), top labels = subjects
+        row_labels_v = ["Reference"] + [b for b in baseline_names if b != "aligned"]
+        canvas = assemble_grid(images_grid_v, row_labels_v, subject_stems,
                                horizontal=False, label_align=args.label_align)
 
     # ── Save ────────────────────────────────────────────────────────

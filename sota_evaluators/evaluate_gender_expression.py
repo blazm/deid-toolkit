@@ -650,14 +650,20 @@ def generate_confusion_matrix(results, output_path, dataset_name, caption_txt=No
 
     # Compute layouts to render
     if layouts is None:
-        # Auto-detect: start with default 4×4, add variants when >9 techniques
-        layouts = [(4, 4)]
-        if n_techs > 9:
-            landscape_cols = int(np.ceil(n_techs / 2.0))
-            portrait_rows = int(np.ceil(n_techs / 2.0))
-            layouts.append((2, landscape_cols))   # landscape
-            layouts.append((portrait_rows, 2))     # portrait
-        layout_names = ["", f"_{layouts[1][0]}x{layouts[1][1]}", f"_{layouts[2][0]}x{layouts[2][1]}"]
+        # Auto-detect: default 4×4; extra landscape/portrait variants when >9
+        # techniques; >16 techniques switches to full 4×5/5×4 grids (no truncation)
+        if n_techs <= 16:
+            layouts = [(4, 4)]
+            if n_techs > 9:
+                landscape_cols = int(np.ceil(n_techs / 2.0))
+                portrait_rows = int(np.ceil(n_techs / 2.0))
+                layouts.append((2, landscape_cols))   # landscape
+                layouts.append((portrait_rows, 2))     # portrait
+        else:
+            ncols = 5 if n_techs <= 25 else int(np.ceil(n_techs / 4.0))
+            nrows = int(np.ceil(n_techs / ncols))
+            layouts = [(nrows, ncols), (ncols, nrows)]  # portrait + landscape
+        layout_names = [""] + [f"_{n}x{c}" for n, c in layouts[1:]]
     else:
         layout_names = [f"_{n}x{c}" for n, c in layouts]
 

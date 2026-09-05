@@ -52,7 +52,8 @@ or simply copy the two used checkpoints:
 Datasets: aligned face crops in
 `D:\dev\deid-toolkit\root_dir\datasets\aligned\{rafd,mug-still,kdef}` plus de-identified
 per-technique sets in `D:\dev\deid-toolkit\root_dir\datasets\<Technique>\{...}` —
-16 baselines (20 planned with RP, AnonNET, iFADIT, PRO-Face).
+20 baselines (all four of RP, AnonNET, iFADIT, PRO-Face included; the stack and
+its `run_*.bat` launchers support any number via the technique folder scan).
 
 ```bat
 :: 1) Gender + expression (SwinFace attribute heads) per technique, per dataset
@@ -62,7 +63,12 @@ conda run -n swinface python evaluate_gender_expression.py --dataset kdef  --out
 ::    -> per-technique gender_results.csv / expression_results.csv + confusion matrices
 
 :: 2) Paper figure: gender accuracy bar + expression accuracy table
-conda run -n swinface python plot_gender_expression_summary.py
+conda run -n swinface python plot_gender_expression_summary.py ^
+    --rafd-dir   D:\dev\deid-toolkit\root_dir\predictions\rafd ^
+    --celeba-dir D:\dev\deid-toolkit\root_dir\predictions\celeba-test ^
+    --mug-dir    D:\dev\deid-toolkit\root_dir\predictions\mug-still ^
+    --kdef-dir   D:\dev\deid-toolkit\root_dir\predictions\kdef ^
+    --output     gender_expression_summary
 
 :: 3) Embeddings for the identity analyses (CelebA-test)
 conda run -n swinface python generate_embeddings_swinface.py  ...
@@ -77,8 +83,10 @@ conda run -n swinface python analyze_identity_drift.py ...           :: displace
 conda run -n swinface python analyze_retrieval.py ...
 conda run -n swinface python analyze_compactness_separation.py ...
 conda run -n swinface python analyze_gender_preservation.py ...
-conda run -n swinface python visualize_embedding_space.py ...        :: UMAP density projections
-conda run -n swinface python drift_direction_v2.py ...               :: displacement arrows overlay (Fig. final v3)
+conda run -n swinface python visualize_embedding_space.py ...        :: UMAP density projections (explorer: HTML report, overlay, compactness)
+conda run -n swinface python drift_direction_v2.py --probe swinface|transface --what density --cols 7 --ref-panel
+                                                              :: manuscript UMAP plates: 21-panel 3x7 (cols 7) / 7x3 (cols 3) density +
+                                                              :: displacement arrows, reference panel labelled "Reference"
 conda run -n swinface python visualize_qualitative_grid.py ...       :: qualitative comparison grid
 ```
 
@@ -99,7 +107,8 @@ research machine; their `--weight`/`--output` arguments follow the same conventi
 | `analyze_collapse_ratio.py` | per-identity compaction/expansion (paper's "collapse ratio") |
 | `analyze_retrieval.py`, `analyze_compactness_separation.py` | open-set retrieval; spread diagnostics |
 | `analyze_gender_preservation.py`, `plot_gender_expression_summary.py` | attribute-utility figures/tables for the paper |
-| `visualize_embedding_space.py`, `visualize_qualitative_grid.py` | UMAP density figures; qualitative grids |
+| `visualize_embedding_space.py`, `visualize_qualitative_grid.py` | UMAP explorer (HTML report, overlay/compactness); qualitative grids |
+| `drift_direction_v2.py` | manuscript UMAP density plates + displacement arrows (`--cols 3/7 --ref-panel` → 7×3 / 3×7) |
 | `make_pipeline_figure.py`, `make_vertical_figures.py` | paper layout figures |
 
 ## Conventions
