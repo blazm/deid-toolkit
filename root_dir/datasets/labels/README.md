@@ -58,6 +58,23 @@ pair generation).
    integrity.
 5. **Run:** select technique(s) and evaluation(s), then `deid run all`.
 
+## Dataset-specific provenance notes
+
+- **celeba-test** (2,824 aligned crops / 604 persons, from the CelebA-HQ release,
+  local-only CSVs): gender ground truth finalized **2026-09-07** -- all 2,824
+  labels taken from the official CelebA-HQ attribute annotations
+  (`../original/celeba-test/CelebAMask-HQ-attribute-anno.txt`, Male column).
+  Supersedes an earlier state where 913 HQ-derived faces carried manually
+  assigned labels (62 of the 2824 changed; 1,911 pipeline-era labels were
+  already identical to the HQ file). Full per-row change log:
+  `D:\dev\deid-toolkit_additional-materials\deid-toolkit_manuscript_Neurocomputing_Software_track\_audit\celeba_gender_relabel_log.csv`;
+  pre-change snapshot: `celeba-test_labels.csv.bak_manual_20260908`.
+  Downstream gender results regenerated the same day
+  (`root_dir/predictions/celeba-test/`; pre-regeneration backup
+  `root_dir/predictions/_bak_gendrelabel_20260908/`): aligned 97.0 -> 99.0,
+  de-identified accuracies adjusted per `gender_results.csv`; match/preservation
+  columns unchanged (GT-independent).
+
 ## Repository conventions
 
 - Dataset folder names are lowercase kebab-case (`my-dataset`); the same name
