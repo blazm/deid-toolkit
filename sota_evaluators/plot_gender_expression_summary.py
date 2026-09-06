@@ -411,7 +411,7 @@ def main():
     plot_gender_grouped([("RaFD", tech_rafd, baseline_rafd),
                          ("MUG", tech_mug, baseline_mug),
                          ("KDEF", tech_kdef, baseline_kdef),
-                         ("CelebA (test)", tech_celeba, baseline_celeba)],
+                         ("CelebA-HQ (test)", tech_celeba, baseline_celeba)],
                         args.output)
 
     # ── Expression accuracy table ─────────────────────────────────────
