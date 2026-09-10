@@ -2,18 +2,22 @@
 """
 Regenerate the manuscript pipeline figure (figs/pipeline_evaluation).
 
-VERTICAL (top-down) flow, portrait aspect 160::201 mm. The figure is placed
-at full \\linewidth (~170 mm wide) in the two-column manuscript, so it is
-displayed at ~1.07x native scale -- fonts at 8.5-10.5 pt stay legible and all
-label lines are width-checked to fit their boxes.
+HORIZONTAL (left-to-right) flow, landscape aspect 237::76 mm. The figure is
+placed in a full \\textwidth (two-column) \\begin{figure*}[t] in the
+manuscript, so it is displayed at ~0.70x native scale -- fonts at 8.5 pt
+native stay at ~6 pt display and all label lines are width-checked to fit
+their boxes. (The previous vertical version was 23.6 cm tall at full width,
+which overfulled the text block and got clipped; the horizontal layout is
+~5.3 cm tall at \\textwidth and parks cleanly at the top of a page as a
+two-column float.)
 
-Content (current toolkit, 16 techniques), top to bottom:
-  inputs -> identical preprocessing -> two frozen probes (SwinFace /
-  TransFace) -> 512-d L2-normalized embeddings -> 7 analysis modules
-  (same-condition verification, cross-condition linkability,
-  identity-mapping structure, per-image displacement, embedding-space
-  projection, compactness-separation, attribute utility) -> interpretation,
-  summary & presentation.
+Content (current toolkit, 20 techniques), left to right:
+  inputs (originals / de-identified) -> identical preprocessing ->
+  two frozen probes (SwinFace / TransFace) -> 512-d L2-normalized
+  embeddings -> 7 analysis modules (same-condition verification,
+  cross-condition linkability, identity-mapping structure,
+  per-image displacement, embedding-space projection,
+  compactness-separation, attribute utility) -> interpretation/output.
 
 Usage:
     python make_pipeline_figure.py [--out <file stem, no extension>]
@@ -29,55 +33,68 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch
 
-
 # palette: (face, edge)
 C_INPUT  = ("#fff4d6", "#d0a83c")
 C_PRE    = ("#e8f4fd", "#6fa8cc")
 C_PROBE  = ("#e6f4ea", "#5da87a")
 C_EMB    = ("#f0e8fa", "#9c7ec9")
+C_PANEL  = ("#f7f9fb", "#b8c4d0")
 C_MODULE = ("#fdeeee", "#d98a80")
 C_OUTPUT = ("#f0f7f4", "#6f9c8a")
 ARROW    = "#5a6672"
-H_CANVAS = 216.0  # canvas height in mm (1 unit = 1 mm)
 
-L = "\u2192"  # right arrow glyph
+W, H = 237.0, 76.0   # canvas in mm (1 unit = 1 mm)
+L = "\u2192"          # right arrow glyph
+
+# stage x-positions / widths
+X1, W1 = 5.0,   28.0   # inputs
+X2, W2 = 37.5, 36.0    # preprocessing
+X3, W3 = 78.0,  28.0   # probes
+X4, W4 = 110.5, 28.0   # embeddings
+X5, W5 = 143.0, 56.0   # analysis panels
+X6, W6 = 203.5, 28.0   # output
+
+Y0, Y1 = 5.0, 71.0     # full-stage vertical extent
+STACK = [(5.0, 27.0), (39.0, 27.0)]  # stacked pair boxes: (ybottom, h)
 
 
-def rbox(ax, x, ytop, w, h, title, lines=(), colors=C_MODULE,
-         title_fs=10.0, line_fs=8.2):
-    """Box at ytop (canvas grows upward); title + up to 2-3 centered lines."""
-    y = H_CANVAS - ytop - h
+def rbox(ax, x, y, w, h, title, lines=(), colors=C_MODULE,
+         title_fs=9.0, line_fs=8.5, title_color="#1c2733"):
     ax.add_patch(FancyBboxPatch((x, y), w, h,
-                                boxstyle="round,pad=0.4,rounding_size=1.4",
+                                boxstyle="round,pad=0.5,rounding_size=1.6",
                                 facecolor=colors[0], edgecolor=colors[1],
-                                linewidth=1.2, mutation_aspect=1.0))
+                                linewidth=1.2))
     cx = x + w / 2
-    flat = h >= 18                      # wide, low boxes: pull text up
-    tf = 0.16 if flat else 0.22
-    p2 = (0.48, 0.76) if flat else (0.55, 0.82)
-    p3 = (0.40, 0.62, 0.84) if flat else (0.42, 0.66, 0.88)
-    p1 = (0.58,) if flat else (0.62,)
-    ax.text(cx, H_CANVAS - ytop - h * tf, title, ha="center", va="center",
-            fontsize=title_fs, fontweight="bold", color="#1c2733")
-    if len(lines) == 1:
-        ax.text(cx, H_CANVAS - ytop - h * p1[0], lines[0], ha="center",
-                va="center", fontsize=line_fs, color="#33404f")
-    elif len(lines) == 2:
-        ax.text(cx, H_CANVAS - ytop - h * p2[0], lines[0], ha="center",
-                va="center", fontsize=line_fs, color="#33404f")
-        ax.text(cx, H_CANVAS - ytop - h * p2[1], lines[1], ha="center",
-                va="center", fontsize=line_fs, color="#33404f")
-    elif len(lines) == 3:
-        ax.text(cx, H_CANVAS - ytop - h * p3[0], lines[0], ha="center",
-                va="center", fontsize=line_fs, color="#33404f")
-        ax.text(cx, H_CANVAS - ytop - h * p3[1], lines[1], ha="center",
-                va="center", fontsize=line_fs, color="#33404f")
-        ax.text(cx, H_CANVAS - ytop - h * p3[2], lines[2], ha="center",
-                va="center", fontsize=line_fs, color="#33404f")
+    lines = list(lines)
+    if title:
+        if "\n" in title:
+            ax.text(cx, y + h - 6.0, title, ha="center", va="center",
+                    fontsize=title_fs, fontweight="bold",
+                    color=title_color)
+            body_top = y + h - 12.0
+        else:
+            ax.text(cx, y + h - 4.0, title, ha="center", va="center",
+                    fontsize=title_fs, fontweight="bold", color=title_color)
+            body_top = y + h - 8.0
+    else:
+        body_top = y + h - 4.0
+    for i, ln in enumerate(lines):
+        ax.text(cx, body_top - i * 4.4, ln, ha="center", va="center",
+                fontsize=line_fs, color="#33404f")
 
 
-def arrow(ax, x1, y1t, x2, y2t, lw=1.2):
-    ax.annotate("", xy=(x2, H_CANVAS - y2t), xytext=(x1, H_CANVAS - y1t),
+def hrow(ax, x, y, w, text, fs=8.5):
+    """Single centered text line inside a slim round row."""
+    ax.add_patch(FancyBboxPatch((x, y), w, 6.2,
+                                boxstyle="round,pad=0.4,rounding_size=1.2",
+                                facecolor=C_MODULE[0], edgecolor=C_MODULE[1],
+                                linewidth=1.0))
+    ax.text(x + w / 2, y + 3.1, text, ha="center", va="center",
+            fontsize=fs, color="#1c2733")
+
+
+def arrow(ax, x1, y1, x2, y2, lw=1.2):
+    ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
                 arrowprops=dict(arrowstyle="-|>", color=ARROW,
                                 lw=lw, shrinkA=0, shrinkB=0))
 
@@ -95,10 +112,8 @@ def _savefig_safe(fig, path, **kw):
 
 
 def make_pipeline_figure(out_stem):
-    W, H = 160.0, H_CANVAS        # canvas in mm (1 unit = 1 mm)
-    # content spans x 8..152 and y 2..208 on the 216 mm canvas; crop to that extent
-    XMIN, XMAX = 7.0, 153.0
-    YMIN, YMAX = 7.0, 215.0
+    XMIN, XMAX = 3.0, W - 3.0
+    YMIN, YMAX = 2.5, H - 2.5
     fig = plt.figure(figsize=((XMAX - XMIN) / 25.4, (YMAX - YMIN) / 25.4))
     ax = fig.add_axes([0, 0, 1, 1])
     ax.set_xlim(XMIN, XMAX)
@@ -107,90 +122,71 @@ def make_pipeline_figure(out_stem):
     ax.patch.set_visible(False)
     ax.set_frame_on(False)
 
+    yc1, yc2 = STACK[0][0] + 13.5, STACK[1][0] + 13.5   # stacked centers
+    yc = (Y0 + Y1) / 2                                  # full-stage center
+
     # ---- 1. inputs ----
-    rbox(ax, 8, 2, 66, 22, "Original faces (reference)",
-         ["4 datasets"], C_INPUT)
-    rbox(ax, 86, 2, 66, 22, "De-identified faces",
-         ["16 techniques", "4 datasets"], C_INPUT)
-    arrow(ax, 41, 24.5, 41, 28.5)
-    arrow(ax, 119, 24.5, 119, 28.5)
+    yb, h = STACK[1]
+    rbox(ax, X1, yb, W1, h, "Original faces",
+         ["(reference)", "4 datasets"], C_INPUT, line_fs=8.5)
+    yb, h = STACK[0]
+    rbox(ax, X1, yb, W1, h, "De-identified",
+         ["faces", "20 techniques", "4 datasets"], C_INPUT, line_fs=8.5)
+    arrow(ax, X1 + W1, yc1, X2, yc1)
+    arrow(ax, X1 + W1, yc2, X2, yc2)
 
     # ---- 2. preprocessing ----
-    rbox(ax, 8, 29, 144, 21, "Identical preprocessing",
-         [f"BGR {L} RGB,  HWC {L} CHW",
-          f"scale {L} crop {L} resize   (256 {L} 224 {L} 112)",
-          f"[0, 255] {L} [\u22121, 1]"], C_PRE)
-    arrow(ax, 41, 50.5, 41, 54.5)
-    arrow(ax, 119, 50.5, 119, 54.5)
+    rbox(ax, X2, Y0, W2, Y1 - Y0, "Identical\npreprocessing",
+         [f"BGR {L} RGB,", f"HWC {L} CHW", f"scale {L} crop {L}", "resize",
+          f"256 {L} 224 {L} 112", f"[0,255] {L} [\u22121,1]"], C_PRE)
+    arrow(ax, X2 + W2, yc1, X3, yc1)
+    arrow(ax, X2 + W2, yc2, X3, yc2)
 
     # ---- 3. probes ----
-    rbox(ax, 8, 55, 66, 22, "SwinFace",
-         ["frozen Swin Transformer", "recognition + attributes"], C_PROBE)
-    rbox(ax, 86, 55, 66, 22, "TransFace",
-         ["frozen ViT backbone", "recognition only"], C_PROBE)
-    arrow(ax, 41, 77.5, 41, 81.5)
-    arrow(ax, 119, 77.5, 119, 81.5)
+    yb, h = STACK[1]
+    rbox(ax, X3, yb, W3, h, "SwinFace",
+         ["frozen Swin", "Transformer,", "identity +", "attributes"],
+         C_PROBE, line_fs=8.5)
+    yb, h = STACK[0]
+    rbox(ax, X3, yb, W3, h, "TransFace",
+         ["frozen ViT", "backbone,", "identity only"], C_PROBE, line_fs=8.5)
+    arrow(ax, X3 + W3, yc1, X4, yc1)
+    arrow(ax, X3 + W3, yc2, X4, yc2)
 
     # ---- 4. embeddings ----
-    rbox(ax, 8, 82, 144, 20, "Embeddings",
-         [".npy per image", "shape (512,),  L2-normalized",
-          "shared 512-d space"], C_EMB)
-    arrow(ax, 16, 102.5, 16, 112.5)
-    arrow(ax, 66, 102.5, 66, 112.5)
-    arrow(ax, 92, 102.5, 92, 112.5)
-    arrow(ax, 146, 102.5, 146, 112.5)
-    ax.text(41, H_CANVAS - 106.8, "Identity-level diagnostics", ha="center",
-            va="center", fontsize=8.8, fontweight="bold", color="#4a5568")
-    ax.text(41, H_CANVAS - 110.2, "(pair / person statistics)", ha="center",
-            va="center", fontsize=7.3, color="#4a5568")
-    ax.text(119, H_CANVAS - 106.8, "Representation diagnostics", ha="center",
-            va="center", fontsize=8.8, fontweight="bold", color="#4a5568")
-    ax.text(119, H_CANVAS - 110.2, "(geometry of the 512-d space)", ha="center",
-            va="center", fontsize=7.3, color="#4a5568")
+    rbox(ax, X4, Y0, W4, Y1 - Y0, "Embeddings",
+         ["512-d vectors", ".npy per image", "(512,) L2-norm", "per probe"],
+         C_EMB)
+    arrow(ax, X4 + W4, yc, X5, yc)
 
-    # ---- 5. analysis modules (2-column rows, top-to-bottom) ----
-    mh, gap = 15, 4
-    rows = [
-        [("Same-condition verification",
-          ["ROC / AUC / EER (genuine-impostor pairs)"]),
-         ("Cross-condition linkability",
-          ["asymmetric 1:1 AUC/EER vs original", "open-set 1:N re-ID (rank, R@k)"])],
-        [("Identity-mapping structure",
-          ["1:1 / 1:N / N:1 drift & collapse", "split \u00b7 mixing \u00b7 K vs. P \u00b7 CMC-1"]),
-         ("Per-image displacement",
-          ["cosine distance per image", "violin plots / bar charts"])],
-        [("Embedding-space projection",
-          ["UMAP \u00b7 KDE density", "contour overlay of originals (2D)"]),
-         ("Compactness-separation",
-          ["intra/inter-person distances", "collapse ratio"])],
+    # ---- 5. analysis panels ----
+    ax.add_patch(FancyBboxPatch((X5, Y0), W5, Y1 - Y0,
+                                boxstyle="round,pad=0.5,rounding_size=2.0",
+                                facecolor=C_PANEL[0], edgecolor=C_PANEL[1],
+                                linewidth=1.3))
+    ax.text(X5 + W5 / 2, Y1 - 4.5, "Analysis modules",
+            ha="center", va="center", fontsize=9.0, fontweight="bold",
+            color="#1c2733")
+    modules = [
+        "Same-condition verification",
+        "Cross-condition linkability",
+        "Identity-mapping structure",
+        "Per-image displacement",
+        "Embedding-space projection",
+        "Compactness\u2013separation",
+        "Attribute utility",
     ]
-    mtop0 = 113
-    for ri, row in enumerate(rows):
-        ytop = mtop0 + ri * (mh + gap)
-        rbox(ax, 8, ytop, 66, mh, row[0][0], row[0][1], C_MODULE,
-             title_fs=9.8, line_fs=8.0)
-        rbox(ax, 86, ytop, 66, mh, row[1][0], row[1][1], C_MODULE,
-             title_fs=9.8, line_fs=8.0)
-        if ri < len(rows) - 1:
-            arrow(ax, 41, ytop + mh + 0.5, 41, ytop + mh + gap - 0.5)
-            arrow(ax, 119, ytop + mh + 0.5, 119, ytop + mh + gap - 0.5)
-    # row 4: attribute utility (full width)
-    ay = mtop0 + 3 * (mh + gap)
-    arrow(ax, 41, mtop0 + 2 * (mh + gap) + mh + 0.5, 41, ay - 0.5)
-    arrow(ax, 119, mtop0 + 2 * (mh + gap) + mh + 0.5, 119, ay - 0.5)
-    rbox(ax, 8, ay, 144, mh, "Attribute utility",
-         ["gender / expression accuracy   \u00b7   confusion matrices"],
-         C_MODULE, title_fs=9.8)
+    mh, mgap = 6.2, 2.0
+    top = Y1 - 10.0
+    for i, m in enumerate(modules):
+        hrow(ax, X5 + 2.5, top - i * (mh + mgap) - mh + 0.0, W5 - 5.0, m)
 
-    # ---- 6. interpretation, summary & presentation ----
-    iy = ay + mh + 5
-    rbox(ax, 8, iy, 144, 18, "Interpretation \u00b7 summary \u00b7 presentation",
-         ["behavioral classes in embedding space \u2014 scattering \u00b7 directed migration \u00b7 "
-          "representation collapse",
-          "identity mapping regimes (1:1 / 1:N / N:1) \u00b7 cross-condition re-identifiability"],
-         C_OUTPUT, title_fs=9.8, line_fs=7.8)
-    arrow(ax, 41, ay + mh + 0.5, 41, iy - 0.5)
-    arrow(ax, 119, ay + mh + 0.5, 119, iy - 0.5)
+    # ---- 6. output ----
+    rbox(ax, X6, Y0, W6, Y1 - Y0, "Interpretation",
+         ["behavioral", "classes in", "embedding", "space",
+          "\u00b7 1:1 / 1:N / N:1", "regimes", "\u00b7 unlinkability"],
+         C_OUTPUT, line_fs=8.0)
+    arrow(ax, X5 + W5, yc, X6, yc)
 
     _savefig_safe(fig, out_stem + ".png", dpi=300)
     _savefig_safe(fig, out_stem + ".pdf", format="pdf")
