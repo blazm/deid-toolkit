@@ -183,8 +183,8 @@ def make_pipeline_figure(out_stem):
 
     # ---- 6. output ----
     rbox(ax, X6, Y0, W6, Y1 - Y0, "Interpretation",
-         ["behavioral", "classes in", "embedding", "space",
-          "\u00b7 1:1 / 1:N / N:1", "regimes", "\u00b7 unlinkability"],
+         ["displacement", "patterns in", "embedding", "space",
+          "\u00b7 1:1 / 1:N / N:1", "regimes", "\u00b7 linkability"],
          C_OUTPUT, line_fs=8.0)
     arrow(ax, X5 + W5, yc, X6, yc)
 
