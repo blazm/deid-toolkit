@@ -375,6 +375,20 @@ def predict_batch(image_stems, image_dir, model, device, batch_size=32):
 
 # ── Evaluation & reporting ────────────────────────────────────────────────
 
+def load_per_image_predictions(csv_path):
+    """Load predictions_per_image.csv -> {technique: {stem: record}}.
+
+    Inverse of the cache dump written after each full run; enables
+    --replot (style-only figure rebuilds without GPU inference).
+    """
+    groups = {}
+    with open(csv_path, newline="") as f:
+        for row in csv.DictReader(f):
+            rec = {"gender": row["Gender"], "expression_idx": int(row["ExpressionIdx"])}
+            groups.setdefault(row["Technique"], {})[row["Stem"]] = rec
+    return groups
+
+
 def evaluate_technique(tech_name, tech_dir, aligned_results, deid_results, gt):
     """Evaluate a single technique: compute metrics vs ground truth.
 
@@ -575,20 +589,20 @@ def _render_cm_grid(axes, technique_results, nrows, ncols):
         # Title: short technique name + accuracy
         acc_val = r["deid_expr_acc"]
         short_name = r["name"][:12] if len(r["name"]) > 14 else r["name"]
-        ax.set_title(f"{short_name} ({acc_val:.0f}%)", fontsize=7.5, fontweight="bold")
+        ax.set_title(f"{short_name} ({acc_val:.0f}%)", fontsize=12, fontweight="bold")
 
         # Minimal ticks — only show expression labels on diagonal for readability
         # X axis (predicted) on bottom row only
         if row == nrows - 1:
             ax.set_xticks(range(7))
-            ax.set_xticklabels(EXPRESSION_LABELS, rotation=25, ha="right", fontsize=6.5)
+            ax.set_xticklabels(EXPRESSION_LABELS, rotation=25, ha="right", fontsize=9.5)
         else:
             ax.set_xticks([])
 
         # Y axis (true) on left column only
         if col == 0:
             ax.set_yticks(range(7))
-            ax.set_yticklabels(EXPRESSION_LABELS, fontsize=6.5)
+            ax.set_yticklabels(EXPRESSION_LABELS, fontsize=9.5)
         else:
             ax.set_yticks([])
 
@@ -599,7 +613,7 @@ def _render_cm_grid(axes, technique_results, nrows, ncols):
                 if pct > 0.5:
                     txt_color = "white" if pct > 70 else "black"
                     ax.text(pi, gi, f"{pct:.0f}", ha="center", va="center",
-                            fontsize=6, color=txt_color)
+                            fontsize=9, color=txt_color)
 
         # Thin grid lines for cell boundaries
         ax.set_xticks(np.arange(-0.5, 7, 1), minor=True)
@@ -743,6 +757,10 @@ def main():
                         help="SwinFace checkpoint path")
     parser.add_argument("--batch-size", type=int, default=32,
                         help="Batch size for inference (default: 32)")
+    parser.add_argument("--replot", action="store_true",
+                        help="Skip model + inference: rebuild results and figures "
+                             "from <output>/predictions_per_image.csv dumped by a "
+                             "previous full run (style-only re-plots, no GPU)")
     parser.add_argument("--layouts", nargs="+", metavar="NROWSxCOLS",
                         help="Grid layouts to produce, e.g. '2x6 8x2' (auto when omitted and >9 techs)")
 
@@ -763,9 +781,10 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     weight_path = args.weight or os.path.join(
         script_dir, "models", "swinface", "checkpoint_step_79999_gpu_0.pt")
-    if not os.path.exists(weight_path):
-        print(f"ERROR: Checkpoint not found: {weight_path}")
-        sys.exit(1)
+    if not args.replot:
+        if not os.path.exists(weight_path):
+            print(f"ERROR: Checkpoint not found: {weight_path}")
+            sys.exit(1)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     dataset_name = args.dataset
@@ -791,10 +810,14 @@ def main():
         sys.exit(1)
 
     # ── Load model ───────────────────────────────────────────────────────
-    print(f"\nLoading SwinFace model on {device}...")
-    model = build_swinface_model(weight_path, device)
-    model.eval()
-    print("Model loaded.")
+    print(f"\nLoading SwinFace model on {device}... (skipped under --replot)")
+    if args.replot:
+        model = None
+        print("[replot] using per-image prediction cache")
+    else:
+        model = build_swinface_model(weight_path, device)
+        model.eval()
+        print("Model loaded.")
 
     # ── Discover aligned images ──────────────────────────────────────────
     datasets_base = Path(EXTRACT_ATTRS_DIR).parent / "deid-toolkit" / "root_dir" / "datasets"
@@ -815,16 +838,32 @@ def main():
     print(f"\nEvaluating on {len(eval_stems)} image(s) with both GT and images.")
 
     # ── Predict on aligned originals ─────────────────────────────────────
-    print("\nPredicting on aligned originals...")
-    aligned_results = predict_batch(eval_stems, aligned_dir, model, device, args.batch_size)
-    aligned_matching = sum(1 for s in eval_stems if s in aligned_results)
-    print(f"  Aligned predictions: {aligned_matching}/{len(eval_stems)} images processed.")
+    pred_cache = Path(args.output) / "predictions_per_image.csv"
+    if args.replot:
+        if not pred_cache.is_file():
+            print(f"ERROR: --replot needs {pred_cache} from a previous full run.")
+            sys.exit(1)
+        groups = load_per_image_predictions(str(pred_cache))
+        aligned_results = groups.get("aligned", {})
+        aligned_matching = sum(1 for s in eval_stems if s in aligned_results)
+        print(f"\n[replot] Aligned predictions loaded: {aligned_matching}/{len(eval_stems)} image(s).")
+        tech_dirs = [(n, None) for n in sorted(groups) if n != "aligned"]
+        if not tech_dirs:
+            print("\nERROR: No technique rows in predictions cache.")
+            sys.exit(1)
+        all_preds = None
+    else:
+        print("\nPredicting on aligned originals...")
+        aligned_results = predict_batch(eval_stems, aligned_dir, model, device, args.batch_size)
+        aligned_matching = sum(1 for s in eval_stems if s in aligned_results)
+        print(f"  Aligned predictions: {aligned_matching}/{len(eval_stems)} images processed.")
 
     # ── Discover and process techniques ──────────────────────────────────
-    tech_dirs = discover_technique_dirs(args.techniques, dataset_name)
-    if not tech_dirs:
-        print("\nERROR: No technique directories found with images for this dataset.")
-        sys.exit(1)
+        tech_dirs = discover_technique_dirs(args.techniques, dataset_name)
+        if not tech_dirs:
+            print("\nERROR: No technique directories found with images for this dataset.")
+            sys.exit(1)
+        all_preds = {"aligned": aligned_results}
 
     print(f"\nFound {len(tech_dirs)} technique(s): {', '.join(t[0] for t in tech_dirs)}")
     print()
@@ -856,15 +895,23 @@ def main():
     for tech_name, tech_dir in tech_dirs:
         print(f"--- {tech_name} ---")
 
-        deid_stems = sorted(set(get_image_stems(tech_dir)) & set(eval_stems))
-        if not deid_stems:
-            print(f"  SKIP — no matching images for this dataset.")
-            continue
+        if args.replot:
+            deid_results = groups.get(tech_name, {})
+            deid_stems = sorted(set(deid_results) & set(eval_stems))
+            if not deid_stems:
+                print(f"  SKIP — no predictions cached for this technique.")
+                continue
+            print(f"  De-identified predictions loaded: {len(deid_stems)} image(s) from cache.")
+        else:
+            deid_stems = sorted(set(get_image_stems(tech_dir)) & set(eval_stems))
+            if not deid_stems:
+                print(f"  SKIP — no matching images for this dataset.")
+                continue
 
-        # Predict on de-identified images
-        deid_results = predict_batch(deid_stems, tech_dir, model, device, args.batch_size)
-        deid_matching = sum(1 for s in deid_stems if s in deid_results)
-        print(f"  De-identified predictions: {deid_matching}/{len(deid_stems)} images processed.")
+            # Predict on de-identified images
+            deid_results = predict_batch(deid_stems, tech_dir, model, device, args.batch_size)
+            print(f"  De-identified predictions: {len(deid_results)}/{len(deid_stems)} images processed.")
+            all_preds[tech_name] = deid_results
 
         # Evaluate
         tech_result = evaluate_technique(tech_name, tech_dir, aligned_results, deid_results, gt)
@@ -908,6 +955,19 @@ def main():
             writer.writerow([stem, entry["gender"] if entry["gender"] else "N/A",
                              str(entry["expression"]) if entry["expression"] is not None else "N/A"])
     print(f"Ground truth saved: {gt_path}")
+
+    # Save per-image prediction cache (safety net: style-only re-plots via --replot
+    # never need to re-run GPU inference)
+    if all_preds is not None:
+        pred_path = output_dir / "predictions_per_image.csv"
+        with open(pred_path, "w", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["Technique", "Stem", "Gender", "ExpressionIdx"])
+            for tech_key in sorted(all_preds):
+                for stem in sorted(all_preds[tech_key]):
+                    rec = all_preds[tech_key][stem]
+                    writer.writerow([tech_key, stem, rec["gender"], rec["expression_idx"]])
+        print(f"Per-image prediction cache: {pred_path}")
 
     # Save results CSVs
     gender_csv = output_dir / "gender_results.csv"

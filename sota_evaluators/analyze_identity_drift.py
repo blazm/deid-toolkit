@@ -50,7 +50,7 @@ def compute_drift(aligned, anonymized):
     return drifts
 
 
-def generate_plots(drift_data, output_path):
+def generate_plots(drift_data, output_path, portrait=False):
     """Generate publication-ready drift visualization.
 
     drift_data: dict {technique_name: list of (filename, drift)}
@@ -99,66 +99,80 @@ def generate_plots(drift_data, output_path):
         print(f"  {s['name']:<22} {s['count']:>6,d} {s['mean']:>8.4f} {s['median']:>8.4f} "
               f"{s['std']:>8.4f} {s['q25']:>8.4f} {s['q75']:>8.4f} {s['max']:>8.4f}")
 
-    # Color palette
-    COLORS = [
-        "#000000",  # aligned - black
-        "#e74c3c", "#2980b9", "#27ae60", "#8e44ad",
-        "#d35400", "#16a085", "#c0392b", "#2c3e50",
-        "#f39c12", "#1abc9c", "#e84393", "#6c5ce7",
-        "#fdcb6e", "#00b894", "#d63031",
-    ]
+    # Colors: shared (color, marker) encoding from fig_style (aligned = black)
+    from fig_style import color_for
 
     def get_color(idx):
-        return COLORS[idx % len(COLORS)]
+        return color_for(techniques[idx])
 
     # === Figure 1: Violin plot of drift distribution ===
-    fig1, ax1 = plt.subplots(figsize=(max(10, len(techniques) * 0.7), 6))
+    # 2 x 10 stacked rows: the manuscript figure is single-column, so a single
+    # 20-violin axis shrinks every label below legibility. Two rows of 10 keep
+    # the same data/colors/order and give ~13 pt labels at column display size.
+    # Portrait (--portrait): 4 x 5 stacked rows, taller plate, horizontal labels --
+    # for single-column figure[t] floats where the 2 x 10 plate shrinks too far.
+    n = len(techniques)
+    nrows, per = (7, 3) if portrait else (2, 11)
+    figsize = (7.8, 15.8) if portrait else (11, 10.4)
+    hspace = 0.55 if portrait else 0.45
+    fig1, axes1 = plt.subplots(nrows, 1, figsize=figsize, sharey=True,
+                               gridspec_kw={"hspace": hspace})
 
-    positions = list(range(len(techniques)))
-    violin_data = [np.array([d for _, d in drift_data[t]]) for t in techniques]
+    for r, ax in enumerate(axes1):
+        lo, hi = r * per, min((r + 1) * per, n)
+        row_names = [s["name"] for s in stats[lo:hi]]
+        # Display names: baseline "aligned" -> "Reference" (same convention as
+        # the UMAP plate, qualitative grid and idmap figure)
+        row_labels = ["Reference" if name.lower() == "aligned" else name
+                      for name in row_names]
+        row_data = [np.array([d for _, d in drift_data[name]]) for name in row_names]
+        positions = list(range(len(row_data)))
+        widths = 0.82 if portrait else 0.62
+        parts = ax.violinplot(row_data, positions=positions, widths=widths,
+                              showmeans=False, showmedians=True)
+        for pc_idx, body in enumerate(parts["bodies"]):
+            c = get_color(lo + pc_idx)
+            body.set_facecolor(c)
+            body.set_alpha(0.6)
+            body.set_edgecolor("#333")
+        parts["cmedians"].set_color("white")
+        parts["cmedians"].set_linewidth(2)
 
-    parts = ax1.violinplot(violin_data, positions=positions, widths=0.6, showmeans=False, showmedians=True)
+        # Mean markers
+        row_means = [stats[lo + i]["mean"] for i in range(len(row_data))]
+        ax.scatter(positions, row_means, marker="o", color="white", s=50, zorder=5,
+                   edgecolors="#333", linewidths=1.5)
 
-    for pc_idx, body in enumerate(parts["bodies"]):
-        c = get_color(pc_idx)
-        body.set_facecolor(c)
-        body.set_alpha(0.6)
-        body.set_edgecolor("#333")
+        ax.set_xticks(positions)
+        if portrait:
+            ax.set_xticklabels(row_labels, rotation=0, fontsize=12)
+            ax.set_xlim(-0.9, max(len(row_data), per) + 0.1)
+        else:
+            ax.set_xticklabels(row_labels, rotation=45, ha="right", fontsize=13)
+        ax.grid(True, axis="y", alpha=0.2)
 
-    parts["cmedians"].set_color("white")
-    parts["cmedians"].set_linewidth(2)
+    # Shaded region: low vs high drift (drawn on both rows; legend on top row)
+    for r, ax in enumerate(axes1):
+        ax.axhspan(0, 0.1, facecolor="#2ecc71", alpha=0.15,
+                   label="Minimal drift (< 0.1)" if r == 0 else None)
+        ax.axhspan(0.1, 0.3, facecolor="#f39c12", alpha=0.12)
+        ax.axhspan(0.3, 1.0, facecolor="#e74c3c", alpha=0.12,
+                   label="Severe drift (> 0.3)" if r == 0 else None)
+        if r == 0:
+            legend_patches = [
+                mpatches.Patch(color="#2ecc71", alpha=0.2, label="Minimal (< 0.1)"),
+                mpatches.Patch(color="#e74c3c", alpha=0.2, label="Severe (> 0.3)"),
+            ]
+            ax.legend(handles=legend_patches, loc="upper left",
+                      fontsize=10 if not portrait else 9, framealpha=0.9)
 
-    # Mean markers
-    means = [s["mean"] for s in stats]
-    ax1.scatter(positions, means, marker="o", color="white", s=50, zorder=5, edgecolors="#333", linewidths=1.5)
-
-    labels = [s["name"] for s in stats]
-    # Rotate aligned label differently
-    tick_labels = []
-    for i, lbl in enumerate(labels):
-        tick_labels.append(lbl)
-
-    ax1.set_xticks(positions)
-    ax1.set_xticklabels(tick_labels, rotation=45, ha="right", fontsize=max(7, 10 - len(techniques) // 3))
-    ax1.set_ylabel("Cosine Distance from Original", fontsize=13)
-    ax1.set_title("Identity Drift — Per-Image Distribution Across Techniques", fontsize=14, fontweight="bold")
-    ax1.grid(True, axis="y", alpha=0.2)
-
-    # Shaded region: low vs high drift
-    ax1.axhspan(0, 0.1, facecolor="#2ecc71", alpha=0.15, label="Minimal drift (< 0.1)")
-    ax1.axhspan(0.1, 0.3, facecolor="#f39c12", alpha=0.12)
-    ax1.axhspan(0.3, 1.0, facecolor="#e74c3c", alpha=0.12, label="Severe drift (> 0.3)")
-
-    handles, _ = ax1.get_legend_handles_labels()
-    if handles:
-        legend_patches = [
-            mpatches.Patch(color="#2ecc71", alpha=0.2, label="Minimal (< 0.1)"),
-            mpatches.Patch(color="#e74c3c", alpha=0.2, label="Severe (> 0.3)"),
-        ]
-        ax1.legend(handles=legend_patches, loc="upper left", fontsize=9, framealpha=0.9)
+    if not portrait:
+        axes1[-1].set_xlim(axes1[0].get_xlim())
+    axes1[0].set_ylabel("Cosine Distance from Original", fontsize=13)
 
     fig1.tight_layout()
-    violin_path = os.path.splitext(output_path)[0] + "_violin.png"
+    suffix = "_portrait" if portrait else ""
+    violin_path = os.path.splitext(output_path)[0] + "_violin" + suffix + ".png"
     fig1.savefig(violin_path, dpi=200, bbox_inches="tight")
     fig1.savefig(os.path.splitext(violin_path)[0] + ".pdf", bbox_inches="tight")
     plt.close(fig1)
@@ -271,6 +285,106 @@ identities more than others — potentially revealing bias or uneven anonymizati
     print(f"\nHTML report: {output_path}")
 
 
+
+def _kde_curve(x, grid, bw=None):
+    """Gaussian kernel density of x evaluated on grid (numpy only)."""
+    if bw is None:
+        bw = max(1.06 * float(np.std(x)), 1e-3) * max(len(x), 1) ** (-1.0 / 5.0)
+    z = (grid[:, None] - x[None, :]) / bw
+    return np.exp(-0.5 * z * z).mean(axis=1) / (bw * (2.0 * np.pi) ** 0.5)
+
+def generate_horizontal_violin(drift_data, output_path):
+    """Single-axis laid-down violin plate for narrow (single-column) layout.
+
+    y = one row per technique (Reference on top, strongest drift at bottom),
+    x = cosine distance from original. Labels stay full-size at column width.
+    Saves <output>_violin_h.png and .pdf alongside the requested output.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+
+    from fig_style import color_for
+
+    plt.rcParams.update({
+        "font.size": 12,
+        "font.family": "sans-serif",
+        "axes.linewidth": 1.2,
+    })
+
+    # The aligned baseline is a constant-zero line; it portrays nothing -- omit it.
+    techniques = sorted((n_ for n_ in drift_data.keys() if n_.lower() != "aligned"),
+                        key=lambda n_: n_)
+    stats = []
+    for name in techniques:
+        arr = np.array([d for _, d in drift_data[name]])
+        stats.append({"name": name, "mean": float(np.mean(arr)),
+                      "median": float(np.median(arr))})
+    stats.sort(key=lambda s_2: s_2["mean"])
+
+    labels = ["Reference" if s_2["name"].lower() == "aligned" else s_2["name"]
+              for s_2 in stats]
+    series = [np.array([d for _, d in drift_data[s_2["name"]]]) for s_2 in stats]
+    n = len(stats)
+    y = list(range(n))
+
+    grid_lo, grid_hi = 0.0, 1.70
+    grid = np.linspace(grid_lo, grid_hi, 600)
+    half_w_max = 0.36   # in y-units (21 rows -> row pitch 1.0)
+
+    fig, ax = plt.subplots(figsize=(7.6, 10.2))
+    for i in range(n):
+        dens = _kde_curve(series[i], grid)
+        if series[i].std() < 1e-9:     # baseline / degenerate: thin line
+            ax.axhline(y[i], xmin=0.0, xmax=1.0, color="#333", lw=0.8,
+                       alpha=0.5, zorder=2)
+            continue
+        dens = dens / dens.max()
+        ytop = np.clip(y[i] + dens * half_w_max, y[i] - 0.46, y[i] + 0.46)
+        ybot = np.clip(y[i] - dens * half_w_max, y[i] - 0.46, y[i] + 0.46)
+        name = stats[i]["name"]
+        face = "#000000" if name.lower() == "aligned" else color_for(name)
+        ax.fill_between(grid, ybot, ytop,
+                        facecolor=face, alpha=0.55, edgecolor="#333",
+                        linewidth=0.9, zorder=3)
+        # whisker from min to max
+        ax.plot([series[i].min(), series[i].max()], [y[i], y[i]],
+                color="#2a5d8f", lw=1.3, zorder=2, solid_capstyle="round")
+        # median (white bar) and mean (white dot)
+        ax.plot([stats[i]["median"], stats[i]["median"]],
+                [y[i] - 0.10, y[i] + 0.10], color="white", lw=2.2, zorder=5,
+                solid_capstyle="round")
+        ax.scatter([stats[i]["mean"]], [y[i]], marker="o", s=34,
+                   facecolor="white", edgecolor="#333", linewidths=1.3,
+                   zorder=6)
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels, fontsize=10.5)
+    ax.set_ylim(n - 0.35, -0.65)   # y=0 (Reference) at the top
+    ax.set_xlim(grid_lo - 0.05, 1.74)
+    ax.set_xlabel("Cosine Distance from Original", fontsize=13)
+    ax.grid(True, axis="x", alpha=0.2, zorder=1)
+
+    ax.axvspan(0.0, 0.1, facecolor="#2ecc71", alpha=0.15, zorder=0)
+    ax.axvspan(0.1, 0.3, facecolor="#f39c12", alpha=0.12, zorder=0)
+    ax.axvspan(0.3, 1.74, facecolor="#e74c3c", alpha=0.10, zorder=0)
+    legend_patches = [
+        mpatches.Patch(color="#2ecc71", alpha=0.2, label="Minimal (< 0.1)"),
+        mpatches.Patch(color="#f39c12", alpha=0.35, label="Moderate (0.1-0.3)"),
+        mpatches.Patch(color="#e74c3c", alpha=0.2, label="Severe (> 0.3)"),
+    ]
+    ax.legend(handles=legend_patches, loc="upper right", fontsize=9.5,
+              framealpha=0.9)
+
+    fig.tight_layout()
+    h_png = os.path.splitext(output_path)[0] + "_violin_h.png"
+    fig.savefig(h_png, dpi=200, bbox_inches="tight")
+    fig.savefig(os.path.splitext(h_png)[0] + ".pdf", bbox_inches="tight")
+    plt.close(fig)
+    print("Horizontal violin plot: " + h_png)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Identity drift analysis from facial embeddings")
     parser.add_argument("--aligned", type=str, required=True,
@@ -279,6 +393,12 @@ def main():
                         help="Path to datasets root containing technique/celeba-test folders")
     parser.add_argument("--output", type=str, default="drift_analysis.html",
                         help="Output HTML report path")
+    parser.add_argument("--portrait", action="store_true",
+                        help="Save the violin as a 4x5 portrait plate "
+                             "(_violin_portrait.png/.pdf) instead of 2x10")
+    parser.add_argument("--horizontal", action="store_true",
+                        help="Save a laid-down single-axis violin plate "
+                             "(_violin_h.png/.pdf); y = technique, x = drift")
 
     args = parser.parse_args()
 
@@ -337,7 +457,10 @@ def main():
         print("ERROR: Need at least aligned + one technique.")
         sys.exit(1)
 
-    generate_plots(drift_data, args.output)
+    if args.horizontal:
+        generate_horizontal_violin(drift_data, args.output)
+        return
+    generate_plots(drift_data, args.output, portrait=args.portrait)
 
 
 if __name__ == "__main__":

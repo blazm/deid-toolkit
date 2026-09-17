@@ -152,6 +152,19 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False,
         matrices[tech] = (np.array(vecs, dtype=np.float32), np.array(valid_idx, dtype=int))
 
     aligned_mat, aligned_indices = matrices["aligned"]
+
+    # Mean per-image cosine drift d = 1 - cos(e(x), e(x_hat)) in full
+    # embedding space, one value per technique (annotated per UMAP panel).
+    MEAN_DRIFT = {}
+    for tech in tech_order[1:]:
+        mat_t, idxs = matrices[tech]
+        if len(mat_t) == 0:
+            continue
+        A = aligned_mat[idxs].astype(np.float64)
+        B = mat_t.astype(np.float64)
+        A = A / np.linalg.norm(A, axis=1, keepdims=True)
+        B = B / np.linalg.norm(B, axis=1, keepdims=True)
+        MEAN_DRIFT[tech] = float(1.0 - np.sum(A * B, axis=1).mean())
     if len(aligned_indices) == 0:
         print("ERROR: No valid aligned embeddings."); sys.exit(1)
 
@@ -161,13 +174,18 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False,
     # ── UMAP fit on ALL aligned embeddings ────────────────────────────
     print(f"[3/9] Fitting UMAP on {n_aligned} aligned embeddings (n_neighbors=30)...")
     import time as _t0
-    cache_path = Path(str(output_path).replace(".html", ".umap_cache.pkl"))
+    cache_path = Path(os.path.splitext(str(output_path))[0] + ".umap_cache.pkl")
     t_umap = _t0.time()
+    cached_projs, cached_drift = None, None
     if use_cache and cache_path.exists():
         import pickle
         with open(cache_path, "rb") as _cf:
             _c = pickle.load(_cf)
         reducer, aligned_2d = _c["reducer"], _c["aligned_2d"]
+        cached_projs = _c.get("projections")
+        cached_drift = _c.get("mean_drift")
+        if cached_drift:
+            MEAN_DRIFT.update(cached_drift)
         print(f"      UMAP loaded from cache in {_t0.time()-t_umap:.1f}s ({cache_path.name}); "
               f"remove the .umap_cache.pkl to refit")
     else:
@@ -190,14 +208,26 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False,
     print(f"[4/9] Projecting {len(tech_order)-1} technique(s) through fitted UMAP...")
     t_proj = _t0.time()
     projections = {}  # {tech: (x_arr, y_arr)} -- x/y indexed by tech's valid points order
-    for tech in tech_order[1:]:
-        mat_t, _ = matrices[tech]
-        if len(mat_t) == 0:
-            projections[tech] = (np.zeros((0,)), np.zeros((0,)))
-            continue
-        proj = reducer.transform(mat_t)
-        projections[tech] = (proj[:, 0], proj[:, 1])
-    print(f"      Projection done in {_t0.time()-t_proj:.1f}s")
+    if use_cache and cached_projs is not None:
+        projections = cached_projs
+        print(f"      Projections loaded from cache in {_t0.time()-t_proj:.1f}s "
+              f"(skipping UMAP transform)")
+    else:
+        for tech in tech_order[1:]:
+            mat_t, _ = matrices[tech]
+            if len(mat_t) == 0:
+                projections[tech] = (np.zeros((0,)), np.zeros((0,)))
+                continue
+            proj = reducer.transform(mat_t)
+            projections[tech] = (proj[:, 0], proj[:, 1])
+        # enrich the cache with the 2D projections (+ drift) so that later
+        # figure tweaks with --use-cache skip the ~4-min UMAP transform
+        import pickle
+        with open(cache_path, "wb") as _cf:
+            pickle.dump({"reducer": reducer, "aligned_2d": aligned_2d,
+                         "projections": projections, "mean_drift": MEAN_DRIFT}, _cf)
+        print(f"      Projection done in {_t0.time()-t_proj:.1f}s; projections "
+              f"saved to cache")
 
     # Build a fast lookup: for each technique, map global image index -> projection position
     tech_proj_map = {}  # {tech: {global_idx: (px, py)}}
@@ -212,30 +242,40 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False,
         tech_proj_map[tech] = d
 
     # ── Colors & colormaps ────────────────────────────────────────────
-    PALETTE = [
-        "#e74c3c", "#2980b9", "#27ae60", "#8e44ad", "#d35400",
-        "#16a085", "#c0392b", "#2c3e50", "#f39c12", "#1abc9c",
-        "#e84393", "#6c5ce7", "#fdcb6e", "#00b894", "#d63031",
-    ]
-    TECH_COLORS = {"aligned": "#777777"}
-    for i, t in enumerate(tech_order):
-        if t != "aligned":
-            TECH_COLORS[t] = PALETTE[i % len(PALETTE)]
-    # explicit overrides (palette position is alphabetical)
-    TECH_COLORS["FALCO"] = "#17becf"   # teal - ColorBrewer
-    TECH_COLORS["FADM"] = "#1abc9c"    # HEXMAP maps teal -> "YlOrRd" (light cream -> dark red)
-    TECH_COLORS["DeepPrivacy2"] = "#21618c"  # "Blues" light blue -> deep blue (was charcoal
-                                             # "Greys", which clashed with the gray aligned reference)
+    # Single source of truth: the shared (color, marker) encoding from
+    # fig_style (10 hue families; dark = circle / light = square in the
+    # 4-panel figures). For the UMAP density ramps, each family reuses the
+    # matplotlib built-in sequential map of its closest hue (the same class
+    # of well-tuned Lightmap ramps the original v4 plate used: near-white
+    # -> pale -> saturated -> deep core, with full coverage of the tails).
+    # Gray ("Greys") stays reserved for the aligned Original.
+    from matplotlib.lines import Line2D
+    from fig_style import color_for, pair_for
 
-    HEXMAP = {
-        "#777777": "Greys",  "#e74c3c": "Reds",   "#2980b9": "Blues",
-        "#27ae60": "Greens", "#8e44ad": "PuRd",    "#d35400": "Oranges",
-        "#16a085": "GnBu",   "#c0392b": "Reds",    "#2c3e50": "Greys",
-        "#f39c12": "YlOrBr", "#1abc9c": "YlOrRd",   "#e84393": "Purples",
-        "#6c5ce7": "BuPu",   "#fdcb6e": "YlGn",    "#00b894": "Greens",
-        "#d63031": "Reds",   "#17becf": "PuBu",    # FALCO override: teal
-        "#21618c": "Blues",  # DeepPrivacy2 override (light blue -> deep blue)
+    _FAMILY_MAP = {
+        "#1f77b4": "Blues",    # blue
+        "#ff7f0e": "Oranges",  # orange
+        "#2ca02c": "Greens",   # green
+        "#d62728": "Reds",     # red
+        "#9467bd": "Purples",  # purple
+        "#8c564b": "OrRd",     # brown
+        "#e377c2": "RdPu",     # magenta
+        "#c9a227": "YlOrBr",   # gold
+        "#bcbd22": "YlGn",     # olive
+        "#17becf": "GnBu",     # cyan
     }
+
+    TECH_COLORS = {"aligned": "#777777"}
+    TECH_CMAP = {"aligned": "Greys"}
+    for i, t in enumerate(tech_order):
+        if t == "aligned":
+            continue
+        TECH_COLORS[t] = color_for(t)
+        try:
+            dark, light = pair_for(t)
+        except KeyError:
+            continue
+        TECH_CMAP[t] = _FAMILY_MAP.get(dark, "Greys")
 
     n_techs = len([t for t in tech_order if t != "aligned"])
 
@@ -264,7 +304,7 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False,
         """Union-fit frame: fully contains BOTH the aligned cloud (global
         extent) and the technique cloud (dashed reference never clipped),
         centred on their combined centre, never smaller than the global span
-        (comparable scale across panels, global aspect kept)."""
+        (comparable scale across panels; square window)."""
         u0x, u1x = GLOBAL_XLIM
         u0y, u1y = GLOBAL_YLIM
         if len(px):
@@ -274,12 +314,11 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False,
             u1y = max(u1y, float(np.max(py)) + 0.5)
         cx = 0.5 * (u0x + u1x)
         cy = 0.5 * (u0y + u1y)
-        w = max(GLOBAL_XLIM[1] - GLOBAL_XLIM[0], u1x - u0x)
-        h = max(GLOBAL_YLIM[1] - GLOBAL_YLIM[0], u1y - u0y)
-        ar = (GLOBAL_XLIM[1] - GLOBAL_XLIM[0]) / max(GLOBAL_YLIM[1] - GLOBAL_YLIM[0], 1e-9)
-        w = max(w, h * ar)
-        h = max(h, w / ar)
-        return ((cx - w / 2.0, cx + w / 2.0), (cy - h / 2.0, cy + h / 2.0))
+        # square window at the global scale: same data scale on all panels
+        # (still directly comparable) with a square frame
+        s = max(GLOBAL_XLIM[1] - GLOBAL_XLIM[0], GLOBAL_YLIM[1] - GLOBAL_YLIM[0],
+                u1x - u0x, u1y - u0y)
+        return ((cx - s / 2.0, cx + s / 2.0), (cy - s / 2.0, cy + s / 2.0))
 
     def _ref_on_grid(bx, by):
         """Aligned-reference KDE contours re-gridded for a panel's bounds."""
@@ -332,12 +371,16 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False,
                     ax.grid(True, alpha=0.15)
                 ax.text(0.02, 0.96, "Reference", transform=ax.transAxes,
                         fontsize=10, fontweight="bold", va="top", ha="left", color="#777777")
+                # Filled dot = aligned centroid (the single reference marker
+                # in the whole figure).
+                ax.scatter([AC_X], [AC_Y], s=30, facecolor="black", edgecolor="k",
+                           linewidth=0.9, zorder=6)
                 flat_idx += 1
                 continue
 
             px, py = projections.get(tech, (np.zeros((0,)), np.zeros((0,))))
 
-            cmap_name = HEXMAP.get(TECH_COLORS[tech], "Greys")
+            cmap_name = TECH_CMAP.get(tech, "Greys")
             bx, by = _panel_bounds(px, py)
 
             # Original dashed contour background (re-gridded for the panel)
@@ -351,6 +394,20 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False,
                          y_bounds=by,
                          show_labels=not clean)
 
+            # Centroid: open circle = this technique's mean de-identified
+            # centroid. The aligned reference centroid is shown exactly once
+            # (filled dot in the Reference panel); no displacement arrow: the
+            # 2D UMAP direction carries no intrinsic meaning.
+            cx_t, cy_t = float(px.mean()), float(py.mean())
+            ax.scatter([cx_t], [cy_t], s=30, facecolor="none", edgecolor="k",
+                       linewidth=1.0, zorder=6)
+            if tech in MEAN_DRIFT:
+                ax.text(0.98, 0.03, f"mean drift: {MEAN_DRIFT[tech]:.2f}",
+                        transform=ax.transAxes, ha="right", va="bottom",
+                        fontsize=7.5, color="#222222", zorder=7,
+                        bbox=dict(boxstyle="round,pad=0.25", fc="white",
+                                  ec="none", alpha=0.7))
+
             ax.set_aspect("equal", adjustable="box")
             if clean:
                 ax.set_xticks([])
@@ -363,7 +420,12 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False,
                 ax.grid(True, alpha=0.15)
 
             dname = display_name(tech)
-            color_for_label = TECH_COLORS[tech]
+            # title in the family's DARK shade (light shades are unreadable
+            # on the pale end of the density ramp)
+            try:
+                color_for_label = pair_for(tech)[0]
+            except KeyError:
+                color_for_label = TECH_COLORS[tech]
             ax.text(0.02, 0.96, dname, transform=ax.transAxes, fontsize=10,
                     fontweight="bold", va="top", ha="left", color=color_for_label)
             flat_idx += 1
@@ -379,7 +441,16 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False,
             fig.suptitle(title_text, fontsize=14, fontweight="bold", y=1.01)
             fig.tight_layout(rect=[0, 0, 1, 0.96])
         else:
-            fig.tight_layout()
+            # No bottom legend row: each panel's open centroid dot is
+            # self-explanatory and the reference (filled) dot appears once,
+            # in the Reference panel. Explicit margins (not tight_layout,
+            # which over-reserves vertical space for tick areas that clean
+            # mode removed) keep the rows packed edge-to-edge.
+            if clean:
+                fig.subplots_adjust(left=0.002, right=0.998, top=0.985,
+                                    bottom=0.002, wspace=0.04, hspace=0.05)
+            else:
+                fig.tight_layout(pad=0.4, h_pad=0.5, w_pad=0.3)
         return fig
 
     # ===================================================================
@@ -423,10 +494,10 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False,
 
     for idx, (rows, cols) in enumerate(density_layouts):
         if clean:
-            # aspect-exact cells (clean plates): cell w:h equals the data
-            # window's aspect so each density fills/centres its box exactly
-            ar_g = (GLOBAL_XLIM[1] - GLOBAL_XLIM[0]) / (GLOBAL_YLIM[1] - GLOBAL_YLIM[0])
-            fig1, axes1 = plt.subplots(rows, cols, figsize=(2.6 * cols, (2.6 / ar_g) * rows))
+            # Square cells (the data window is square): cell = 2.6" wide x
+            # (2.55" high, i.e. rows pack edge-to-edge like the v4 plate) so
+            # the aspect-forced square axes box fills each cell vertically.
+            fig1, axes1 = plt.subplots(rows, cols, figsize=(2.6 * cols, 2.55 * rows))
         else:
             fig1, axes1 = plt.subplots(rows, cols, figsize=(3.4 * cols, 3.0 * rows))
 
@@ -478,8 +549,8 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False,
         if len(px) > 0:
             _contour_layer(ax1b, px, py, TECH_COLORS[tech])
 
-    legend_patches = [Patch(color=c, alpha=0.3, label=t)
-                      for t, c in zip(anon_techs, PALETTE[:len(anon_techs)])]
+    legend_patches = [Patch(color=color_for(t), alpha=0.3, label=t)
+                      for t in anon_techs]
     # Add aligned patch
     legend_patches.insert(0, Patch(color="#999999", alpha=0.3, label="Original"))
     ax1b.legend(handles=legend_patches, loc="best", fontsize=8.5, ncol=4, framealpha=0.9)
@@ -521,7 +592,7 @@ def generate_plots(all_data, sample_names, techniques, output_path, clean=False,
 
         # Technique density + drift arrows
         if len(px) > 0:
-            cmap_name = HEXMAP.get(TECH_COLORS[tech], "Greys")
+            cmap_name = TECH_CMAP.get(tech, "Greys")
             _density_kde(ax, px, py, cmap_name, title="", x_bounds=bx, y_bounds=by)
 
         # Build global_idx -> projection mapping for this technique

@@ -174,25 +174,8 @@ def generate_html_report(results, output_path):
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    # ColorBrewer Set2 / Tableau-style distinct colors for up to 16 techniques; aligned is always black dashed
-    TECHNIQUE_COLORS = [
-        "#4e79a7",  # blue
-        "#f28e2b",  # orange
-        "#e15759",  # red
-        "#76b7b2",  # teal
-        "#59a14f",  # green
-        "#edc948",  # yellow
-        "#b07aa1",  # purple
-        "#ff9da7",  # pink
-        "#9c755f",  # brown
-        "#bab0ac",  # gray
-        "#af7aa1",  # violet
-        "#86bcb6",  # mint
-        "#cdc500",  # gold
-        "#d37295",  # rose
-        "#fac864",  # amber
-        "#a6d854",  # lime
-    ]
+    # Colors: shared (color, marker) encoding from fig_style (aligned = black)
+    from fig_style import color_for
 
     # Display name mapping — "aligned" → "Validation" for manuscript readability
     DISPLAY_NAME = {"aligned": "Validation"}
@@ -201,16 +184,7 @@ def generate_html_report(results, output_path):
         return DISPLAY_NAME.get(name, name)
 
     def get_color(name):
-        if name.lower() == "aligned":
-            return "#000000"
-        # Assign by first letter for consistency, but handle collisions
-        seen = set()
-        idx_map = {}
-        for i, c in enumerate(TECHNIQUE_COLORS):
-            seen.add(c)
-        # Simple hash-based assignment ensuring uniqueness
-        idx = sum(ord(ch) for ch in name) % len(TECHNIQUE_COLORS)
-        return TECHNIQUE_COLORS[idx]
+        return color_for(name)
 
     def display_label(r):
         """Human-friendly label used in legend, table, plot."""
