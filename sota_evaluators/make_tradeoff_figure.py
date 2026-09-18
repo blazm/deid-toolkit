@@ -119,8 +119,10 @@ def main():
 
     panel_scatter(axa, data, meta, "swinface", u_lo, u_hi)
     panel_scatter(axb, data, meta, "transface", u_lo, u_hi)
-    axa.set_title(" (a) SwinFace", fontsize=6.0, loc="left", fontweight="bold")
-    axb.set_title(" (b) TransFace", fontsize=6.0, loc="left", fontweight="bold")
+    axa.set_title(" (a) Naturalness vs. privacy trade-off (SwinFace)",
+                  fontsize=6.0, loc="left", fontweight="bold")
+    axb.set_title(" (b) Naturalness vs. privacy trade-off (TransFace)",
+                  fontsize=6.0, loc="left", fontweight="bold")
     axa.set_ylabel("Naturalness score N", fontsize=5.2, labelpad=2)
 
     # (c) utility: gender (dark) vs expression (light) bars
@@ -167,7 +169,7 @@ def main():
     axd.set_xlabel("Overall score  (P + N + U) / 3", fontsize=5.2, labelpad=2)
     axd.tick_params(labelsize=4.6)
     axd.grid(True, axis="x", linestyle=":", linewidth=0.4, alpha=0.6)
-    axd.set_title(" (d) Overall: SwinFace (dark bar) vs. TransFace (light bar)",
+    axd.set_title(" (d) Overall balance: dark = SwinFace, light = TransFace",
                   fontsize=6.0, loc="left", fontweight="bold")
 
     for ext in ("png", "pdf", "svg"):
