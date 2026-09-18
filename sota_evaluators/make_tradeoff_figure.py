@@ -88,9 +88,9 @@ def panel_scatter(ax, data, meta, bk, u_lo, u_hi):
                                   markerfacecolor=c, markeredgecolor="k",
                                   markeredgewidth=0.5, markersize=5.5, label=t))
     ax.legend(handles=handles, loc="lower center", bbox_to_anchor=(0.5, 0.005),
-              ncol=4, fontsize=4.3, framealpha=0.95, edgecolor="#cccccc",
+              ncol=4, fontsize=5.0, framealpha=0.95, edgecolor="#cccccc",
               handlelength=1.0, handletextpad=0.45, columnspacing=1.1,
-              labelspacing=0.4, borderpad=0.4)
+              labelspacing=0.45, borderpad=0.5)
     ax.set_xlim(0, 1)
     ax.set_xlabel("Privacy score P (0 = fully linkable, 1 = at chance)",
                   fontsize=5.2, labelpad=2)
