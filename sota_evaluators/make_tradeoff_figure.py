@@ -72,28 +72,28 @@ def panel_scatter(ax, data, meta, bk, u_lo, u_hi):
     if len(fp) >= 2:
         ax.plot([x for x, _ in fp], [y for _, y in fp], linestyle="--",
                 color="0.35", linewidth=0.8, zorder=2)
-        ax.text(0.99, 1.0, "3 bubble sizes = Utility U (low / mid / high)",
-            transform=ax.transAxes, ha="center", va="top", fontsize=4.3)
-    ax.text(0.30, 0.51, "dashed = Pareto front\n(undominated by P, N, U)",
-            fontsize=4.2, ha="center", va="center", color="0.35")
-    # label box in the empty bottom band (all dots have N >= ~0.47):
-    # 5 columns ordered by P, 4 rows ordered by N desc; family-colored
-    # text + leader lines traceable at a glance (linkability/CMC style)
-    valid = [t for t in GEN if data[t]["backbones"][bk]["p"] is not None]
-    valid.sort(key=lambda t: data[t]["backbones"][bk]["p"])
-    COLX = [0.10, 0.30, 0.50, 0.70, 0.90]
-    ROWY = [0.355, 0.245, 0.135, 0.045]
-    for j in range(5):
-        chunk = sorted(valid[4*j:4*j+4],
-                       key=lambda t: -data[t]["N"]["n"])
-        for k, t in enumerate(chunk):
-            r = data[t]["backbones"][bk]
-            dk, lt = fig_style.pair_for(t)
-            xlab, ylab = COLX[j], ROWY[k]
-            ax.text(xlab, ylab, t, fontsize=4.2, ha="center", va="center",
-                    color=dk, fontweight="bold", zorder=7)
-            ax.plot([xlab, r["p"]], [ylab + 0.022, data[t]["N"]["n"] - 0.028],
-                    color=dk, linewidth=0.45, alpha=0.6, zorder=1)
+        ax.text(0.5, 1.0, "3 bubble sizes = Utility U (low / mid / high)",
+            transform=ax.transAxes, ha="center", va="top", fontsize=4.2,
+            color="0.35")
+    ax.text(0.98, 0.345, "dashed = Pareto front\n(no method better on P, N, U at once)",
+            transform=ax.transAxes, ha="right", va="top", fontsize=4.2,
+            color="0.35")
+    # legend in the empty bottom band (all dots have N >= ~0.47): exact
+    # convention of the linkability figures (Line2D marker swatches, plain
+    # frame, ncol columns, no leader lines)
+    handles = []
+    for t in GEN:
+        r = data[t]["backbones"][bk]
+        if r["p"] is None:
+            continue
+        c, m = fig_style.style_for(t)
+        handles.append(plt.Line2D([], [], marker=m, linestyle="",
+                                  markerfacecolor=c, markeredgecolor="k",
+                                  markeredgewidth=0.5, markersize=5.5, label=t))
+    ax.legend(handles=handles, loc="lower center", bbox_to_anchor=(0.5, 0.005),
+              ncol=4, fontsize=4.3, framealpha=0.95, edgecolor="#cccccc",
+              handlelength=1.0, handletextpad=0.45, columnspacing=1.1,
+              labelspacing=0.4, borderpad=0.4)
     ax.set_xlim(0, 1)
     ax.set_xlabel("Privacy score P (0 = fully linkable, 1 = at chance)",
                   fontsize=5.2, labelpad=2)
