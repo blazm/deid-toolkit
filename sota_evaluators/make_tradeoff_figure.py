@@ -25,7 +25,6 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from adjustText import adjust_text
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fig_style
@@ -73,43 +72,28 @@ def panel_scatter(ax, data, meta, bk, u_lo, u_hi):
     if len(fp) >= 2:
         ax.plot([x for x, _ in fp], [y for _, y in fp], linestyle="--",
                 color="0.35", linewidth=0.8, zorder=2)
-        ax.text(0.99, 0.02, "dashed = Pareto front\n(undominated by P, N, U)",
-                transform=ax.transAxes, ha="right", va="bottom", fontsize=4.3,
-                color="0.35")
-    # label ALL techniques with leader lines, collision-avoided
-    INIT_OFFS = {"FAMS": (0.005, -0.055), "CPP-DeID": (-0.035, -0.065),
-                 "NullFace": (0.010, 0.040), "DeepPrivacy": (0.020, 0.040),
-                 "AIDPro": (0.050, 0.005), "G2Face": (-0.060, 0.015),
-                 "RP": (0.005, 0.045), "iFADIT": (0.005, -0.045),
-                 "DeepPrivacy2": (0.030, -0.030), "FALCO": (-0.010, -0.040)}
-    texts = []
-    for t in GEN:
-        r = data[t]["backbones"][bk]
-        if r["p"] is None or data[t]["N"]["n"] is None:
-            continue
-        dx, dy = INIT_OFFS.get(t, (0.008, 0.008))
-        texts.append((t, r["p"] + dx, data[t]["N"]["n"] + dy))
-    import random
-    random.seed(42)
-    np.random.seed(42)
-    dot_pts = []
-    texts2 = []
-    for t, x0, y0 in texts:
-        r = data[t]["backbones"][bk]
-        p, nv = r["p"], data[t]["N"]["n"]
-        dot_pts.append((p, nv))
-        texts2.append(ax.text(x0, y0, t, fontsize=4.3, zorder=5,
-                              fontweight="bold"))
-    adjust_text(texts2, ax=ax, points=dot_pts,
-                expand_points=(1.8, 2.1), expand_texts=(1.6, 2.0),
-                only_move={"texts": "both", "points": "both"},
-                max_move=8, iterations=800)  # may warn on iterations
-    # our own leader lines: text anchor -> actual dot
-    for tx, (p, nv) in zip(texts2, dot_pts):
-        x0, y0 = tx.get_position()
-        if not ((abs(x0 - p) < 0.015) and (abs(y0 - nv) < 0.028)):
-            ax.plot([x0, p], [y0, nv], color="0.55", linewidth=0.5, zorder=2,
-                    clip_on=False)
+        ax.text(0.99, 1.0, "3 bubble sizes = Utility U (low / mid / high)",
+            transform=ax.transAxes, ha="center", va="top", fontsize=4.3)
+    ax.text(0.30, 0.51, "dashed = Pareto front\n(undominated by P, N, U)",
+            fontsize=4.2, ha="center", va="center", color="0.35")
+    # label box in the empty bottom band (all dots have N >= ~0.47):
+    # 5 columns ordered by P, 4 rows ordered by N desc; family-colored
+    # text + leader lines traceable at a glance (linkability/CMC style)
+    valid = [t for t in GEN if data[t]["backbones"][bk]["p"] is not None]
+    valid.sort(key=lambda t: data[t]["backbones"][bk]["p"])
+    COLX = [0.10, 0.30, 0.50, 0.70, 0.90]
+    ROWY = [0.355, 0.245, 0.135, 0.045]
+    for j in range(5):
+        chunk = sorted(valid[4*j:4*j+4],
+                       key=lambda t: -data[t]["N"]["n"])
+        for k, t in enumerate(chunk):
+            r = data[t]["backbones"][bk]
+            dk, lt = fig_style.pair_for(t)
+            xlab, ylab = COLX[j], ROWY[k]
+            ax.text(xlab, ylab, t, fontsize=4.2, ha="center", va="center",
+                    color=dk, fontweight="bold", zorder=7)
+            ax.plot([xlab, r["p"]], [ylab + 0.022, data[t]["N"]["n"] - 0.028],
+                    color=dk, linewidth=0.45, alpha=0.6, zorder=1)
     ax.set_xlim(0, 1)
     ax.set_xlabel("Privacy score P (0 = fully linkable, 1 = at chance)",
                   fontsize=5.2, labelpad=2)
@@ -141,8 +125,6 @@ def main():
     axa.set_title(" (a) SwinFace", fontsize=6.0, loc="left", fontweight="bold")
     axb.set_title(" (b) TransFace", fontsize=6.0, loc="left", fontweight="bold")
     axa.set_ylabel("Naturalness score N", fontsize=5.2, labelpad=2)
-    axa.text(0.01, 0.03, "3 bubble sizes = Utility U (low / mid / high)",
-             transform=axa.transAxes, ha="left", fontsize=4.3)
 
     # (c) utility: gender (dark) vs expression (light) bars
     for yi, t in zip(y, order):
