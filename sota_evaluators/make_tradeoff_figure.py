@@ -72,10 +72,7 @@ def panel_scatter(ax, data, meta, bk, u_lo, u_hi):
     if len(fp) >= 2:
         ax.plot([x for x, _ in fp], [y for _, y in fp], linestyle="--",
                 color="0.35", linewidth=0.8, zorder=2)
-        ax.text(0.5, 1.0, "3 bubble sizes = Utility U (low / mid / high)",
-            transform=ax.transAxes, ha="center", va="top", fontsize=4.2,
-            color="0.35")
-    ax.text(0.98, 0.345, "dashed = Pareto front\n(no method better on P, N, U at once)",
+        ax.text(0.98, 0.345, "dashed = Pareto front\n(no method better on P, N, U at once)\n3 bubble sizes = Utility U (low / mid / high)",
             transform=ax.transAxes, ha="right", va="top", fontsize=4.2,
             color="0.35")
     # legend in the empty bottom band (all dots have N >= ~0.47): exact
