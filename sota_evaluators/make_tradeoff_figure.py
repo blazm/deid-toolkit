@@ -25,6 +25,7 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from adjustText import adjust_text
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fig_style
@@ -66,21 +67,49 @@ def panel_scatter(ax, data, meta, bk, u_lo, u_hi):
                    alpha=0.95)
     ax.scatter([0.05], [0.97], s=200, facecolor="none", edgecolor="k",
                linewidth=1.1, marker="o", zorder=4)
-    ax.text(0.115, 0.955, "Original", fontsize=4.8, va="center", zorder=4)
+    ax.text(0.115, 0.995, "Original", fontsize=4.8, va="center", zorder=4)
     front = [t for t in meta["pareto_fronts"][bk]]
     fp = sorted([(data[t]["backbones"][bk]["p"], data[t]["N"]["n"]) for t in front])
     if len(fp) >= 2:
         ax.plot([x for x, _ in fp], [y for _, y in fp], linestyle="--",
                 color="0.35", linewidth=0.8, zorder=2)
-        ax.text(0.985, 0.035, "Pareto front", transform=ax.transAxes,
-                ha="right", fontsize=4.4, color="0.35")
-    OFFS = {"G2Face": (-6, 9, "right"), "RP": (5, 9, "left"),
-            "AIDPro": (5, -13, "left"), "CPP-DeID": (6, -12, "left")}
-    for t in sorted(front, key=lambda x: -data[x]["overall"][bk])[:3]:
-        ox, oy, ha = OFFS.get(t, (5, 5, "left"))
-        ax.annotate(t, (data[t]["backbones"][bk]["p"], data[t]["N"]["n"]),
-                    xytext=(ox, oy), textcoords="offset points", fontsize=4.8,
-                    fontweight="bold", ha=ha, zorder=5)
+        ax.text(0.99, 0.02, "dashed = Pareto front\n(undominated by P, N, U)",
+                transform=ax.transAxes, ha="right", va="bottom", fontsize=4.3,
+                color="0.35")
+    # label ALL techniques with leader lines, collision-avoided
+    INIT_OFFS = {"FAMS": (0.005, -0.055), "CPP-DeID": (-0.035, -0.065),
+                 "NullFace": (0.010, 0.040), "DeepPrivacy": (0.020, 0.040),
+                 "AIDPro": (0.050, 0.005), "G2Face": (-0.060, 0.015),
+                 "RP": (0.005, 0.045), "iFADIT": (0.005, -0.045),
+                 "DeepPrivacy2": (0.030, -0.030), "FALCO": (-0.010, -0.040)}
+    texts = []
+    for t in GEN:
+        r = data[t]["backbones"][bk]
+        if r["p"] is None or data[t]["N"]["n"] is None:
+            continue
+        dx, dy = INIT_OFFS.get(t, (0.008, 0.008))
+        texts.append((t, r["p"] + dx, data[t]["N"]["n"] + dy))
+    import random
+    random.seed(42)
+    np.random.seed(42)
+    dot_pts = []
+    texts2 = []
+    for t, x0, y0 in texts:
+        r = data[t]["backbones"][bk]
+        p, nv = r["p"], data[t]["N"]["n"]
+        dot_pts.append((p, nv))
+        texts2.append(ax.text(x0, y0, t, fontsize=4.3, zorder=5,
+                              fontweight="bold"))
+    adjust_text(texts2, ax=ax, points=dot_pts,
+                expand_points=(1.8, 2.1), expand_texts=(1.6, 2.0),
+                only_move={"texts": "both", "points": "both"},
+                max_move=8, iterations=800)  # may warn on iterations
+    # our own leader lines: text anchor -> actual dot
+    for tx, (p, nv) in zip(texts2, dot_pts):
+        x0, y0 = tx.get_position()
+        if not ((abs(x0 - p) < 0.015) and (abs(y0 - nv) < 0.028)):
+            ax.plot([x0, p], [y0, nv], color="0.55", linewidth=0.5, zorder=2,
+                    clip_on=False)
     ax.set_xlim(0, 1)
     ax.set_xlabel("Privacy score P (0 = fully linkable, 1 = at chance)",
                   fontsize=5.2, labelpad=2)
@@ -112,8 +141,8 @@ def main():
     axa.set_title(" (a) SwinFace", fontsize=6.0, loc="left", fontweight="bold")
     axb.set_title(" (b) TransFace", fontsize=6.0, loc="left", fontweight="bold")
     axa.set_ylabel("Naturalness score N", fontsize=5.2, labelpad=2)
-    axb.text(0.01, 0.03, "3 bubble sizes = Utility U (low / mid / high)",
-             transform=axb.transAxes, ha="left", fontsize=4.3)
+    axa.text(0.01, 0.03, "3 bubble sizes = Utility U (low / mid / high)",
+             transform=axa.transAxes, ha="left", fontsize=4.3)
 
     # (c) utility: gender (dark) vs expression (light) bars
     for yi, t in zip(y, order):
@@ -124,9 +153,13 @@ def main():
         ev = float(np.mean(list(e.values()))) if e else 0.0
         axc.barh(yi + 0.19, gv, height=0.34, color=dk, zorder=3)
         axc.barh(yi - 0.19, ev, height=0.34, color=lt, zorder=3)
+        axc.text(gv + 0.006, yi + 0.19, f"{gv*100:.0f}%", fontsize=3.8,
+                 va="center", ha="left")
+        axc.text(ev + 0.006, yi - 0.19, f"{ev*100:.0f}%", fontsize=3.8,
+                 va="center", ha="left")
     axc.set_yticks(y)
     axc.set_yticklabels(order, fontsize=4.4)
-    axc.set_xlim(0, 1)
+    axc.set_xlim(0, 1.10)
     axc.set_ylim(-0.75, len(order) - 0.25)
     axc.set_xlabel("Baseline-relative retention (0 = lost, 100% = fully kept)",
                    fontsize=5.2, labelpad=2)
@@ -139,14 +172,18 @@ def main():
     # (d) overall per backbone
     for yi, t in zip(y, order):
         dk, lt = fig_style.pair_for(t)
-        axd.barh(yi + 0.19, data[t]["overall"]["swinface"], height=0.34,
-                 color=dk, zorder=3)
-        axd.barh(yi - 0.19, data[t]["overall"]["transface"], height=0.34,
-                 color=lt, zorder=3)
+        sv = data[t]["overall"]["swinface"]
+        tv = data[t]["overall"]["transface"]
+        axd.barh(yi + 0.19, sv, height=0.34, color=dk, zorder=3)
+        axd.barh(yi - 0.19, tv, height=0.34, color=lt, zorder=3)
+        axd.text(sv + 0.008, yi + 0.19, f"{sv:.2f}", fontsize=3.8,
+                 va="center", ha="left")
+        axd.text(tv + 0.008, yi - 0.19, f"{tv:.2f}", fontsize=3.8,
+                 va="center", ha="left")
         axd.add_patch(plt.Rectangle((1.003, yi - 0.5), 0.012, 1.0,
                        transform=axd.transData, color=dk, clip_on=False))
     axd.set_yticks([])
-    axd.set_xlim(0, 1)
+    axd.set_xlim(0, 1.10)
     axd.set_ylim(-0.75, len(order) - 0.25)
     axd.set_xlabel("Overall score  (P + N + U) / 3", fontsize=5.2, labelpad=2)
     axd.tick_params(labelsize=4.6)
