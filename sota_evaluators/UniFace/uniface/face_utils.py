@@ -1,0 +1,227 @@
+# Copyright 2025-2026 Yakhyokhuja Valikhujaev
+# Author: Yakhyokhuja Valikhujaev
+# GitHub: https://github.com/yakhyo
+
+from __future__ import annotations
+
+import cv2
+import numpy as np
+from skimage.transform import SimilarityTransform
+
+__all__ = [
+    'bbox_center_alignment',
+    'compute_similarity',
+    'face_alignment',
+    'transform_points_2d',
+]
+
+
+# Standard 5-point facial landmark reference for ArcFace alignment (112x112)
+reference_alignment: np.ndarray = np.array(
+    [
+        [38.2946, 51.6963],
+        [73.5318, 51.5014],
+        [56.0252, 71.7366],
+        [41.5493, 92.3655],
+        [70.7299, 92.2041],
+    ],
+    dtype=np.float32,
+)
+
+
+def estimate_norm(
+    landmark: np.ndarray,
+    image_size: int | tuple[int, int] = 112,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Estimate the normalization transformation matrix for facial landmarks.
+
+    Args:
+        landmark: Array of shape (5, 2) holding the alignment landmarks in the order
+            left eye, right eye, nose, left mouth corner, right mouth corner.
+        image_size: The size of the output image. Can be an integer (for square images)
+            or a tuple (width, height). Default is 112.
+
+    Returns:
+        A tuple containing:
+            - The 2x3 transformation matrix for aligning the landmarks.
+            - The 2x3 inverse transformation matrix.
+
+    Raises:
+        ValueError: If the input landmark array does not have the shape (5, 2),
+            or if image_size is not a multiple of 112 or 128.
+    """
+    if landmark.shape != (5, 2):
+        raise ValueError(
+            f'estimate_norm requires 5 alignment landmarks, got shape {landmark.shape}. '
+            'Detectors whose supports_alignment is False (e.g. BlazeFace) cannot be used '
+            'for alignment, recognition, quality scoring, or XSeg parsing.'
+        )
+
+    # Handle both int and tuple inputs
+    if isinstance(image_size, tuple):
+        size = image_size[0]  # Use width for ratio calculation
+    else:
+        size = image_size
+
+    if size % 112 != 0 and size % 128 != 0:
+        raise ValueError(f'image_size must be a multiple of 112 or 128, got {size}')
+
+    if size % 112 == 0:
+        ratio = float(size) / 112.0
+        diff_x = 0.0
+    else:
+        ratio = float(size) / 128.0
+        diff_x = 8.0 * ratio
+
+    # Adjust reference alignment based on ratio and diff_x
+    alignment = reference_alignment * ratio
+    alignment[:, 0] += diff_x
+
+    # Compute the transformation matrix
+    try:
+        # scikit-image >= 0.26
+        transform = SimilarityTransform.from_estimate(landmark, alignment)
+    except AttributeError:
+        # scikit-image < 0.26 (e.g. Python 3.10 with older scikit-image)
+        transform = SimilarityTransform()
+        transform.estimate(landmark, alignment)
+
+    matrix = transform.params[0:2, :]
+    inverse_matrix = np.linalg.inv(transform.params)[0:2, :]
+
+    return matrix, inverse_matrix
+
+
+def face_alignment(
+    image: np.ndarray,
+    landmark: np.ndarray,
+    image_size: int | tuple[int, int] = 112,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Align the face in the input image based on the given facial landmarks.
+
+    Args:
+        image: Input image as a NumPy array with shape (H, W, C).
+        landmark: Array of shape (5, 2) representing the facial landmark coordinates.
+        image_size: The size of the aligned output image. Can be an integer
+            (for square images) or a tuple (width, height). Default is 112.
+
+    Returns:
+        A tuple containing:
+            - The aligned face as a NumPy array.
+            - The 2x3 inverse transformation matrix used for alignment.
+    """
+    # Get the transformation matrix
+    transform_matrix, inverse_transform = estimate_norm(landmark, image_size)
+
+    # Handle both int and tuple for warpAffine output size
+    if isinstance(image_size, int):
+        output_size = (image_size, image_size)
+    else:
+        output_size = image_size
+
+    # Warp the input image to align the face
+    warped = cv2.warpAffine(image, transform_matrix, output_size, borderValue=0.0)
+
+    return warped, inverse_transform
+
+
+def compute_similarity(feat1: np.ndarray, feat2: np.ndarray, normalized: bool = False) -> np.float32:
+    """Compute cosine similarity between two face embeddings.
+
+    Args:
+        feat1: First embedding vector.
+        feat2: Second embedding vector.
+        normalized: Set True if the embeddings are already L2 normalized.
+
+    Returns:
+        Cosine similarity score in range [-1, 1].
+    """
+    feat1 = feat1.ravel()
+    feat2 = feat2.ravel()
+    if normalized:
+        return np.dot(feat1, feat2)
+    # Add small epsilon to prevent division by zero
+    return np.dot(feat1, feat2) / (np.linalg.norm(feat1) * np.linalg.norm(feat2) + 1e-5)
+
+
+def bbox_center_alignment(
+    image: np.ndarray,
+    center: tuple[float, float],
+    output_size: int,
+    scale: float,
+    rotation: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Apply center-based alignment, scaling, and rotation to an image.
+
+    Args:
+        image: Input image with shape (H, W, C).
+        center: Center point (x, y), e.g., face center from bbox.
+        output_size: Desired output image size (square).
+        scale: Scaling factor to zoom in/out.
+        rotation: Rotation angle in degrees (clockwise).
+
+    Returns:
+        A tuple containing:
+            - Aligned and cropped image with shape (output_size, output_size, C).
+            - 2x3 affine transform matrix used.
+    """
+
+    # Convert rotation from degrees to radians
+    rot = float(rotation) * np.pi / 180.0
+
+    # Scaling transform
+    t1 = SimilarityTransform(scale=scale)
+
+    # Translate the center point to the origin (after scaling)
+    cx = center[0] * scale
+    cy = center[1] * scale
+    t2 = SimilarityTransform(translation=(-1 * cx, -1 * cy))
+
+    # Rotation around the origin (the face center, after t2)
+    t3 = SimilarityTransform(rotation=rot)
+
+    # Translate origin to center of output image
+    t4 = SimilarityTransform(translation=(output_size / 2, output_size / 2))
+
+    # Combine all transformations in order: scale → center shift → rotate → recentralize
+    t = t1 + t2 + t3 + t4
+
+    # Extract 2x3 affine matrix
+    M = t.params[0:2]
+
+    # Warp the image using OpenCV
+    cropped = cv2.warpAffine(image, M, (output_size, output_size), borderValue=0.0)
+
+    return cropped, M
+
+
+def transform_points_2d(points: np.ndarray, transform: np.ndarray) -> np.ndarray:
+    """Apply a 2D affine transformation to an array of 2D points.
+
+    Both inputs are coerced to contiguous `float32` before the transform is
+    applied; the output dtype is `float32` regardless of the input dtypes.
+
+    Args:
+        points: An `(N, 2)` array of 2D points. When `N == 0` the function
+            short-circuits and returns an empty `(0, 2)` `float32` array
+            without touching `transform`.
+        transform: A `(2, 3)` affine transformation matrix. `(3, 3)`
+            homogeneous matrices are **not** accepted — pass only the top two
+            rows.
+
+    Returns:
+        Transformed `(N, 2)` `float32` array of points.
+    """
+    if points.shape[0] == 0:
+        return np.empty((0, 2), dtype=np.float32)
+
+    # Standardize inputs to float32
+    points = np.ascontiguousarray(points, dtype=np.float32)
+    transform = np.ascontiguousarray(transform, dtype=np.float32)
+
+    # Append a column of ones for homogeneous coordinates (N, 3)
+    ones = np.ones((points.shape[0], 1), dtype=np.float32)
+    points_homogeneous = np.hstack([points, ones])
+
+    # Apply transformation: (N, 3) dot (3, 2) -> (N, 2)
+    return np.dot(points_homogeneous, transform.T)

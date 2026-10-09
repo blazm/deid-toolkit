@@ -1,0 +1,113 @@
+# Copyright 2025-2026 Yakhyokhuja Valikhujaev
+# Author: Yakhyokhuja Valikhujaev
+# GitHub: https://github.com/yakhyo
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+
+import numpy as np
+
+
+class BaseFaceParser(ABC):
+    """Abstract base class for all face parsing models.
+
+    This class defines the common interface that all face parsing models must implement,
+    ensuring consistency across different parsing methods. Face parsing segments a face
+    image into semantic regions such as skin, eyes, nose, mouth, hair, etc.
+
+    Subclasses must define a `mask_type` class attribute to indicate output format:
+
+    - `"class_ids"`: uint8 mask with discrete class labels (e.g. BiSeNet: 0-18)
+    - `"probability"`: float32 mask with continuous values in [0, 1] (e.g. XSeg)
+
+    Attributes:
+        mask_type (str): Output format identifier. Must be set by subclasses.
+    """
+
+    mask_type: str
+
+    @abstractmethod
+    def _initialize_model(self) -> None:
+        """Initialize the underlying model for inference.
+
+        This method should handle loading model weights, creating the
+        inference session (e.g., ONNX Runtime), and any necessary
+        setup procedures to prepare the model for prediction. Implementations
+        raise RuntimeError if the model fails to load or initialize.
+        """
+        raise NotImplementedError('Subclasses must implement the _initialize_model method.')
+
+    @abstractmethod
+    def preprocess(self, face_image: np.ndarray) -> np.ndarray:
+        """Preprocess the input face image for model inference.
+
+        This method should take a raw face crop and convert it into the format
+        expected by the model's inference engine (e.g., normalized tensor).
+
+        Args:
+            face_image (np.ndarray): A face image in BGR format with
+                                     shape (H, W, C).
+
+        Returns:
+            np.ndarray: The preprocessed image tensor ready for inference,
+                        typically with shape (1, C, H, W).
+        """
+        raise NotImplementedError('Subclasses must implement the preprocess method.')
+
+    @abstractmethod
+    def postprocess(self, outputs: np.ndarray, original_size: tuple[int, int]) -> np.ndarray:
+        """Postprocess raw model outputs into a segmentation mask.
+
+        This method takes the raw output from the model's inference and
+        converts it into a segmentation mask at the original image size.
+
+        Args:
+            outputs (np.ndarray): Raw outputs from the model inference.
+            original_size (tuple[int, int]): Original image size (width, height).
+
+        Returns:
+            np.ndarray: Segmentation mask with the same size as the original image.
+        """
+        raise NotImplementedError('Subclasses must implement the postprocess method.')
+
+    @abstractmethod
+    def parse(self, image: np.ndarray, *, landmarks: np.ndarray | None = None) -> np.ndarray:
+        """Perform end-to-end face parsing on a face image.
+
+        This method orchestrates the full pipeline: preprocessing the input,
+        running inference, and postprocessing to return the segmentation mask.
+
+        Args:
+            image (np.ndarray): A face image in BGR format.
+                The face should be roughly centered and well-framed within the image.
+            landmarks (np.ndarray | None): Optional 5-point facial landmarks with
+                shape (5, 2). Required by some parsers (e.g., XSeg) for face alignment.
+                Ignored by parsers that do not need landmarks (e.g., BiSeNet).
+
+        Returns:
+            np.ndarray: Segmentation mask with the same size as input image.
+                Format depends on `mask_type`:
+
+                - `"class_ids"`: uint8 with discrete class labels
+                - `"probability"`: float32 with values in [0, 1]
+
+        Example:
+            >>> parser = BiSeNet()
+            >>> mask = parser.parse(face_crop)
+            >>> print(f'Mask type: {parser.mask_type}')
+            >>> print(f'Mask shape: {mask.shape}, dtype: {mask.dtype}')
+        """
+        raise NotImplementedError('Subclasses must implement the parse method.')
+
+    def __call__(self, image: np.ndarray, *, landmarks: np.ndarray | None = None) -> np.ndarray:
+        """Provides a convenient, callable shortcut for the `parse` method.
+
+        Args:
+            image (np.ndarray): A face image in BGR format.
+            landmarks (np.ndarray | None): Optional 5-point facial landmarks.
+
+        Returns:
+            np.ndarray: Segmentation mask with the same size as input image.
+        """
+        return self.parse(image, landmarks=landmarks)

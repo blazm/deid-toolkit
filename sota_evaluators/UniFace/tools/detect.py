@@ -1,0 +1,237 @@
+# Copyright 2025-2026 Yakhyokhuja Valikhujaev
+# Author: Yakhyokhuja Valikhujaev
+# GitHub: https://github.com/yakhyo
+
+"""Face detection on image, video, or webcam.
+
+Usage:
+    python tools/detect.py --source path/to/image.jpg
+    python tools/detect.py --source path/to/video.mp4
+    python tools/detect.py --source 0  # webcam
+    python tools/detect.py --source path/to/image.jpg --detector retinaface --model retinaface_r50
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+from pathlib import Path
+import time
+
+from _common import get_source_type
+import cv2
+from tqdm import tqdm
+
+from uniface.constants import (
+    BlazeFaceWeights,
+    CenterFaceWeights,
+    RetinaFaceWeights,
+    SCRFDWeights,
+    YOLOv5FaceWeights,
+    YOLOv8FaceWeights,
+)
+from uniface.detection import SCRFD, BlazeFace, CenterFace, RetinaFace, YOLOv5Face, YOLOv8Face
+from uniface.draw import draw_detections
+
+# detector name -> (class, weights enum, default weights)
+DETECTORS = {
+    'retinaface': (RetinaFace, RetinaFaceWeights, RetinaFaceWeights.MNET_V2),
+    'scrfd': (SCRFD, SCRFDWeights, SCRFDWeights.SCRFD_10G_KPS),
+    'centerface': (CenterFace, CenterFaceWeights, CenterFaceWeights.DEFAULT),
+    'yolov5face': (YOLOv5Face, YOLOv5FaceWeights, YOLOv5FaceWeights.YOLOV5M),
+    'yolov8face': (YOLOv8Face, YOLOv8FaceWeights, YOLOv8FaceWeights.YOLOV8N),
+    'blazeface': (BlazeFace, BlazeFaceWeights, BlazeFaceWeights.DEFAULT),
+}
+
+
+def process_image(detector, image_path: str, threshold: float = 0.6, save_dir: str = 'outputs'):
+    """Process a single image."""
+    image = cv2.imread(image_path)
+    if image is None:
+        print(f"Error: Failed to load image from '{image_path}'")
+        return
+
+    faces = detector.detect(image)
+
+    if faces:
+        draw_detections(image=image, faces=faces, vis_threshold=threshold)
+
+    os.makedirs(save_dir, exist_ok=True)
+    output_path = os.path.join(save_dir, f'{os.path.splitext(os.path.basename(image_path))[0]}_out.jpg')
+    cv2.imwrite(output_path, image)
+    print(f'Detected {len(faces)} face(s). Output saved: {output_path}')
+
+
+def process_video(
+    detector,
+    input_path: str,
+    output_path: str,
+    threshold: float = 0.6,
+    show_preview: bool = False,
+):
+    """Process a video file with progress bar."""
+    cap = cv2.VideoCapture(input_path)
+    if not cap.isOpened():
+        print(f"Error: Cannot open video file '{input_path}'")
+        return
+
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    print(f'Input: {input_path} ({width}x{height}, {fps:.1f} fps, {total_frames} frames)')
+    print(f'Output: {output_path}')
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+    if not out.isOpened():
+        print(f"Error: Cannot create output video '{output_path}'")
+        cap.release()
+        return
+
+    frame_count = 0
+    total_faces = 0
+
+    for _ in tqdm(range(total_frames), desc='Processing', unit='frames'):
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        t0 = time.perf_counter()
+        frame_count += 1
+        faces = detector.detect(frame)
+        total_faces += len(faces)
+
+        draw_detections(
+            image=frame,
+            faces=faces,
+            vis_threshold=threshold,
+            draw_score=True,
+            corner_bbox=True,
+        )
+
+        inference_fps = 1.0 / max(time.perf_counter() - t0, 1e-9)
+        cv2.putText(frame, f'FPS: {inference_fps:.1f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.putText(frame, f'Faces: {len(faces)}', (10, 65), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        out.write(frame)
+
+        if show_preview:
+            cv2.imshow("Processing - Press 'q' to cancel", frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                print('\nCancelled by user')
+                break
+
+    cap.release()
+    out.release()
+    if show_preview:
+        cv2.destroyAllWindows()
+
+    avg_faces = total_faces / frame_count if frame_count > 0 else 0
+    print(f'\nDone! {frame_count} frames, {total_faces} faces ({avg_faces:.1f} avg/frame)')
+    print(f'Saved: {output_path}')
+
+
+def run_camera(detector, camera_id: int = 0, threshold: float = 0.6):
+    """Run real-time detection on webcam."""
+    cap = cv2.VideoCapture(camera_id)
+    if not cap.isOpened():
+        print(f'Cannot open camera {camera_id}')
+        return
+
+    print("Press 'q' to quit")
+
+    prev_time = time.perf_counter()
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frame = cv2.flip(frame, 1)
+
+        faces = detector.detect(frame)
+
+        draw_detections(
+            image=frame,
+            faces=faces,
+            vis_threshold=threshold,
+            draw_score=True,
+            corner_bbox=True,
+        )
+
+        curr_time = time.perf_counter()
+        fps = 1.0 / max(curr_time - prev_time, 1e-9)
+        prev_time = curr_time
+        cv2.putText(frame, f'FPS: {fps:.1f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.putText(frame, f'Faces: {len(faces)}', (10, 65), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.imshow('Face Detection', frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Run face detection')
+    parser.add_argument('--source', type=str, required=True, help='Image/video path or camera ID (0, 1, ...)')
+    parser.add_argument(
+        '--detector',
+        '--method',
+        type=str,
+        default='retinaface',
+        choices=list(DETECTORS),
+    )
+    parser.add_argument(
+        '--model',
+        type=str,
+        default=None,
+        help="Model weights for the chosen detector (e.g. 'retinaface_r50'). Defaults to the detector's own default.",
+    )
+    parser.add_argument('--threshold', type=float, default=0.25, help='Visualization threshold')
+    parser.add_argument('--preview', action='store_true', help='Show live preview during video processing')
+    parser.add_argument('--save-dir', type=str, default='outputs', help='Output directory')
+    parser.add_argument('--output', type=str, default=None, help='Output video path (auto-generated if not specified)')
+    args = parser.parse_args()
+
+    # Initialize detector
+    detector_cls, weights_enum, default_weights = DETECTORS[args.detector]
+    if args.model is None:
+        model_name = default_weights
+    else:
+        try:
+            model_name = weights_enum(args.model)
+        except ValueError:
+            valid = ', '.join(w.value for w in weights_enum)
+            print(f"Error: '{args.model}' is not a valid model for {args.detector}.\nAvailable: {valid}")
+            return
+    detector = detector_cls(model_name=model_name)
+
+    source_type = get_source_type(args.source)
+
+    if source_type == 'camera':
+        run_camera(detector, int(args.source), args.threshold)
+    elif source_type == 'image':
+        if not os.path.exists(args.source):
+            print(f'Error: Image not found: {args.source}')
+            return
+        process_image(detector, args.source, args.threshold, args.save_dir)
+    elif source_type == 'video':
+        if not os.path.exists(args.source):
+            print(f'Error: Video not found: {args.source}')
+            return
+        if args.output:
+            output_path = args.output
+        else:
+            os.makedirs(args.save_dir, exist_ok=True)
+            output_path = os.path.join(args.save_dir, f'{Path(args.source).stem}_detected.mp4')
+        process_video(detector, args.source, output_path, args.threshold, args.preview)
+    else:
+        print(f"Error: Unknown source type for '{args.source}'")
+        print('Supported formats: images (.jpg, .png, ...), videos (.mp4, .avi, ...), or camera ID (0, 1, ...)')
+
+
+if __name__ == '__main__':
+    main()

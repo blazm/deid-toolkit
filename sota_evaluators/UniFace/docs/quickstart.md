@@ -1,0 +1,644 @@
+# Quickstart
+
+Get up and running with UniFace in 5 minutes. This guide covers the most common use cases.
+
+---
+
+## Everything at Once: FaceAnalyzer
+
+`FaceAnalyzer` runs detection, alignment and recognition in a single call, and any attribute
+models you hand it. Start here if you want a whole pipeline rather than one model.
+
+```python
+import cv2
+from uniface import FaceAnalyzer
+
+analyzer = FaceAnalyzer()          # SCRFD + ArcFace by default, no arguments needed
+faces = analyzer.analyze(cv2.imread("photo.jpg"))
+
+for face in faces:
+    print(face.bbox, face.confidence, face.embedding.shape)
+```
+
+Attribute models are opt-in. Pass them as `predictors=` and their fields appear on every face:
+
+```python
+from uniface import FaceAnalyzer, FairFace
+
+analyzer = FaceAnalyzer(predictors=[FairFace()])
+
+for face in analyzer.analyze(image):
+    print(f"{face.sex}, {face.age_group}, embedding {face.embedding.shape}")
+```
+
+!!! info "Which fields are populated"
+    `bbox`, `confidence`, `landmarks` and `embedding` are always set. Everything else
+    (`age`, `age_group`, `gender`, `race`, `emotion`, `quality`, the face states) stays `None`
+    until you pass the predictor that fills it, so a bare `FaceAnalyzer()` returns `age=None`.
+
+---
+
+## Face Detection
+
+Detect faces in an image:
+
+```python
+import cv2
+from uniface.detection import RetinaFace
+
+# Load image
+image = cv2.imread("photo.jpg")
+
+# Initialize detector (models auto-download on first use)
+detector = RetinaFace()
+
+# Detect faces
+faces = detector.detect(image)
+
+# Print results
+for i, face in enumerate(faces):
+    print(f"Face {i+1}:")
+    print(f"  Confidence: {face.confidence:.2f}")
+    print(f"  BBox: {face.bbox}")
+    print(f"  Landmarks: {len(face.landmarks)} points")
+```
+
+**Output:**
+
+```
+Face 1:
+  Confidence: 0.99
+  BBox: [120.5, 85.3, 245.8, 210.6]
+  Landmarks: 5 points
+```
+
+---
+
+## Visualize Detections
+
+Draw bounding boxes and landmarks:
+
+```python
+import cv2
+from uniface.detection import RetinaFace
+from uniface.draw import draw_detections
+
+# Detect faces
+detector = RetinaFace()
+image = cv2.imread("photo.jpg")
+faces = detector.detect(image)
+
+# Draw on image
+draw_detections(image=image, faces=faces, vis_threshold=0.6)
+
+# Save result
+cv2.imwrite("output.jpg", image)
+```
+
+---
+
+## Face Recognition
+
+Compare two faces:
+
+```python
+import cv2
+from uniface.detection import RetinaFace
+from uniface.recognition import ArcFace
+
+# Initialize models
+detector = RetinaFace()
+recognizer = ArcFace()
+
+# Load two images
+image1 = cv2.imread("person1.jpg")
+image2 = cv2.imread("person2.jpg")
+
+# Detect faces
+faces1 = detector.detect(image1)
+faces2 = detector.detect(image2)
+
+if faces1 and faces2:
+    # Extract embeddings (normalized 1-D vectors)
+    emb1 = recognizer.get_normalized_embedding(image1, faces1[0].landmarks)
+    emb2 = recognizer.get_normalized_embedding(image2, faces2[0].landmarks)
+
+    # Compute cosine similarity
+    from uniface import compute_similarity
+    similarity = compute_similarity(emb1, emb2, normalized=True)
+
+    # Interpret result
+    if similarity > 0.6:
+        print(f"Same person (similarity: {similarity:.3f})")
+    else:
+        print(f"Different people (similarity: {similarity:.3f})")
+```
+
+!!! tip "Similarity Thresholds"
+    - `> 0.6`: Same person (high confidence)
+    - `0.4 - 0.6`: Uncertain (manual review)
+    - `< 0.4`: Different people
+
+---
+
+## Age & Gender Detection
+
+```python
+import cv2
+from uniface.attribute import AgeGender
+from uniface.detection import RetinaFace
+
+# Initialize models
+detector = RetinaFace()
+age_gender = AgeGender()
+
+# Load image
+image = cv2.imread("photo.jpg")
+faces = detector.detect(image)
+
+# Predict attributes
+for i, face in enumerate(faces):
+    result = age_gender.predict(image, face)
+    print(f"Face {i+1}: {result.sex}, {result.age} years old")
+```
+
+**Output:**
+
+```
+Face 1: Male, 32 years old
+Face 2: Female, 28 years old
+```
+
+---
+
+## FairFace Attributes
+
+Detect race, gender, and age group:
+
+```python
+import cv2
+from uniface.attribute import FairFace
+from uniface.detection import RetinaFace
+
+detector = RetinaFace()
+fairface = FairFace()
+
+image = cv2.imread("photo.jpg")
+faces = detector.detect(image)
+
+for i, face in enumerate(faces):
+    result = fairface.predict(image, face)
+    print(f"Face {i+1}: {result.sex}, {result.age_group}, {result.race}")
+```
+
+**Output:**
+
+```
+Face 1: Male, 30-39, East Asian
+Face 2: Female, 20-29, White
+```
+
+---
+
+## Facial Landmarks (106 / 98 / 68 / 468 / 478 Points)
+
+UniFace ships three dense-landmark families. Pick whichever fits your downstream task:
+
+```python
+import cv2
+from uniface.detection import RetinaFace
+from uniface.landmark import Landmark106
+
+detector = RetinaFace()
+landmarker = Landmark106()  # 106-point InsightFace 2d106det model
+
+image = cv2.imread("photo.jpg")
+faces = detector.detect(image)
+
+if faces:
+    landmarks = landmarker.get_landmarks(image, faces[0].bbox)
+    print(f"Detected {len(landmarks)} landmarks")  # 106
+
+    # Draw landmarks
+    for x, y in landmarks.astype(int):
+        cv2.circle(image, (x, y), 2, (0, 255, 0), -1)
+
+    cv2.imwrite("landmarks.jpg", image)
+```
+
+**PIPNet (98 / 68 points)** — ResNet-18 backbone trained on WFLW (98 pts) or 300W+CelebA (68 pts):
+
+```python
+from uniface.constants import PIPNetWeights
+from uniface.landmark import PIPNet
+
+# 98-point WFLW model (default)
+landmarker_98 = PIPNet()
+
+# 68-point 300W+CelebA model
+landmarker_68 = PIPNet(model_name=PIPNetWeights.DW300_CELEBA_68)
+
+landmarks = landmarker_98.get_landmarks(image, faces[0].bbox)  # (98, 2)
+```
+
+**Face Mesh (468 / 478 points, 3D)** is MediaPipe's dense mesh, run over every detected face
+in a single batched call. Pass `FaceMeshWeights.V2_478` for the 478-point variant with irises:
+
+```python
+from uniface.landmark import FaceMesh
+
+mesher = FaceMesh()  # default: 468 points
+results = mesher.predict(image, faces)
+
+print(results[0].landmarks.shape)  # (468, 3), x/y in image pixels, z is relative depth
+print(results[0].points_2d.shape)  # (468, 2), depth dropped
+print(results[0].score)            # face presence, [0, 1]
+```
+
+---
+
+## Gaze Estimation
+
+```python
+import cv2
+import numpy as np
+from uniface.detection import RetinaFace
+from uniface.gaze import MobileGaze
+from uniface.draw import draw_gaze
+
+detector = RetinaFace()
+gaze_estimator = MobileGaze()
+
+image = cv2.imread("photo.jpg")
+faces = detector.detect(image)
+
+for i, face in enumerate(faces):
+    x1, y1, x2, y2 = map(int, face.bbox[:4])
+    face_crop = image[y1:y2, x1:x2]
+
+    if face_crop.size > 0:
+        result = gaze_estimator.estimate(face_crop)
+        print(f"Face {i+1}: pitch={np.degrees(result.pitch):.1f}°, yaw={np.degrees(result.yaw):.1f}°")
+
+        # Draw gaze direction
+        draw_gaze(image, face.bbox, result.pitch, result.yaw)
+
+cv2.imwrite("gaze_output.jpg", image)
+```
+
+---
+
+## Head Pose Estimation
+
+```python
+import cv2
+from uniface.detection import RetinaFace
+from uniface.headpose import HeadPose
+from uniface.draw import draw_head_pose
+
+detector = RetinaFace()
+head_pose = HeadPose()
+
+image = cv2.imread("photo.jpg")
+faces = detector.detect(image)
+
+for i, face in enumerate(faces):
+    x1, y1, x2, y2 = map(int, face.bbox[:4])
+    face_crop = image[y1:y2, x1:x2]
+
+    if face_crop.size > 0:
+        result = head_pose.estimate(face_crop)
+        print(f"Face {i+1}: pitch={result.pitch:.1f}°, yaw={result.yaw:.1f}°, roll={result.roll:.1f}°")
+
+        # Draw 3D cube visualization
+        draw_head_pose(image, face.bbox, result.pitch, result.yaw, result.roll)
+
+cv2.imwrite("headpose_output.jpg", image)
+```
+
+---
+
+## Face Parsing
+
+Segment face into semantic components:
+
+```python
+import cv2
+import numpy as np
+from uniface.parsing import BiSeNet
+from uniface.draw import vis_parsing_maps
+
+parser = BiSeNet()
+
+# Load face image (already cropped)
+face_image = cv2.imread("face.jpg")
+
+# Parse face into 19 components
+mask = parser.parse(face_image)
+
+# Visualize with overlay (BGR in, BGR out — same convention as cv2)
+vis_result = vis_parsing_maps(face_image, mask, save_image=False)
+
+print(f"Detected {len(np.unique(mask))} facial components")
+```
+
+---
+
+## Portrait Matting
+
+Remove backgrounds without a trimap:
+
+```python
+import cv2
+import numpy as np
+from uniface.matting import MODNet
+
+matting = MODNet()
+
+image = cv2.imread("portrait.jpg")
+matte = matting.predict(image)  # (H, W) float32 in [0, 1]
+
+# Transparent PNG
+rgba = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
+rgba[:, :, 3] = (matte * 255).astype(np.uint8)
+cv2.imwrite("transparent.png", rgba)
+
+# Green screen
+matte_3ch = matte[:, :, np.newaxis]
+bg = np.full_like(image, (0, 177, 64), dtype=np.uint8)
+result = (image * matte_3ch + bg * (1 - matte_3ch)).astype(np.uint8)
+cv2.imwrite("green_screen.jpg", result)
+```
+
+---
+
+## Face Anonymization
+
+Blur faces for privacy protection:
+
+```python
+import cv2
+from uniface.detection import RetinaFace
+from uniface.privacy import BlurFace
+
+detector = RetinaFace()
+blurrer = BlurFace(method='pixelate')
+
+image = cv2.imread("group_photo.jpg")
+faces = detector.detect(image)
+anonymized = blurrer.anonymize(image, faces)
+cv2.imwrite("anonymized.jpg", anonymized)
+```
+
+**Custom blur settings:**
+
+```python
+blurrer = BlurFace(method='gaussian', blur_strength=5.0)
+anonymized = blurrer.anonymize(image, faces)
+```
+
+**Available methods:**
+
+| Method | Description |
+|--------|-------------|
+| `pixelate` | Blocky effect (news media standard) |
+| `gaussian` | Smooth, natural blur |
+| `blackout` | Solid color boxes (maximum privacy) |
+| `elliptical` | Soft oval blur (natural face shape) |
+| `median` | Edge-preserving blur |
+
+---
+
+## Face Anti-Spoofing
+
+Detect real vs. fake faces:
+
+```python
+import cv2
+from uniface.detection import RetinaFace
+from uniface.spoofing import MiniFASNet
+
+detector = RetinaFace()
+spoofer = MiniFASNet()
+
+image = cv2.imread("photo.jpg")
+faces = detector.detect(image)
+
+for i, face in enumerate(faces):
+    result = spoofer.predict(image, face.bbox)
+    label = 'Real' if result.is_real else 'Fake'
+    print(f"Face {i+1}: {label} ({result.confidence:.1%})")
+```
+
+---
+
+## Face Image Quality Assessment
+
+Score how usable each face is for downstream recognition:
+
+```python
+import cv2
+from uniface.detection import SCRFD
+from uniface.quality import EDifFIQA
+
+detector = SCRFD(confidence_threshold=0.3)
+quality = EDifFIQA()
+
+image = cv2.imread("photo.jpg")
+faces = detector.detect(image)
+
+for i, face in enumerate(faces):
+    result = quality.predict(image, face.landmarks)
+    print(f"Face {i+1}: quality={result.score:.4f}")
+```
+
+Higher = better. Use it to filter or rank faces before recognition.
+
+---
+
+## Webcam Demo
+
+Real-time face detection:
+
+```python
+import cv2
+from uniface.detection import RetinaFace
+from uniface.draw import draw_detections
+
+detector = RetinaFace()
+cap = cv2.VideoCapture(0)
+
+print("Press 'q' to quit")
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    faces = detector.detect(frame)
+
+    draw_detections(image=frame, faces=faces)
+
+    cv2.imshow("UniFace - Press 'q' to quit", frame)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
+```
+
+---
+
+## Face Tracking
+
+Track faces across video frames with persistent IDs:
+
+```python
+import cv2
+import numpy as np
+from uniface.common import xyxy_to_cxcywh
+from uniface.detection import SCRFD
+from uniface.tracking import BYTETracker
+from uniface.draw import draw_tracks
+
+detector = SCRFD()
+tracker = BYTETracker(track_thresh=0.5, track_buffer=30)
+
+cap = cv2.VideoCapture("video.mp4")
+
+while cap.isOpened():
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    faces = detector.detect(frame)
+    dets = np.array([[*f.bbox, f.confidence] for f in faces])
+    dets = dets if len(dets) > 0 else np.empty((0, 5))
+
+    tracks = tracker.update(dets)
+
+    # Assign track IDs to faces
+    if len(tracks) > 0 and len(faces) > 0:
+        face_bboxes = np.array([f.bbox for f in faces], dtype=np.float32)
+        track_ids = tracks[:, 4].astype(int)
+
+        face_centers = xyxy_to_cxcywh(face_bboxes)[:, :2]
+        track_centers = xyxy_to_cxcywh(tracks[:, :4])[:, :2]
+
+        for ti in range(len(tracks)):
+            dists = (track_centers[ti, 0] - face_centers[:, 0]) ** 2 + (track_centers[ti, 1] - face_centers[:, 1]) ** 2
+            faces[int(np.argmin(dists))].track_id = track_ids[ti]
+
+    tracked_faces = [f for f in faces if f.track_id is not None]
+    draw_tracks(image=frame, faces=tracked_faces)
+    cv2.imshow("Tracking", frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
+```
+
+For more details, see the [Tracking module](modules/tracking.md).
+
+---
+
+## Model Selection
+
+For detailed model comparisons and benchmarks, see the [Model Zoo](models.md).
+
+**Available models by task:**
+
+| Task | Available Models |
+|------|------------------|
+| Detection | `RetinaFace`, `SCRFD`, `CenterFace`, `YOLOv5Face`, `YOLOv8Face`, `BlazeFace` (short-range, 6 keypoints) |
+| Recognition | `ArcFace`, `AdaFace`, `EdgeFace`, `MobileFace`, `SphereFace` |
+| Landmarks | `Landmark106` (106 pts), `PIPNet` (98 / 68 pts), `FaceMesh` (468 or 478 pts, 3D) |
+| Tracking | `BYTETracker` |
+| Gaze | `MobileGaze` (ResNet18/34/50, MobileNetV2, MobileOneS0) |
+| Head Pose | `HeadPose` (ResNet18/34/50, MobileNetV2/V3) |
+| Parsing | `BiSeNet` (ResNet18/34), `XSeg` |
+| Matting | `MODNet` |
+| Attributes | `AgeGender`, `FairFace`, `Emotion`, `FaceAttribNet` (face states) |
+| Anti-Spoofing | `MiniFASNet` (V1SE, V2) |
+| Quality | `EDifFIQA` (T, S, M, L) |
+| Privacy | `BlurFace` (5 blur methods) |
+| Vector Store | `FAISS` |
+
+---
+
+## Verbose Logging
+
+Enable logging to see what happens during model loading and inference (useful for debugging):
+
+```python
+import logging
+from uniface import enable_logging
+
+enable_logging()                     # INFO level
+enable_logging(level=logging.DEBUG)  # DEBUG level
+```
+
+---
+
+## Common Issues
+
+### Models Not Downloading
+
+```python
+from uniface.model_store import verify_model_weights
+from uniface.constants import RetinaFaceWeights
+
+# Manually download a model
+model_path = verify_model_weights(RetinaFaceWeights.MNET_V2)
+print(f"Model downloaded to: {model_path}")
+```
+
+### Check Hardware Acceleration
+
+```python
+import onnxruntime as ort
+print("Available providers:", ort.get_available_providers())
+
+# macOS M-series should show: ['CoreMLExecutionProvider', ...]
+# NVIDIA GPU should show: ['CUDAExecutionProvider', ...]
+```
+
+### Slow Performance on Mac
+
+Verify you're using the ARM64 build of Python:
+
+```bash
+python -c "import platform; print(platform.machine())"
+# Should show: arm64 (not x86_64)
+```
+
+### Import Errors
+
+```python
+from uniface.detection import BlazeFace, CenterFace, RetinaFace, SCRFD, YOLOv5Face, YOLOv8Face
+from uniface.recognition import ArcFace, AdaFace
+from uniface.attribute import AgeGender, Emotion, FaceAttribNet, FairFace
+from uniface.landmark import FaceMesh, Landmark106, PIPNet
+from uniface.gaze import MobileGaze
+from uniface.headpose import HeadPose
+from uniface.matting import MODNet
+from uniface.parsing import BiSeNet, XSeg
+from uniface.privacy import BlurFace
+from uniface.quality import EDifFIQA
+from uniface.spoofing import MiniFASNet
+from uniface.tracking import BYTETracker
+from uniface.analyzer import FaceAnalyzer
+from uniface.stores import FAISS  # pip install faiss-cpu
+from uniface.draw import draw_detections, draw_tracks
+```
+
+---
+
+## Next Steps
+
+- [Model Zoo](models.md) - All models, benchmarks, and selection guide
+- [API Reference](modules/detection.md) - Explore individual modules and their APIs
+- [Tutorials](recipes/image-pipeline.md) - Step-by-step examples for common workflows
+- [Guides](concepts/overview.md) - Learn about the architecture and design principles

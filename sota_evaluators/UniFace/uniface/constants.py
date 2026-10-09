@@ -1,0 +1,640 @@
+# Copyright 2025-2026 Yakhyokhuja Valikhujaev
+# Author: Yakhyokhuja Valikhujaev
+# GitHub: https://github.com/yakhyo
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import Enum
+
+
+@dataclass(frozen=True, slots=True)
+class ModelInfo:
+    """Model metadata including download URL and SHA-256 hash.
+
+    Attributes:
+        url: Direct download link to the model weights.
+        sha256: SHA-256 checksum for integrity verification.
+    """
+
+    url: str
+    sha256: str
+
+
+DOWNLOAD_CHUNK_SIZE = 256 * 1024  # 256 KiB
+HASH_CHUNK_SIZE = 1024 * 1024  # 1 MiB
+
+# Fallback source when a primary (GitHub Releases) URL is unreachable. Tracks the
+# mirror's main branch: every download is checked against the SHA-256 in this
+# registry regardless of source, so a mutable ref cannot serve the wrong bytes --
+# it can only fail. Tracking main also means new weights need no change here.
+HF_MIRROR_URL = 'https://huggingface.co/yakhyo/uniface-weights/resolve/main'
+
+
+# fmt: off
+class SphereFaceWeights(str, Enum):
+    """Trained on MS1M V2 dataset with 5.8 million images of 85k identities.
+
+    https://github.com/yakhyo/face-recognition
+    """
+    SPHERE20      = "sphere20"
+    SPHERE36      = "sphere36"
+
+class MobileFaceWeights(str, Enum):
+    """Trained on MS1M V2 dataset with 5.8 million images of 85k identities.
+
+    https://github.com/yakhyo/face-recognition
+    """
+    MNET_025      = "mobilenetv1_025"
+    MNET_V2       = "mobilenetv2"
+    MNET_V3_SMALL = "mobilenetv3_small"
+    MNET_V3_LARGE = "mobilenetv3_large"
+
+class ArcFaceWeights(str, Enum):
+    """Pretrained weights from ArcFace model (insightface).
+
+    https://github.com/deepinsight/insightface
+    """
+    MNET   = "arcface_mnet"
+    RESNET = "arcface_resnet"
+
+
+class AdaFaceWeights(str, Enum):
+    """AdaFace model weights trained on WebFace datasets.
+
+    https://github.com/yakhyo/adaface-onnx
+    """
+    IR_18  = "adaface_ir_18"
+    IR_50  = "adaface_ir_50"
+    IR_101 = "adaface_ir_101"
+
+class EdgeFaceWeights(str, Enum):
+    """EdgeFace: Efficient Face Recognition Model for Edge Devices.
+
+    Based on EdgeNeXt backbone with optional LoRA low-rank compression.
+    All models output 512-D embeddings from 112x112 aligned face crops.
+    https://github.com/yakhyo/edgeface-onnx
+    """
+    XXS         = "edgeface_xxs"
+    XS_GAMMA_06 = "edgeface_xs_gamma_06"
+    S_GAMMA_05  = "edgeface_s_gamma_05"
+    BASE        = "edgeface_base"
+
+class RetinaFaceWeights(str, Enum):
+    """Trained on WIDER FACE dataset.
+
+    https://github.com/yakhyo/retinaface-pytorch
+    """
+    MNET_025 =  "retinaface_mnet025"
+    MNET_050 =  "retinaface_mnet050"
+    MNET_V1  =  "retinaface_mnet_v1"
+    MNET_V2  =  "retinaface_mnet_v2"
+    RESNET18 =  "retinaface_r18"
+    RESNET34 =  "retinaface_r34"
+    RESNET50 =  "retinaface_r50"
+
+
+class SCRFDWeights(str, Enum):
+    """Trained on WIDER FACE dataset.
+
+    https://github.com/deepinsight/insightface
+    """
+    SCRFD_10G_KPS  = "scrfd_10g"
+    SCRFD_500M_KPS = "scrfd_500m"
+
+
+class CenterFaceWeights(str, Enum):
+    """CenterFace: Joint Face Detection and Alignment Using Face as Point.
+
+    Anchor-free detector (MobileNetV2 + FPN) with 5-point landmarks, trained on WIDER FACE.
+    Paper: https://arxiv.org/abs/1911.03599
+    Original weights: https://github.com/Star-Clouds/CenterFace
+
+    Re-exported to ONNX (opset 17, dynamic batch/height/width) from the original
+    weights; outputs verified numerically identical to the upstream model.
+
+    Model Performance (WIDER FACE val, single inference on the original image):
+    - 92.2% Easy / 91.1% Medium / 78.2% Hard
+    """
+    DEFAULT = "centerface"
+
+
+class BlazeFaceWeights(str, Enum):
+    """BlazeFace short-range: SSD face detector on a 128x128 letterboxed image.
+
+    The detector MediaPipe's Face Mesh seeds from, reproducing its exact output.
+
+    Emits 6 keypoints (right eye, left eye, nose tip, mouth center, right ear
+    tragion, left ear tragion) rather than the 5-point alignment template, so it
+    cannot feed recognition, quality scoring, or XSeg parsing.
+
+    Short-range: tuned for faces within ~2m and weaker on WIDER FACE than
+    SCRFD/YOLOv8. Its value is 460KB and MediaPipe parity, not general detection.
+    https://github.com/yakhyo/mediapipe-face-mesh-onnx
+    """
+    DEFAULT = "blazeface"  # face_detection_short_range
+
+
+class YOLOv5FaceWeights(str, Enum):
+    """Trained on WIDER FACE dataset.
+
+    Original implementation: https://github.com/deepcam-cn/yolov5-face
+    Exported to ONNX from: https://github.com/yakhyo/yolov5-face-onnx-inference
+
+    Model Performance (WIDER FACE):
+    - YOLOV5N: 11MB, 93.61% Easy / 91.52% Medium / 80.53% Hard
+    - YOLOV5S: 28MB, 94.33% Easy / 92.61% Medium / 83.15% Hard
+    - YOLOV5M: 82MB, 95.30% Easy / 93.76% Medium / 85.28% Hard
+    """
+    YOLOV5N = "yolov5n"
+    YOLOV5S = "yolov5s"
+    YOLOV5M = "yolov5m"
+
+
+class YOLOv8FaceWeights(str, Enum):
+    """YOLOv8-Face models trained on WIDER FACE dataset.
+
+    Uses anchor-free design with DFL (Distribution Focal Loss) for bbox regression.
+    Exported to ONNX from: https://github.com/yakhyo/yolov8-face-onnx-inference
+
+    Model Performance (WIDER FACE):
+    - YOLOV8_LITE_S: 7.4MB, 93.4% Easy / 91.2% Medium / 78.6% Hard (lightweight)
+    - YOLOV8N: 12MB, 94.6% Easy / 92.3% Medium / 79.6% Hard (recommended)
+    """
+    YOLOV8_LITE_S = "yolov8_lite_s"
+    YOLOV8N       = "yolov8n_face"
+
+
+class EmotionWeights(str, Enum):
+    """DDAMFN emotion recognition models trained on AffectNet dataset.
+
+    https://github.com/SainingZhang/DDAMFN/tree/main/DDAMFN
+    """
+    AFFECNET7 = "affecnet7"
+    AFFECNET8 = "affecnet8"
+
+
+class AgeGenderWeights(str, Enum):
+    """Trained on CelebA dataset.
+
+    https://github.com/deepinsight/insightface
+    """
+    DEFAULT = "age_gender"
+
+
+class FairFaceWeights(str, Enum):
+    """FairFace attribute prediction (race, gender, age).
+
+    Trained on FairFace dataset with balanced demographics.
+    https://github.com/yakhyo/fairface-onnx
+    """
+    DEFAULT = "fairface"
+
+
+class FaceAttribNetWeights(str, Enum):
+    """FaceAttribNet (Qualcomm "Facial-Attribute-Detection").
+
+    Predicts five independent binary face attributes from a 128x128 face crop:
+    left/right eye openness, eyeglasses, sunglasses, and face mask.
+    Trained by Qualcomm on a proprietary face dataset.
+    https://github.com/qualcomm/ai-hub-models/tree/main/src/qai_hub_models/models/face_attrib_net
+    https://github.com/yakhyo/face-attribute
+    """
+    DEFAULT = "face_attrib_net"
+
+
+class LandmarkWeights(str, Enum):
+    """MobileNet 0.5 from Insightface
+
+    https://github.com/deepinsight/insightface/tree/master/alignment/coordinate_reg
+    """
+    DEFAULT = "2d_106"
+
+
+class PIPNetWeights(str, Enum):
+    """PIPNet: Pixel-in-Pixel Net for facial landmark detection.
+
+    ResNet-18 backbone, 256x256 input.
+    https://github.com/yakhyo/pipnet-onnx
+    """
+    WFLW_98         = "pipnet_r18_wflw_98"
+    DW300_CELEBA_68 = "pipnet_r18_300w_celeba_68"
+
+
+class FaceMeshWeights(str, Enum):
+    """MediaPipe dense face landmarks, in two generations.
+
+    V1 is the classic Face Mesh: 468 landmarks from a 192x192 crop.
+    V2 is MediaPipe's Face Landmarker, the model its current Tasks API ships: 478
+    landmarks from a 256x256 crop — the same 468 points in the same order, plus ten
+    iris points (468-472 left, 473-477 right, each ordered center, right, top, left,
+    bottom). Its z is predicted rather than derived, but Google trains z on synthetic
+    data and excludes it from their own accuracy evaluation, so treat it as a weaker
+    signal than x/y in both models.
+
+    Both are detector-agnostic, take the same ROI, and have a dynamic batch dimension,
+    so they are interchangeable apart from the point count. V2 costs roughly 3x the
+    multiply-accumulates; prefer V1 unless you need the irises.
+
+    Architectures recovered from Google's MediaPipe. V1's weights were sourced through
+    PINTO0309's ONNX conversion; V2's were read directly from the .tflite in Google's
+    face_landmarker.task bundle.
+    https://github.com/yakhyo/mediapipe-face-mesh-onnx
+    """
+    V1_468 = "face_mesh"
+    V2_478 = "face_landmarker"
+
+
+class GazeWeights(str, Enum):
+    """MobileGaze: Real-Time Gaze Estimation models.
+
+    Trained on Gaze360 dataset.
+    https://github.com/yakhyo/gaze-estimation
+    """
+    RESNET18     = "gaze_resnet18"
+    RESNET34     = "gaze_resnet34"
+    RESNET50     = "gaze_resnet50"
+    MOBILENET_V2 = "gaze_mobilenetv2"
+    MOBILEONE_S0 = "gaze_mobileone_s0"
+
+
+class HeadPoseWeights(str, Enum):
+    """Head pose estimation models using 6D rotation representation.
+
+    Trained on 300W-LP dataset, evaluated on AFLW2000.
+    https://github.com/yakhyo/head-pose-estimation
+    """
+    RESNET18           = "headpose_resnet18"
+    RESNET34           = "headpose_resnet34"
+    RESNET50           = "headpose_resnet50"
+    MOBILENET_V2       = "headpose_mobilenetv2"
+    MOBILENET_V3_SMALL = "headpose_mobilenetv3_small"
+    MOBILENET_V3_LARGE = "headpose_mobilenetv3_large"
+
+
+class ParsingWeights(str, Enum):
+    """Face Parsing: Semantic Segmentation of Facial Components.
+
+    Trained on CelebAMask-HQ dataset.
+    https://github.com/yakhyo/face-parsing
+    """
+    RESNET18 = "parsing_resnet18"
+    RESNET34 = "parsing_resnet34"
+
+
+class XSegWeights(str, Enum):
+    """XSeg face segmentation model from DeepFaceLab.
+
+    Outputs mask for face region.
+    https://github.com/iperov/DeepFaceLab
+    """
+    DEFAULT = "xseg"
+
+
+class MODNetWeights(str, Enum):
+    """MODNet: Real-Time Trimap-Free Portrait Matting via Objective Decomposition.
+
+    https://github.com/yakhyo/modnet
+    """
+    PHOTOGRAPHIC = "modnet_photographic"
+    WEBCAM       = "modnet_webcam"
+
+
+class MiniFASNetWeights(str, Enum):
+    """MiniFASNet: Lightweight Face Anti-Spoofing models.
+
+    Trained on face anti-spoofing datasets.
+    https://github.com/yakhyo/face-anti-spoofing
+
+    Model Variants:
+    - V1SE: Uses scale=4.0 for face crop (squeeze-and-excitation version)
+    - V2: Uses scale=2.7 for face crop (improved version)
+    """
+    V1SE = "minifasnet_v1se"
+    V2   = "minifasnet_v2"
+
+
+class EDifFIQAWeights(str, Enum):
+    """eDifFIQA: Face Image Quality Assessment.
+
+    Predicts a single quality score from an aligned 112x112 face.
+    Higher score = better quality.
+
+    eDifFIQA-L ranks first on the NIST FATE-Quality Kiosk-to-Entry track.
+    https://github.com/yakhyo/face-image-quality-assessment
+
+    Model Variants:
+    - T: MobileFaceNet backbone (1.7M params, smallest)
+    - S: IResNet-18 backbone (24.6M params)
+    - M: IResNet-50 backbone (44.1M params)
+    - L: IResNet-100 backbone (65.7M params, most accurate)
+    """
+    T = "ediffiqa_t"
+    S = "ediffiqa_s"
+    M = "ediffiqa_m"
+    L = "ediffiqa_l"
+
+# Centralized Model Registry
+MODEL_REGISTRY: dict[Enum, ModelInfo] = {
+    # RetinaFace
+    RetinaFaceWeights.MNET_025: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/retinaface_mv1_0.25.onnx',
+        sha256='b7a7acab55e104dce6f32cdfff929bd83946da5cd869b9e2e9bdffafd1b7e4a5'
+    ),
+    RetinaFaceWeights.MNET_050: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/retinaface_mv1_0.50.onnx',
+        sha256='d8977186f6037999af5b4113d42ba77a84a6ab0c996b17c713cc3d53b88bfc37'
+    ),
+    RetinaFaceWeights.MNET_V1: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/retinaface_mv1.onnx',
+        sha256='75c961aaf0aff03d13c074e9ec656e5510e174454dd4964a161aab4fe5f04153'
+    ),
+    RetinaFaceWeights.MNET_V2: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/retinaface_mv2.onnx',
+        sha256='3ca44c045651cabeed1193a1fae8946ad1f3a55da8fa74b341feab5a8319f757'
+    ),
+    RetinaFaceWeights.RESNET18: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/retinaface_r18.onnx',
+        sha256='e8b5ddd7d2c3c8f7c942f9f10cec09d8e319f78f09725d3f709631de34fb649d'
+    ),
+    RetinaFaceWeights.RESNET34: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/retinaface_r34.onnx',
+        sha256='bd0263dc2a465d32859555cb1741f2d98991eb0053696e8ee33fec583d30e630'
+    ),
+    RetinaFaceWeights.RESNET50: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/retinaface_r50.onnx',
+        sha256='905eac744dc165dbcd62960938a191de3fecea6bef198fb1c5e13e690bc6a828'
+    ),
+
+    # MobileFace
+    MobileFaceWeights.MNET_025: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/mobilenetv1_0.25.onnx',
+        sha256='eeda7d23d9c2b40cf77fa8da8e895b5697465192648852216074679657f8ee8b'
+    ),
+    MobileFaceWeights.MNET_V2: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/mobilenetv2.onnx',
+        sha256='38b148284dd48cc898d5d4453104252fbdcbacc105fe3f0b80e78954d9d20d89'
+    ),
+    MobileFaceWeights.MNET_V3_SMALL: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/mobilenetv3_small.onnx',
+        sha256='d4acafa1039a82957aa8a9a1dac278a401c353a749c39df43de0e29cc1c127c3'
+    ),
+    MobileFaceWeights.MNET_V3_LARGE: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/mobilenetv3_large.onnx',
+        sha256='0e48f8e11f070211716d03e5c65a3db35a5e917cfb5bc30552358629775a142a'
+    ),
+
+    # SphereFace
+    SphereFaceWeights.SPHERE20: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/sphere20.onnx',
+        sha256='c02878cf658eb1861f580b7e7144b0d27cc29c440bcaa6a99d466d2854f14c9d'
+    ),
+    SphereFaceWeights.SPHERE36: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/sphere36.onnx',
+        sha256='13b3890cd5d7dec2b63f7c36fd7ce07403e5a0bbb701d9647c0289e6cbe7bb20'
+    ),
+
+    # ArcFace
+    ArcFaceWeights.MNET: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/w600k_mbf.onnx',
+        sha256='9cc6e4a75f0e2bf0b1aed94578f144d15175f357bdc05e815e5c4a02b319eb4f'
+    ),
+    ArcFaceWeights.RESNET: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/w600k_r50.onnx',
+        sha256='4c06341c33c2ca1f86781dab0e829f88ad5b64be9fba56e56bc9ebdefc619e43'
+    ),
+
+    # AdaFace
+    AdaFaceWeights.IR_18: ModelInfo(
+        url='https://github.com/yakhyo/adaface-onnx/releases/download/weights/adaface_ir_18.onnx',
+        sha256='6b6a35772fb636cdd4fa86520c1a259d0c41472a76f70f802b351837a00d9870'
+    ),
+    AdaFaceWeights.IR_50: ModelInfo(
+        url='https://github.com/yakhyo/adaface-onnx/releases/download/weights/adaface_ir_50.onnx',
+        sha256='9c0ae385d7362323c92d218de598d32e52a9130b78faac6a8a924091aca62c0b'
+    ),
+    AdaFaceWeights.IR_101: ModelInfo(
+        url='https://github.com/yakhyo/adaface-onnx/releases/download/weights/adaface_ir_101.onnx',
+        sha256='f2eb07d03de0af560a82e1214df799fec5e09375d43521e2868f9dc387e5a43e'
+    ),
+
+    # EdgeFace
+    EdgeFaceWeights.XXS: ModelInfo(
+        url='https://github.com/yakhyo/edgeface-onnx/releases/download/weights/edgeface_xxs.onnx',
+        sha256='dc674de4cbc77fa0bf9a82d5149558ab8581d82a2cd3bb60f28fd1a5d3ff8a2f'
+    ),
+    EdgeFaceWeights.XS_GAMMA_06: ModelInfo(
+        url='https://github.com/yakhyo/edgeface-onnx/releases/download/weights/edgeface_xs_gamma_06.onnx',
+        sha256='9206e2eb13a2761d7b5b76e13016d4b9acd3fa3535a9a09939f3adacd139a5ff'
+    ),
+    EdgeFaceWeights.S_GAMMA_05: ModelInfo(
+        url='https://github.com/yakhyo/edgeface-onnx/releases/download/weights/edgeface_s_gamma_05.onnx',
+        sha256='b850767cf791bda585600b5c4c7d7432b2f998ccd862caae34ef1afa967d2e54'
+    ),
+    EdgeFaceWeights.BASE: ModelInfo(
+        url='https://github.com/yakhyo/edgeface-onnx/releases/download/weights/edgeface_base.onnx',
+        sha256='b56942f072c67385f44734b9458b0ccc4a2226888a113f77e0c802ad0c77b4c3'
+    ),
+
+    # SCRFD
+    SCRFDWeights.SCRFD_10G_KPS: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/scrfd_10g_kps.onnx',
+        sha256='5838f7fe053675b1c7a08b633df49e7af5495cee0493c7dcf6697200b85b5b91'
+    ),
+    SCRFDWeights.SCRFD_500M_KPS: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/scrfd_500m_kps.onnx',
+        sha256='5e4447f50245bbd7966bd6c0fa52938c61474a04ec7def48753668a9d8b4ea3a'
+    ),
+
+    # CenterFace
+    CenterFaceWeights.DEFAULT: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/centerface.onnx',
+        sha256='f50be8b97eae35b969905619136765897e401171ab4f92aa2b8c9909292d2ba0'
+    ),
+
+    # BlazeFace (MediaPipe short-range)
+    BlazeFaceWeights.DEFAULT: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/face_detection_short_range.onnx',
+        sha256='2f2689b040becf555706d2cb978d2f0e3296ea82413734fba9a856c66c5f2b17'
+    ),
+
+    # YOLOv5-Face
+    YOLOv5FaceWeights.YOLOV5N: ModelInfo(
+        url='https://github.com/yakhyo/yolov5-face-onnx-inference/releases/download/weights/yolov5n_face.onnx',
+        sha256='eb244a06e36999db732b317c2b30fa113cd6cfc1a397eaf738f2d6f33c01f640'
+    ),
+    YOLOv5FaceWeights.YOLOV5S: ModelInfo(
+        url='https://github.com/yakhyo/yolov5-face-onnx-inference/releases/download/weights/yolov5s_face.onnx',
+        sha256='fc682801cd5880e1e296184a14aea0035486b5146ec1a1389d2e7149cb134bb2'
+    ),
+    YOLOv5FaceWeights.YOLOV5M: ModelInfo(
+        url='https://github.com/yakhyo/yolov5-face-onnx-inference/releases/download/weights/yolov5m_face.onnx',
+        sha256='04302ce27a15bde3e20945691b688e2dd018a10e92dd8932146bede6a49207b2'
+    ),
+
+    # YOLOv8-Face
+    YOLOv8FaceWeights.YOLOV8_LITE_S: ModelInfo(
+        url='https://github.com/yakhyo/yolov8-face-onnx-inference/releases/download/weights/yolov8-lite-s.onnx',
+        sha256='11bc496be01356d2d960085bfd8abb8f103199900a034f239a8a1705a1b31dba'
+    ),
+    YOLOv8FaceWeights.YOLOV8N: ModelInfo(
+        url='https://github.com/yakhyo/yolov8-face-onnx-inference/releases/download/weights/yolov8n-face.onnx',
+        sha256='33f3951af7fc0c4d9b321b29cdcd8c9a59d0a29a8d4bdc01fcb5507d5c714809'
+    ),
+
+    # Emotion (DDAMFN)
+    EmotionWeights.AFFECNET7: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/affecnet7.script',
+        sha256='10535bf8b6afe8e9d6ae26cea6c3add9a93036e9addb6adebfd4a972171d015d'
+    ),
+    EmotionWeights.AFFECNET8: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/affecnet8.script',
+        sha256='8c66963bc71db42796a14dfcbfcd181b268b65a3fc16e87147d6a3a3d7e0f487'
+    ),
+
+    # AgeGender
+    AgeGenderWeights.DEFAULT: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/genderage.onnx',
+        sha256='4fde69b1c810857b88c64a335084f1c3fe8f01246c9a191b48c7bb756d6652fb'
+    ),
+
+    # FairFace
+    FairFaceWeights.DEFAULT: ModelInfo(
+        url='https://github.com/yakhyo/fairface-onnx/releases/download/weights/fairface.onnx',
+        sha256='9c8c47d437cd310538d233f2465f9ed0524cb7fb51882a37f74e8bc22437fdbf'
+    ),
+
+    # FaceAttribNet
+    FaceAttribNetWeights.DEFAULT: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/face_attrib_net.onnx',
+        sha256='1bf7c6453bec2fb28e0830f3a76dceb9ffd020124f87b28da5355940a7bc6e48'
+    ),
+
+    # Landmarks
+    LandmarkWeights.DEFAULT: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/2d106det.onnx',
+        sha256='f001b856447c413801ef5c42091ed0cd516fcd21f2d6b79635b1e733a7109dbf'
+    ),
+
+    # PIPNet (98 / 68 point landmarks)
+    PIPNetWeights.WFLW_98: ModelInfo(
+        url='https://github.com/yakhyo/pipnet-onnx/releases/download/weights/pipnet_r18_wflw_98.onnx',
+        sha256='9862838dc6144bc772b6485f6f6d31295c0b1c1ab7293e6ddeb0a439cb10218d'
+    ),
+    PIPNetWeights.DW300_CELEBA_68: ModelInfo(
+        url='https://github.com/yakhyo/pipnet-onnx/releases/download/weights/pipnet_r18_300w_celeba_68.onnx',
+        sha256='63fa56fd4b8f6ccc4b88f2b36e00fa3d8c21a2c4244ab9381e8b432cef35197b'
+    ),
+
+    # Face Mesh (468 dense 3D landmarks) and Face Landmarker (478, with irises)
+    FaceMeshWeights.V1_468: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/face_mesh_Nx3x192x192.onnx',
+        sha256='3ca77cf59c18e4da0eccb46695bf604683fa564253e3385892981a5c274fb10f'
+    ),
+    FaceMeshWeights.V2_478: ModelInfo(
+        url='https://github.com/yakhyo/uniface/releases/download/weights/face_landmarker_Nx3x256x256.onnx',
+        sha256='111795f8703cdeb6d0c68a9f3cc966a0f23f8786bb00f4577a11f461fc4276ac'
+    ),
+
+    # Gaze (MobileGaze)
+    GazeWeights.RESNET18: ModelInfo(
+        url='https://github.com/yakhyo/gaze-estimation/releases/download/weights/resnet18_gaze.onnx',
+        sha256='404fec1efd07ff49f981e47f461c20c2627119e465ec441bbd1c067d3f16e657'
+    ),
+    GazeWeights.RESNET34: ModelInfo(
+        url='https://github.com/yakhyo/gaze-estimation/releases/download/weights/resnet34_gaze.onnx',
+        sha256='c8e6b14f6095d2425241b9302aa663d9a23b7dfb9d43941352b718c91dc7f2cf'
+    ),
+    GazeWeights.RESNET50: ModelInfo(
+        url='https://github.com/yakhyo/gaze-estimation/releases/download/weights/resnet50_gaze.onnx',
+        sha256='bb28d421565adc4dfb665742f8fc80bdef36dd8caa0c87e040e0937f9fdca9a6'
+    ),
+    GazeWeights.MOBILENET_V2: ModelInfo(
+        url='https://github.com/yakhyo/gaze-estimation/releases/download/weights/mobilenetv2_gaze.onnx',
+        sha256='b81312df85c7ac1c1b5f78c573620d22c2719cb839650e15f12dc7eecb7744a4'
+    ),
+    GazeWeights.MOBILEONE_S0: ModelInfo(
+        url='https://github.com/yakhyo/gaze-estimation/releases/download/weights/mobileone_s0_gaze.onnx',
+        sha256='8b4fdc4e3da44733c9a82e7776b411e4a39f94e8e285aee0fc85a548a55f7d9f'
+    ),
+
+    # Head Pose
+    HeadPoseWeights.RESNET18: ModelInfo(
+        url='https://github.com/yakhyo/head-pose-estimation/releases/download/weights/resnet18.onnx',
+        sha256='61c34e877989412980d1ea80c52391250b074abc00d19a6100de5c8e999212ee'
+    ),
+    HeadPoseWeights.RESNET34: ModelInfo(
+        url='https://github.com/yakhyo/head-pose-estimation/releases/download/weights/resnet34.onnx',
+        sha256='8da9f2ce4810298ebea68bd85fba1b6bd11716060c10534596f46be52cc908c9'
+    ),
+    HeadPoseWeights.RESNET50: ModelInfo(
+        url='https://github.com/yakhyo/head-pose-estimation/releases/download/weights/resnet50.onnx',
+        sha256='50c74d57b7663361b8ede83b0e4122546171119ef502ec55b790dbd7fc360260'
+    ),
+    HeadPoseWeights.MOBILENET_V2: ModelInfo(
+        url='https://github.com/yakhyo/head-pose-estimation/releases/download/weights/mobilenetv2.onnx',
+        sha256='1e902872868e483bd0e4f8f4a8ff2a4d61c2ccbca9dadf748e5479b5cc86a9e9'
+    ),
+    HeadPoseWeights.MOBILENET_V3_SMALL: ModelInfo(
+        url='https://github.com/yakhyo/head-pose-estimation/releases/download/weights/mobilenetv3_small.onnx',
+        sha256='e8ae4d932b3d13221638fc72e171603e020c6da28b770753f76146867f40e190'
+    ),
+    HeadPoseWeights.MOBILENET_V3_LARGE: ModelInfo(
+        url='https://github.com/yakhyo/head-pose-estimation/releases/download/weights/mobilenetv3_large.onnx',
+        sha256='3a68815fa00aba41ddc4e014bf631b637caba8619df71160383f1fee8c15a3c9'
+    ),
+
+    # Parsing
+    ParsingWeights.RESNET18: ModelInfo(
+        url='https://github.com/yakhyo/face-parsing/releases/download/weights/resnet18.onnx',
+        sha256='0d9bd318e46987c3bdbfacae9e2c0f461cae1c6ac6ea6d43bbe541a91727e33f'
+    ),
+    ParsingWeights.RESNET34: ModelInfo(
+        url='https://github.com/yakhyo/face-parsing/releases/download/weights/resnet34.onnx',
+        sha256='5b805bba7b5660ab7070b5a381dcf75e5b3e04199f1e9387232a77a00095102e'
+    ),
+
+    # Anti-Spoofing (MiniFASNet)
+    MiniFASNetWeights.V1SE: ModelInfo(
+        url='https://github.com/yakhyo/face-anti-spoofing/releases/download/weights/MiniFASNetV1SE.onnx',
+        sha256='ebab7f90c7833fbccd46d3a555410e78d969db5438e169b6524be444862b3676'
+    ),
+    MiniFASNetWeights.V2: ModelInfo(
+        url='https://github.com/yakhyo/face-anti-spoofing/releases/download/weights/MiniFASNetV2.onnx',
+        sha256='b32929adc2d9c34b9486f8c4c7bc97c1b69bc0ea9befefc380e4faae4e463907'
+    ),
+
+    # XSeg
+    XSegWeights.DEFAULT: ModelInfo(
+        url='https://github.com/yakhyo/face-segmentation/releases/download/weights/xseg.onnx',
+        sha256='0b57328efcb839d85973164b617ceee9dfe6cfcb2c82e8a033bba9f4f09b27e5'
+    ),
+
+    # MODNet (Portrait Matting)
+    MODNetWeights.PHOTOGRAPHIC: ModelInfo(
+        url='https://github.com/yakhyo/modnet/releases/download/weights/modnet_photographic.onnx',
+        sha256='5069a5e306b9f5e9f4f2b0360264c9f8ea13b257c7c39943c7cf6a2ec3a102ae'
+    ),
+    MODNetWeights.WEBCAM: ModelInfo(
+        url='https://github.com/yakhyo/modnet/releases/download/weights/modnet_webcam.onnx',
+        sha256='de03cc16f3c91f25b7c2f0b42ea1a8d34f40a752234f3887572655e744e55306'
+    ),
+
+    # eDifFIQA (Face Image Quality Assessment)
+    EDifFIQAWeights.T: ModelInfo(
+        url='https://github.com/yakhyo/face-image-quality-assessment/releases/download/weights/ediffiqa_t.onnx',
+        sha256='7a83be63e6583ec5800fa0762e219b65b4b9f1721c4d210bfe2f16c0478832bb'
+    ),
+    EDifFIQAWeights.S: ModelInfo(
+        url='https://github.com/yakhyo/face-image-quality-assessment/releases/download/weights/ediffiqa_s.onnx',
+        sha256='1797c144f4c9b1244b5561efcab80d588a640d15cebb38dbcfdedfe65439fb47'
+    ),
+    EDifFIQAWeights.M: ModelInfo(
+        url='https://github.com/yakhyo/face-image-quality-assessment/releases/download/weights/ediffiqa_m.onnx',
+        sha256='b02ea2dcc0536d6b2480fe67ec7d8c5993bf39fe5e00f77c971a21f2701b3f37'
+    ),
+    EDifFIQAWeights.L: ModelInfo(
+        url='https://github.com/yakhyo/face-image-quality-assessment/releases/download/weights/ediffiqa_l.onnx',
+        sha256='72238239298cf645d3f5954d657b4aca7b64fd25bc808c0260778386da9b00a1'
+    ),
+}
