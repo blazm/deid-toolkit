@@ -61,7 +61,7 @@ def panel_scatter(ax, data, meta, bk, u_lo, u_hi):
         if r["p"] is None or u is None:
             continue
         c, m = fig_style.style_for(t)
-        ax.scatter([r["p"]], [data[t]["N"]["n"]], s=u_tier(u, u_lo, u_hi),
+        ax.scatter([r["p"]], [data[t]["N"]["n"]], s=42,  # house scale, matches linkability figures
                    color=c, marker=m, edgecolor="k", linewidth=0.35, zorder=3,
                    alpha=0.95)
     ax.scatter([0.05], [0.97], s=200, facecolor="none", edgecolor="k",
@@ -72,7 +72,7 @@ def panel_scatter(ax, data, meta, bk, u_lo, u_hi):
     if len(fp) >= 2:
         ax.plot([x for x, _ in fp], [y for _, y in fp], linestyle="--",
                 color="0.35", linewidth=0.8, zorder=2)
-        ax.text(0.98, 0.345, "dashed = Pareto front\n(no method better on P, N, U at once)\n3 bubble sizes = Utility U (low / mid / high)",
+        ax.text(0.98, 0.995, "dashed = Pareto front\n(no method better on P, N, U at once)",
             transform=ax.transAxes, ha="right", va="top", fontsize=4.2,
             color="0.35")
     # legend in the empty bottom band (all dots have N >= ~0.47): exact
@@ -94,7 +94,7 @@ def panel_scatter(ax, data, meta, bk, u_lo, u_hi):
     ax.set_xlim(0, 1)
     ax.set_xlabel("Privacy score P (0 = fully linkable, 1 = at chance)",
                   fontsize=5.2, labelpad=2)
-    ax.set_ylim(0, 1.05)
+    ax.set_ylim(0.2, 1.05)
     ax.tick_params(labelsize=4.6)
     ax.grid(True, linestyle=":", linewidth=0.4, alpha=0.6)
     ax.set_aspect("equal")

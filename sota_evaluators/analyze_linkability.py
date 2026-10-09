@@ -116,7 +116,7 @@ def compute_roc_auc(g_scores, i_scores):
     fp = np.cumsum(1 - sl)
     tpr = np.concatenate([[0.0], tp / sl.sum()])
     fpr = np.concatenate([[0.0], fp / (len(sl) - sl.sum())])
-    auc = float(np.trapezoid(tpr, fpr))
+    auc = float((np.trapezoid if hasattr(np, "trapezoid") else np.trapz)(tpr, fpr))
     return fpr, tpr, auc
 
 
@@ -165,16 +165,16 @@ def compute_1n(sim_matrix, aligned_stems):
 # Discovery
 # --------------------------------------------------------------------------
 
-def discover_techniques(embeddings_root):
-    """Immediate subdirs of <root>/datasets that contain a celeba-test/*.npy set.
+def discover_techniques(embeddings_root, dataset="celeba-test"):
+    """Immediate subdirs of <root>/datasets containing <dataset>/*.npy sets.
     Skips _reversed variants and non-technique folders automatically.
-    Returns [(name, path_to_celeba_test)] sorted: alphabetical."""
+    Returns [(name, path_to_dataset)] sorted: alphabetical."""
     dsets = Path(embeddings_root) / "datasets"
     if not dsets.is_dir():
         return []
     out = []
     for td in sorted(dsets.iterdir()):
-        ct = td / "celeba-test"
+        ct = td / dataset
         npys = list(ct.glob("*.npy")) if ct.is_dir() else []
         if npys:
             out.append((td.name, str(ct)))
@@ -185,7 +185,7 @@ def discover_techniques(embeddings_root):
 # Analysis
 # --------------------------------------------------------------------------
 
-def analyze_model(embeddings_root, pairs_dir, output_prefix):
+def analyze_model(embeddings_root, pairs_dir, output_prefix, dataset="celeba-test"):
     root = Path(embeddings_root)
     model_name = root.name  # SwinFace / TransFace
 
@@ -198,13 +198,13 @@ def analyze_model(embeddings_root, pairs_dir, output_prefix):
     os.makedirs(os.path.dirname(os.path.abspath(output_prefix)) or ".", exist_ok=True)
 
     # ---- aligned (original) gallery ----
-    aligned_emb, aligned_keys = load_embeddings(root / "aligned" / "celeba-test")
+    aligned_emb, aligned_keys = load_embeddings(root / "aligned" / dataset)
     aligned_mat = np.stack([aligned_emb[k] for k in aligned_keys])
     gal_idx = {k: i for i, k in enumerate(aligned_keys)}
-    print(f"Aligned gallery: {len(aligned_keys)} faces\n")
+    print(f"Aligned gallery: {len(aligned_keys)} faces ({dataset})\n")
 
-    genuine_pairs = parse_pairs_file(os.path.join(pairs_dir, "celeba-test_genuine_pairs.txt"))
-    impostor_pairs = parse_pairs_file(os.path.join(pairs_dir, "celeba-test_impostor_pairs.txt"))
+    genuine_pairs = parse_pairs_file(os.path.join(pairs_dir, f"{dataset}_genuine_pairs.txt"))
+    impostor_pairs = parse_pairs_file(os.path.join(pairs_dir, f"{dataset}_impostor_pairs.txt"))
     print(f"Pairs: {len(genuine_pairs)} genuine, {len(impostor_pairs)} impostor\n")
 
     # ---- aligned same-condition reference (ceiling) ----
@@ -218,7 +218,7 @@ def analyze_model(embeddings_root, pairs_dir, output_prefix):
     eer_ref, acc_ref, _ = compute_eer(np.array(g_ref), np.array(i_ref))
     print(f"[aligned same-condition ref]  AUC={auc_ref:.4f}  EER={eer_ref:.4f}")
 
-    techniques = discover_techniques(embeddings_root)
+    techniques = discover_techniques(embeddings_root, dataset)
     if not techniques:
         print("ERROR: no technique folders found.")
         sys.exit(1)
@@ -298,6 +298,7 @@ def analyze_model(embeddings_root, pairs_dir, output_prefix):
     with open(json_path, "w") as f:
         json.dump({
             "model": model_name,
+            "dataset": dataset,
             "gallery_size": len(aligned_keys),
             "aligned_ref": {"auc": auc_ref, "eer": eer_ref, "acc": acc_ref},
             "techniques": {
@@ -661,6 +662,9 @@ def main():
                    help="Pairs directory with celeba-test pairs")
     p.add_argument("--output", type=str, default="linkability",
                    help="Output prefix, e.g. linkability_swinface")
+    p.add_argument("--dataset", type=str, default="celeba-test",
+                   help="Dataset sub-folder / pair-file prefix (default celeba-test; "
+                        "must match embeddings layout and pairs files)")
 
     # scatter mode
     p.add_argument("--results-a", type=str)
@@ -685,7 +689,8 @@ def main():
 
     analyze_model(os.path.abspath(args.embeddings_root),
                   os.path.abspath(args.pairs),
-                  os.path.abspath(args.output))
+                  os.path.abspath(args.output),
+                  dataset=args.dataset)
 
 
 if __name__ == "__main__":

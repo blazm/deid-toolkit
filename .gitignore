@@ -224,3 +224,29 @@ sample_*.png
 sample_*.pdf
 
 root_dir/datasets/labels/KDEF_provenance_LOCAL.md
+
+# Evaluator model weights (~3.6 GB, never commit)
+sota_evaluators/models/
+
+# De-identified dataset outputs (labels are tracked separately)
+root_dir/datasets/*
+!root_dir/datasets/labels/
+!root_dir/datasets/.gitkeep
+
+# Backups and temp dirs
+*.bak*
+_portrait_swap/
+_fx_smoke/
+_kdup_check/
+
+# Derived result/figure outputs in sota_evaluators
+sota_evaluators/linkability_*
+sota_evaluators/utility_*
+sota_evaluators/privacy_utility_scatter.*
+
+# Vendored evaluator repos: heavy non-code assets
+sota_evaluators/FaceXFormer/docs/
+sota_evaluators/DeepFace/tests/
+sota_evaluators/DeepFace/icon/
+sota_evaluators/UniFace/assets/
+sota_evaluators/UniFace/uv.lock

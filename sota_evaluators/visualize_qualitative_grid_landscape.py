@@ -185,8 +185,8 @@ def main():
     grid_w = cell_cols * (cell_w + pad) - pad
 
     font_bold = _load_font(max(32, min(48, int(cell_w / 8))), bold=True)
-    lw_left = label_gutter_width(["Reference"] + left_names, font_bold)
-    lw_right = label_gutter_width(["Reference"] + right_names, font_bold)
+    lw_left = label_gutter_width(["reference"] + left_names, font_bold)
+    lw_right = label_gutter_width(["reference"] + right_names, font_bold)
     canvas_w = (border + lw_left + grid_w) + gap + (lw_right + grid_w + border)
 
     canvas = Image.new("RGB", (canvas_w, canvas_h), "white")
@@ -204,10 +204,10 @@ def main():
             rows.append(row)
         return rows
 
-    draw_half(canvas, draw, 0, ["Reference"] + left_names, load_row(left_names),
+    draw_half(canvas, draw, 0, ["reference"] + left_names, load_row(left_names),
               cell_w, cell_h, font_bold, border, pad, lw_left)
     draw_half(canvas, draw, border + lw_left + grid_w + gap,
-              ["Reference"] + right_names, load_row(right_names),
+              ["reference"] + right_names, load_row(right_names),
               cell_w, cell_h, font_bold, 0, pad, lw_right)
 
     out_base = Path(args.output)

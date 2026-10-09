@@ -1,15 +1,26 @@
-"""Generate labels for KDEF aligned images.
+"""Generate labels for KDEF aligned images (CANONICAL naming).
 
-Filenames in aligned/kdef/ follow convention: <EMOTION>_<SEQ>_<SHOT>.jpg
+Filenames in aligned/kdef/ follow convention: <EMOTION>_<actor>_<shot>.jpg
   e.g. ANG_0_25.jpg, HAP_42_3.jpg, SUR_100_1.jpg
 
-Emotion codes match the existing emotion dictionary used throughout
-deid-toolkit for label consistency. Gender is NOT encoded (KDEF
-original filenames do not carry gender information and no official
-subject-to-gender mapping file was included with the dataset we have).
+- <actor> is our canonical 0–139 actor ID (the key for all labels,
+  embeddings and analysis; see datasets/labels/KDEF_provenance_LOCAL.md).
+- Gender is joined from datasets/labels/kdef_actor_naming_map.csv
+  (author-verified: 140 actors, 70 M / 70 F). If that map is missing or an
+  actor is unmapped, the run aborts instead of writing blank genders.
+- SAFETY: the script refuses to write if the target folder does not look
+  like the canonical subset (>1% unparseable filenames, e.g. when it is
+  pointed at the official KDEF release with names like AF21DIHR.jpg), and
+  it always backs up an existing kdef_labels.csv before overwriting.
+
+NEVER run this against the official release folder — it would clobber the
+canonical subset labels.
 """
 import os
 import csv
+import shutil
+import sys
+from datetime import datetime
 from tqdm import tqdm
 
 headers = [
@@ -23,11 +34,13 @@ headers = [
 # Emotion mapping from filename prefix to column headers and codes
 EMOTION_PREFIX = {
     'ANG': ('Anger', 1),
+    'CON': ('Contempt', 3),
     'DIS': ('Disgust', 4),
     'FEA': ('Fear', 5),
     'HAP': ('Happy', 6),
     'NEU': ('Neutral', 0),
     'SAD': ('Sadness', 7),
+    'SCR': ('Scream', 2),
     'SUR': ('Surprise', 8),
 }
 
@@ -49,6 +62,27 @@ def main():
     ])
 
     print(f"Processing {len(img_names)} images from KDEF...")
+
+    # ── SAFETY PRE-FLIGHT: the folder must contain canonical names ──────
+    # (protects against accidentally pointing at the official release,
+    # whose filenames like AF21DIHR.jpg would clobber the subset labels)
+    bad_names = []
+    for img_name in img_names:
+        base = os.path.splitext(img_name)[0]
+        parts = base.split('_')
+        ok = (len(parts) == 3 and parts[0] in EMOTION_PREFIX
+              and parts[1].isdigit() and parts[2].isdigit())
+        if not ok:
+            bad_names.append(img_name)
+    if not img_names or (len(bad_names) / len(img_names)) > 0.01:
+        print("\nERROR: this folder does NOT look like the canonical KDEF subset "
+              "(<EMOTION>_<actor>_<shot>.jpg, actor 0–139).\n"
+              f"  {len(bad_names)}/{len(img_names)} filenames unparseable; first few: "
+              f"{bad_names[:5]}\n"
+              "  Refusing to overwrite kdef_labels.csv. If you are processing the "
+              "official release, redirect --output or fix the directory argument."
+              )
+        sys.exit(1)
 
     for img_name in tqdm(img_names, desc="KDEF labels"):
         img_path = os.path.join(directory, img_name)
@@ -77,8 +111,8 @@ def main():
         emotion_col, emotion_code = EMOTION_PREFIX[emotion_prefix]
 
         # Build label row following deid-toolkit conventions.
-        # Gender is NOT known from filenames — left blank (KDEF originals
-        # used subject codes like S001 with no gender field in the image names).
+        # Gender is filled in AFTERWARDS from the verified per-actor map
+        # (kdef_actor_naming_map.csv); kept as '' here until the join.
         row = {
             'Name': img_name,
             'Path': 'root_dir/datasets/aligned/kdef/' + img_name,
@@ -110,6 +144,43 @@ def main():
     )
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
+    # ── GENDER JOIN: verified per-actor map (author-verified, 70 M / 70 F) ──
+    actor_map_path = os.path.join(os.path.dirname(output_path), "kdef_actor_naming_map.csv")
+    if not os.path.exists(actor_map_path):
+        print("\nERROR: gender map not found: "
+              f"{actor_map_path}\nRefusing to write labels with blank genders."
+              )
+        sys.exit(1)
+    actor_gender = {}
+    with open(actor_map_path, "r", encoding="utf-8-sig") as f:
+        for r in csv.DictReader(f):
+            actor_gender[str(r["our_actor_id"]).strip()] = r["gender"].strip()
+
+    GENDER_CODE = {"M": "1", "F": "-1"}
+    unmapped = set()
+    n_m = n_f = 0
+    for row in labels_kdef:
+        g = actor_gender.get(row["Identity"])
+        if g in ("M", "F"):
+            row["Gender"] = g
+            row["Gender_code"] = GENDER_CODE[g]
+            n_m += g == "M"
+            n_f += g == "F"
+        else:
+            unmapped.add(row["Identity"])
+    if unmapped:
+        print("\nERROR: actors missing from kdef_actor_naming_map.csv: "
+              f"{sorted(unmapped, key=int)[:20]}"
+              f" ({len(unmapped)} total). Refusing to write partial-gender labels."
+              )
+        sys.exit(1)
+
+    # ── BACKUP the existing labels (never destroy without a copy) ────────
+    if os.path.exists(output_path):
+        backup_path = output_path + ".bak_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+        shutil.copy2(output_path, backup_path)
+        print(f"\nBacked up existing labels -> {os.path.basename(backup_path)}")
+
     with open(output_path, "w", newline='') as csv_file:
         csv_writer = csv.DictWriter(csv_file, fieldnames=headers)
         csv_writer.writeheader()
@@ -117,6 +188,7 @@ def main():
 
     print(f"\nDone! Wrote {len(labels_kdef)} labels to {output_path}")
     print(f"Unique identities: {len(identities_seen)}")
+    print(f"Gender: {n_m} M / {n_f} F  (expected 70/70 for the 140-actor KDEF subset)")
 
     # Print verification sample
     with open(output_path, "r") as csv_file:

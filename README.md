@@ -104,8 +104,8 @@ official repository and weights — all linked per method in `baselines/README.m
 the weights manifest (`weights_manifest.txt` per method) lists exactly which
 files to place and where. Three runners need **only** the files in `baselines/`
 plus off-the-shelf model weights (no official-repo code): **LDFA** (Stable
-Diffusion 2 inpainting), **RP** (SDXL), and **PRO-Face** (blur + IResNet-50
-restore configuration). Run each method inside its own conda env. The two basic
+Diffusion 2 inpainting), **RP** (SDXL), and **PRO-Face** (face-swap
+obfuscation: vendored SimSwap stack + IResNet-50 restore checkpoint). Run each method inside its own conda env. The two basic
 built-ins (`deid/techniques/blur.py`, `pixelize.py`) accept the same
 `--input/--output` batch contract (as well as the legacy positional pipeline
 interface), so you can call them exactly like the baseline runners.
